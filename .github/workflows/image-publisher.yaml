@@ -1,5 +1,5 @@
-name: Publish Orgbook Publisher Image
-run-name: Publish Orgbook Publisher ${{ inputs.tag || github.event.release.tag_name }} Image
+name: Publish UNTP Publisher Image
+run-name: Publish UNTP Publisher ${{ inputs.tag || github.event.release.tag_name }} Image
 on:
   release:
     types: [published]
@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
 
-    name: Publish Orgbook Publisher Image
+    name: Publish UNTP Publisher Image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -69,7 +69,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ steps.info.outputs.repo-owner }}/orgbook-publisher-service
+            ghcr.io/${{ steps.info.outputs.repo-owner }}/untp-publisher-service
           tags: |
             type=raw,value=${{ inputs.tag || github.event.release.tag_name }}
 

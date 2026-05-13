@@ -1,5 +1,26 @@
 # Upgrade Guide
 
+## Chart 0.1.0 — Rename to `untp-publisher`
+
+Chart **name** and directory changed from `orgbook-publisher` to **`untp-publisher`**.
+
+| | Before (chart &lt; 0.1.0) | After (chart ≥ 0.1.0) |
+| --- | --- | --- |
+| Chart path | `./charts/orgbook-publisher` | `./charts/untp-publisher` |
+| Helm chart `name` | `orgbook-publisher` | `untp-publisher` |
+| Default `fullnameOverride` / `nameOverride` | `orgbook-publisher` | `untp-publisher` |
+| Default MongoDB app user & database | `orgbook-publisher` | `untp-publisher` |
+| Default backend image | `ghcr.io/bcgov/orgbook-publisher-service` | `ghcr.io/bcgov/untp-publisher-service` |
+
+**Upgrading an existing release**
+
+- Point `helm upgrade` at `./charts/untp-publisher` (or the packaged chart version from releases).
+- If you must keep **Kubernetes resource names** stable (e.g. `myrelease-orgbook-publisher`), set `fullnameOverride` and `nameOverride` in your values to the previous strings.
+- If you must keep the **MongoDB** application user/database or **container image** repository, override `mongodb.customUser.*` and `backend.image.repository` in values.
+- The pod still receives **`ORGBOOK_URL`** for optional read-only entity lookup; unset or leave empty only if your deployment does not use that integration.
+
+---
+
 ## Migrating from Bitnami MongoDB to CloudPirates MongoDB
 
 Starting with chart version `0.0.4`, the bundled MongoDB subchart has changed from
@@ -30,12 +51,17 @@ Starting with chart version `0.0.4`, the bundled MongoDB subchart has changed fr
 ```bash
 RELEASE=<your-helm-release-name>
 NAMESPACE=<your-namespace>
+# Application database name on the *old* Bitnami deployment (often orgbook-publisher for older chart defaults)
+SOURCE_DB=orgbook-publisher
+# Application database name on the *new* CloudPirates deployment — must match mongodb.customUser.* in your values (chart default untp-publisher for chart ≥ 0.1.0)
+TARGET_DB=untp-publisher
 ```
 
 - [ ] Confirm the release name and namespace above
 - [ ] You have `kubectl` access with exec permissions
 - [ ] You have enough local disk space for the dump
 - [ ] You have tested this procedure in a non-production environment first
+- [ ] If `SOURCE_DB` and `TARGET_DB` differ, plan namespace mapping or temporarily set `mongodb.customUser` to `SOURCE_DB` until data is migrated
 
 ---
 
@@ -52,16 +78,16 @@ OLD_PASSWORD=$(kubectl get secret "${RELEASE}-mongodb" \
 > If you used `database.existingSecret` to supply your own secret, substitute that
 > secret name and key here instead.
 
-Run `mongodump` from inside the primary replica pod:
+Run `mongodump` from inside the primary replica pod (use your real **`SOURCE_DB`**):
 
 ```bash
 kubectl exec -it "${RELEASE}-mongodb-0" -n "${NAMESPACE}" -- \
   mongodump \
     --host "localhost:27017" \
-    --username "orgbook-publisher" \
+    --username "${SOURCE_DB}" \
     --password "${OLD_PASSWORD}" \
-    --authenticationDatabase "orgbook-publisher" \
-    --db "orgbook-publisher" \
+    --authenticationDatabase "${SOURCE_DB}" \
+    --db "${SOURCE_DB}" \
     --out /tmp/backup
 ```
 
@@ -74,7 +100,7 @@ kubectl cp "${NAMESPACE}/${RELEASE}-mongodb-0:/tmp/backup" ./mongodb-backup
 Verify the dump is non-empty before proceeding:
 
 ```bash
-ls -lh ./mongodb-backup/orgbook-publisher/
+ls -lh "./mongodb-backup/${SOURCE_DB}/"
 ```
 
 ---
@@ -100,7 +126,7 @@ Uninstall the old StatefulSet by upgrading to the new chart version (Helm will
 replace the Bitnami StatefulSet with the CloudPirates one):
 
 ```bash
-helm upgrade "${RELEASE}" ./charts/orgbook-publisher \
+helm upgrade "${RELEASE}" ./charts/untp-publisher \
   -n "${NAMESPACE}" \
   --set mongodb.persistence.storageClass=<your-storage-class>
 ```
@@ -133,9 +159,9 @@ NEW_PASSWORD=$(kubectl get secret "${RELEASE}-mongodb-custom-user-secret" \
 
 kubectl exec -it "${RELEASE}-mongodb-0" -n "${NAMESPACE}" -- \
   mongosh \
-    --username "orgbook-publisher" \
+    --username "${TARGET_DB}" \
     --password "${NEW_PASSWORD}" \
-    --authenticationDatabase "orgbook-publisher" \
+    --authenticationDatabase "${TARGET_DB}" \
     --eval "db.runCommand({ connectionStatus: 1 })"
 ```
 
@@ -154,13 +180,19 @@ kubectl cp ./mongodb-backup "${NAMESPACE}/${RELEASE}-mongodb-0:/tmp/backup"
 kubectl exec -it "${RELEASE}-mongodb-0" -n "${NAMESPACE}" -- \
   mongorestore \
     --host "localhost:27017" \
-    --username "orgbook-publisher" \
+    --username "${TARGET_DB}" \
     --password "${NEW_PASSWORD}" \
-    --authenticationDatabase "orgbook-publisher" \
-    --db "orgbook-publisher" \
+    --authenticationDatabase "${TARGET_DB}" \
+    --db "${TARGET_DB}" \
     --drop \
-    /tmp/backup/orgbook-publisher
+    "/tmp/backup/${SOURCE_DB}"
 ```
+
+> If **`SOURCE_DB`** and **`TARGET_DB`** differ, `mongorestore` may require
+> [`--nsFrom` / `--nsTo`](https://www.mongodb.com/docs/database-tools/mongorestore/)
+> instead of the simple `--db` + directory layout above. Alternatively, set
+> `mongodb.customUser.name` and `mongodb.customUser.database` to **`SOURCE_DB`**
+> for the upgrade so credentials match the dump layout, then rename or migrate later.
 
 The `--drop` flag drops and recreates each collection before restoring, which
 is safe here since the new database is empty.
@@ -232,9 +264,9 @@ auto-generated one, create a secret with the following keys before upgrading:
 ```bash
 kubectl create secret generic my-mongodb-secret \
   -n "${NAMESPACE}" \
-  --from-literal=CUSTOM_USER=orgbook-publisher \
+  --from-literal=CUSTOM_USER="${TARGET_DB}" \
   --from-literal=CUSTOM_PASSWORD=<your-password> \
-  --from-literal=CUSTOM_DB=orgbook-publisher
+  --from-literal=CUSTOM_DB="${TARGET_DB}"
 ```
 
 Then set in your values:
@@ -245,5 +277,5 @@ mongodb:
     existingSecret: "my-mongodb-secret"
 ```
 
-The `orgbook-publisher` user password used in Step 1 can then be used directly
-as `CUSTOM_PASSWORD` so there is no need to change the application password.
+The password from Step 1 can then be used directly as `CUSTOM_PASSWORD` when you
+intend to keep the same application password across the migration.

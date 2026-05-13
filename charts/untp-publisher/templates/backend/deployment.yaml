@@ -39,6 +39,7 @@ spec:
             # PUBLISHER INFO
             - name: DOMAIN
               value: {{ .Values.backend.host }}
+            # Read-only entity lookup (OrgBook v4 search); app reads ORGBOOK_URL from config.
             - name: ORGBOOK_URL
               value: {{ .Values.backend.environment.ORGBOOK_URL }}
             - name: PUBLISHER_MULTIKEY

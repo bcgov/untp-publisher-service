@@ -1,8 +1,8 @@
 apiVersion: v2
-name: orgbook-publisher
-description: An api server to register and manage credentials.
+name: untp-publisher
+description: Helm chart for the UNTP Publisher — credential registration API, Traction integration, and optional bundled MongoDB.
 type: application
-version: 0.0.4
+version: 0.1.0
 appVersion: "0.0.5"
 
 dependencies:

@@ -21,7 +21,7 @@ Instructions for lines of business to obtain Verifiable Credentials from the pub
 
 ### Credential publication
 #### By api
-1. Request an access token from the orgbook publisher
+1. Request an access token from the UNTP publisher
     ```json
     {
         "client_id": "",

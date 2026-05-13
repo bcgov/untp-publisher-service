@@ -38,7 +38,7 @@ docker build -t untp-publisher-service -f backend/Dockerfile backend/
 docker run -p 8000:8000 untp-publisher-service
 ```
 
-The container image published to GitHub Container Registry may still use the legacy name `ghcr.io/bcgov/orgbook-publisher-service` until packaging is renamed; the build context is always `backend/`.
+The image published to GitHub Container Registry is **`ghcr.io/bcgov/untp-publisher-service`** (see `.github/workflows/image-publisher.yaml`). The build context is always `backend/`.
 
 ## Configuration notes
 
