@@ -1,3 +1,4 @@
+# Publishes ghcr.io/<owner>/untp-publisher-service on GitHub Release **or** manual dispatch (custom tag).
 name: Publish UNTP Publisher Image
 run-name: Publish UNTP Publisher ${{ inputs.tag || github.event.release.tag_name }} Image
 on:
@@ -7,16 +8,16 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Image tag"
+        description: "Image tag (e.g. v0.1.0 or sha-abc1234)"
         required: true
         type: string
       platforms:
-        description: "Platforms - Comma separated list of the platforms to support."
+        description: "Comma-separated platforms (e.g. linux/amd64 or linux/amd64,linux/arm64)."
         required: true
-        default: linux/amd64
+        default: linux/amd64,linux/arm64
         type: string
       ref:
-        description: "Optional - The branch, tag or SHA to checkout."
+        description: "Optional git ref (branch, tag, or SHA) to build from. Defaults to the branch you select in Run workflow."
         required: false
         type: string
 
@@ -39,7 +40,8 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || '' }}
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
 
       - name: Gather image info
         id: info

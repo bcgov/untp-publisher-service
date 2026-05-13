@@ -4,6 +4,13 @@ on:
   release:
     types: [published]
 
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Optional git ref (branch, tag, or SHA) to run chart-releaser from. Defaults to the branch selected in Run workflow."
+        required: false
+        type: string
+
 jobs:
   release-charts:
     permissions:
@@ -15,6 +22,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ inputs.ref || github.ref }}
 
       - name: Configure Git
         run: |
