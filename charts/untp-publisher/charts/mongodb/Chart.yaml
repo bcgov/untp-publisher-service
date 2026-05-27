@@ -1,0 +1,42 @@
+annotations:
+  artifacthub.io/category: database
+  artifacthub.io/changes: |2
+        - kind: changed
+          description: "Chart updated"
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/links: |
+    - name: MongoDB
+      url: https://www.mongodb.com
+    - name: Helm Chart
+      url: https://github.com/CloudPirates-io/helm-charts/tree/main/charts/mongodb
+    - name: Application
+      url: https://github.com/mongodb/mongo
+    - name: Maintainer CloudPirates
+      url: https://www.cloudpirates.io
+  artifacthub.io/signKey: |
+    fingerprint: 6917f1a88c122cbb1de5aa55457752135bdcf95a
+    url: https://raw.githubusercontent.com/CloudPirates-io/helm-charts/refs/heads/main/cosign.pub
+  license: Apache-2.0
+apiVersion: v2
+appVersion: 8.2.4
+dependencies:
+- name: common
+  repository: oci://registry-1.docker.io/cloudpirates
+  version: 2.x.x
+description: MongoDB a flexible NoSQL database for scalable, real-time data management
+home: https://www.mongodb.com
+icon: https://a.storyblok.com/f/143071/512x512/5d228988dc/mongodb-logo.svg
+keywords:
+- mongodb
+- database
+- nosql
+maintainers:
+- email: hello@cloudpirates.io
+  name: CloudPirates GmbH & Co. KG
+  url: https://www.cloudpirates.io
+name: mongodb
+sources:
+- https://github.com/CloudPirates-io/helm-charts/tree/main/charts/mongodb
+- https://github.com/mongodb/mongo
+type: application
+version: 0.10.3

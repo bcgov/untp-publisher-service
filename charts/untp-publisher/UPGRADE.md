@@ -21,6 +21,32 @@ Chart **name** and directory changed from `orgbook-publisher` to **`untp-publish
 
 ---
 
+## MongoDB authentication failed after `helm upgrade`
+
+**Symptom:** Backend logs `pymongo.errors.OperationFailure: Authentication failed` during `provision()` / `mongo.provision()`, often right after a chart upgrade or pod rollout — not because MongoDB “went away”, but because the **password in the Secret no longer matches what was written into the PVC on first init**.
+
+**Cause (fixed in vendored CloudPirates mongodb 0.10.3):** Upstream `custom-user-secret.yaml` used `randAlphaNum` for `CUSTOM_PASSWORD` whenever `customUser.existingSecret` was empty, so each `helm upgrade` could rewrite the Secret while the data volume kept the original password.
+
+**After upgrading to a chart that includes the vendored fix:** Further `helm upgrade` runs preserve `CUSTOM_PASSWORD` via `lookup` and `helm.sh/resource-policy: keep`.
+
+**If the cluster is already broken** (Secret and PVC out of sync), reset Mongo credentials and data once:
+
+```bash
+RELEASE=untp-publisher-service
+NAMESPACE=f890b1-dev   # your namespace
+
+kubectl delete statefulset "${RELEASE}-mongodb" -n "${NAMESPACE}" --wait=true
+kubectl delete pvc -l "app.kubernetes.io/instance=${RELEASE},app.kubernetes.io/name=mongodb" -n "${NAMESPACE}"
+kubectl delete secret "${RELEASE}-mongodb-custom-user-secret" -n "${NAMESPACE}"
+
+cd charts/untp-publisher && helm dependency update
+helm upgrade --install "${RELEASE}" . -f ../../deploy/dev/values.yaml -n "${NAMESPACE}"
+```
+
+Then wait for MongoDB to become ready and the backend pod to pass `provision()`.
+
+---
+
 ## Migrating from Bitnami MongoDB to CloudPirates MongoDB
 
 Starting with chart version `0.0.4`, the bundled MongoDB subchart has changed from

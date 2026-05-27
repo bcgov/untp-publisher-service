@@ -24,7 +24,7 @@ Use release name **`untp-publisher-service`** (matches `fullnameOverride` and de
 
 ### Test suite mode (optional)
 
-Set **`backend.testSuite: true`** to run validation-only (`GET /server/status`, `POST /test-suite/validate`). The publisher API is disabled; startup skips Traction/Mongo **provision**. Dev overlay enables this by default.
+Set **`backend.testSuite: true`** to expose only **`GET /server/status`** and **`POST /test-suite/validate`** (publisher API routes are not registered). Startup is unchanged: the pod still runs **`main.py`** and **`provision()`** (Traction + Mongo). MongoDB must be healthy.
 
 ### Traction
 

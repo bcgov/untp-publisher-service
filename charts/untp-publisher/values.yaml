@@ -141,9 +141,9 @@ mongodb:
     # -- Name of the MongoDB database
     database: "untp-publisher-service"
     # -- Name of an existing secret for custom-user credentials.
-    # Leave empty to let the subchart generate its own credentials secret.
-    # When set, the subchart uses this secret instead of generating one, and the
-    # backend deployment reads credentials from this secret.
+    # Leave empty to use the chart-managed secret ({release}-mongodb-custom-user-secret).
+    # The vendored MongoDB subchart preserves CUSTOM_PASSWORD across helm upgrades (lookup).
+    # When set, the subchart uses this secret instead of generating one.
     existingSecret: ""
     # -- Secret key names in the custom-user secret. Defaults match the CloudPirates subchart's generated secret keys.
     secretKeys:

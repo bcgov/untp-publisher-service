@@ -4,8 +4,7 @@ from app.plugins import TractionController
 from config import settings
 
 if __name__ == "__main__":
-    if not settings.TEST_SUITE:
-        asyncio.run(TractionController().provision())
+    asyncio.run(TractionController().provision())
     uvicorn.run(
         "app:app",
         host="0.0.0.0",

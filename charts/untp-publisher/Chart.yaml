@@ -6,9 +6,10 @@ version: 0.1.0
 appVersion: "0.0.5"
 
 dependencies:
+  # Vendored from CloudPirates mongodb 0.10.3 with stable custom-user credentials (lookup on upgrade).
   - name: mongodb
     version: 0.10.3
-    repository: "oci://registry-1.docker.io/cloudpirates"
+    repository: "file://charts/mongodb"
     condition: mongodb.enabled
   - name: common
     repository: https://charts.bitnami.com/bitnami
