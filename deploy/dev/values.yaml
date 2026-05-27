@@ -6,7 +6,8 @@
 ## Public URL: standard Gold Route host (*.apps.gold.devops.gov.bc.ca; same edge-TLS pattern as BC-Wallet-Demo on Silver).
 ## OpenShift edge termination — no ingress.tls / no custom cert Secret.
 ##
-## Pre-create Traction Secret (see backend.traction.existingSecret); keys traction_tenant_id + traction_api_key.
+## Pre-create Traction Secret when testSuite is false (see backend.traction.existingSecret).
+## testSuite true: only GET /server/status and POST /test-suite/validate (no publisher API).
 
 ingress:
   annotations:
@@ -19,6 +20,7 @@ networkPolicy:
       network.openshift.io/policy-group: ingress
 
 backend:
+  testSuite: true
   image:
     repository: ghcr.io/bcgov/untp-publisher-service
     tag: dev-0.0.2
@@ -37,13 +39,21 @@ backend:
   resources:
     limits:
       cpu: 400m
-      memory: 1600Mi
+      memory: 512Mi
     requests:
-      cpu: 200m
-      memory: 820Mi
+      cpu: 50m
+      memory: 256Mi
 
 mongodb:
   targetPlatform: openshift
+  persistence:
+    size: 512Mi
+  resources:
+    limits:
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 256Mi
   commonLabels:
     backup: "true"
     env: dev

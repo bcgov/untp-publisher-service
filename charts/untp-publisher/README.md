@@ -16,6 +16,7 @@ Helm chart for the [UNTP Publisher](https://github.com/bcgov/untp-publisher-serv
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | backend.containerSecurityContext | object | `{}` | Security context for backend containers |
+| backend.testSuite | bool | `false` | When true, sets `TEST_SUITE` and exposes only `/server/status` and `/test-suite/validate` |
 | backend.didwebvh.serverUrl | string | `""` | DID WebVH server base URL (sets `DID_WEB_SERVER_URL`) |
 | backend.didwebvh.witnessPublicKeyMultibase | string | `""` | Witness public key multibase (sets `PUBLISHER_MULTIKEY`) |
 | backend.traction.apiUrl | string | `""` | Traction tenant proxy base URL (sets `TRACTION_API_URL`) |

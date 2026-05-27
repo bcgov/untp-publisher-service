@@ -22,9 +22,13 @@ Use release name **`untp-publisher-service`** (matches `fullnameOverride` and de
 
 ## Prerequisites
 
+### Test suite mode (optional)
+
+Set **`backend.testSuite: true`** to run validation-only (`GET /server/status`, `POST /test-suite/validate`). The publisher API is disabled; startup skips Traction/Mongo **provision**. Dev overlay enables this by default.
+
 ### Traction
 
-Set **`backend.traction.apiUrl`** in values (non-secret). Create a Secret for the tenant credentials and reference it with **`backend.traction.existingSecret`**.
+Required when **`backend.testSuite`** is false. Set **`backend.traction.apiUrl`** in values (non-secret). Create a Secret for the tenant credentials and reference it with **`backend.traction.existingSecret`**.
 
 ```yaml
 backend:
