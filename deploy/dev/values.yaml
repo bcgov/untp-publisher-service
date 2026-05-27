@@ -45,6 +45,9 @@ backend:
       memory: 256Mi
 
 mongodb:
+  customUser:
+    # Must match Helm release name untp-publisher-service (parent-managed secret).
+    existingSecret: untp-publisher-service-mongodb-custom-user-secret
   targetPlatform: openshift
   persistence:
     size: 512Mi

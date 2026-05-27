@@ -10,7 +10,9 @@ helm upgrade --install untp-publisher-service . \
   -n <namespace>
 ```
 
-Use release name **`untp-publisher-service`** (matches `fullnameOverride` and dev Traction Secret naming). MongoDB Service: `untp-publisher-service-mongodb`.
+Use release name **`untp-publisher-service`** (matches `fullnameOverride`, dev Traction Secret naming, and MongoDB `customUser.existingSecret`). MongoDB Service: `untp-publisher-service-mongodb`.
+
+MongoDB app-user credentials are **not** regenerated on every `helm upgrade`: set `mongodb.customUser.existingSecret` to `{release}-mongodb-custom-user-secret` so the parent chart owns the Secret (same `lookup` pattern as the Traction secret). The bundled CloudPirates subchart only uses `lookup` for the root admin password; its `custom-user-secret` template does not.
 
 ## Layout
 

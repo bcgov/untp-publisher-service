@@ -141,10 +141,10 @@ mongodb:
     # -- Name of the MongoDB database
     database: "untp-publisher-service"
     # -- Name of an existing secret for custom-user credentials.
-    # Leave empty to let the subchart generate its own credentials secret.
-    # When set, the subchart uses this secret instead of generating one, and the
-    # backend deployment reads credentials from this secret.
-    existingSecret: ""
+    # Default uses the parent chart-managed secret (lookup on upgrade; subchart does not
+    # generate credentials). Override when using your own Secret or a non-default release name
+    # (use "{release}-mongodb-custom-user-secret").
+    existingSecret: "untp-publisher-service-mongodb-custom-user-secret"
     # -- Secret key names in the custom-user secret. Defaults match the CloudPirates subchart's generated secret keys.
     secretKeys:
       name: "CUSTOM_USER"
