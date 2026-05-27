@@ -63,12 +63,6 @@ backend:
     # -- Backend image pull secrets
     pullSecrets: []
 
-  # -- Override image CMD to skip `uv run` (OpenShift-safe; deps are in /fastapi/.venv from image build).
-  command:
-    - /fastapi/.venv/bin/python
-  args:
-    - main.py
-
   # -- Number of backend replicas
   replicaCount: 1
 

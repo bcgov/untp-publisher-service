@@ -35,14 +35,6 @@ spec:
           {{- end }}
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
-          {{- with .Values.backend.command }}
-          command:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.backend.args }}
-          args:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
           env:
             - name: TEST_SUITE
               value: {{ .Values.backend.testSuite | quote }}
