@@ -2,12 +2,15 @@ FROM python:3.12
 
 WORKDIR /fastapi
 
-# Install uv and sync dependencies (no project install; we copy app next)
-COPY pyproject.toml uv.lock ./
-RUN pip install uv \
-    && uv sync --no-install-project --frozen
-
+# Install deps + local packages (app, untp) at build time; no `uv run` at runtime on OpenShift.
+COPY pyproject.toml uv.lock README.md ./
 COPY app ./app
+COPY untp ./untp
 COPY config.py main.py ./
 
-CMD ["uv", "run", "python", "main.py"]
+RUN pip install uv \
+    && uv sync --frozen
+
+ENV PATH="/fastapi/.venv/bin:$PATH"
+
+CMD ["python", "main.py"]

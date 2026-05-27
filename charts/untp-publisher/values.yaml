@@ -1,8 +1,8 @@
 ---
 # -- String to partially override the chart name
-nameOverride: "untp-publisher"
+nameOverride: "untp-publisher-service"
 # -- String to fully override the chart name
-fullnameOverride: "untp-publisher"
+fullnameOverride: "untp-publisher-service"
 
 ingress:
   # -- Enable the Ingress resource
@@ -24,17 +24,30 @@ backend:
   # -- Backend hostname used for the Ingress rule and DOMAIN env var
   host: ""
 
+  # -- DID WebVH registry (witness endorses issuer DID documents)
+  didwebvh:
+    # -- DID WebVH server base URL. Sets pod env DID_WEB_SERVER_URL.
+    serverUrl: ""
+    # -- Witness public key (multibase). Sets pod env PUBLISHER_MULTIKEY.
+    witnessPublicKeyMultibase: ""
+
+  # -- Traction tenant proxy configuration
+  traction:
+    # -- Traction tenant proxy base URL (no path). Sets pod env TRACTION_API_URL.
+    apiUrl: ""
+    # -- Pre-created Secret for tenant credentials. When empty, Helm manages
+    # `{backend.fullname}-traction` on install. When set, Helm does not create the Secret.
+    existingSecret: ""
+    # -- Keys in the Traction Secret
+    secretKeys:
+      tenantId: traction_tenant_id
+      apiKey: traction_api_key
+
   environment:
     # -- Base URL for read-only entity lookup (OrgBook v4 search). Sets pod env ORGBOOK_URL.
-    ORGBOOK_URL: ""
-    # -- Publisher multikey
-    PUBLISHER_MULTIKEY: ""
-    # -- Issuer registry URL
-    ISSUER_REGISTRY_URL: ""
-    # -- Traction API URL
-    TRACTION_API_URL: ""
-    # -- DID Web Server URL
-    DID_WEB_SERVER_URL: ""
+    orgbookUrl: ""
+    # -- Issuer registry URL. Sets pod env ISSUER_REGISTRY_URL.
+    issuerRegistryUrl: ""
 
   image:
     # -- Backend image repository
@@ -45,6 +58,12 @@ backend:
     pullPolicy: IfNotPresent
     # -- Backend image pull secrets
     pullSecrets: []
+
+  # -- Override image CMD to skip `uv run` (OpenShift-safe; deps are in /fastapi/.venv from image build).
+  command:
+    - /fastapi/.venv/bin/python
+  args:
+    - main.py
 
   # -- Number of backend replicas
   replicaCount: 1
@@ -114,9 +133,9 @@ mongodb:
   # CloudPirates MongoDB creates the user via init script using the secret keys below.
   customUser:
     # -- Name of the custom MongoDB user
-    name: "untp-publisher"
+    name: "untp-publisher-service"
     # -- Name of the MongoDB database
-    database: "untp-publisher"
+    database: "untp-publisher-service"
     # -- Name of an existing secret for custom-user credentials.
     # Leave empty to let the subchart generate its own credentials secret.
     # When set, the subchart uses this secret instead of generating one, and the

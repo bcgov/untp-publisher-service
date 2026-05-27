@@ -61,6 +61,16 @@ app.kubernetes.io/name: {{ include "backend.fullname" . }}
 {{ include "backend.selectorLabels" . }}
 {{- end -}}
 
+{{/*
+Secret name for Traction tenant credentials.
+*/}}
+{{- define "backend.tractionSecretName" -}}
+{{- if .Values.backend.traction.existingSecret -}}
+{{- .Values.backend.traction.existingSecret -}}
+{{- else -}}
+{{- printf "%s-traction" (include "backend.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
 
 {{/*
 Return the secret name containing MongoDB custom-user credentials.

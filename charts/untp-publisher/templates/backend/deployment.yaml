@@ -35,35 +35,43 @@ spec:
           {{- end }}
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          {{- with .Values.backend.command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backend.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
             # PUBLISHER INFO
             - name: DOMAIN
               value: {{ .Values.backend.host }}
             # Read-only entity lookup (OrgBook v4 search); app reads ORGBOOK_URL from config.
             - name: ORGBOOK_URL
-              value: {{ .Values.backend.environment.ORGBOOK_URL }}
-            - name: PUBLISHER_MULTIKEY
-              value: {{ .Values.backend.environment.PUBLISHER_MULTIKEY }}
+              value: {{ .Values.backend.environment.orgbookUrl }}
             - name: ISSUER_REGISTRY_URL
-              value: {{ .Values.backend.environment.ISSUER_REGISTRY_URL }}
+              value: {{ .Values.backend.environment.issuerRegistryUrl }}
+
+            # DID WebVH
+            - name: DID_WEB_SERVER_URL
+              value: {{ .Values.backend.didwebvh.serverUrl }}
+            - name: PUBLISHER_MULTIKEY
+              value: {{ .Values.backend.didwebvh.witnessPublicKeyMultibase }}
 
             # TRACTION
             - name: TRACTION_API_URL
-              value: {{ .Values.backend.environment.TRACTION_API_URL }}
+              value: {{ .Values.backend.traction.apiUrl }}
             - name: TRACTION_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "backend.fullname" . }}
-                  key: traction_api_key
+                  name: {{ include "backend.tractionSecretName" . }}
+                  key: {{ .Values.backend.traction.secretKeys.apiKey }}
             - name: TRACTION_TENANT_ID
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "backend.fullname" . }}
-                  key: traction_tenant_id
-
-            # DID WEB SERVER
-            - name: DID_WEB_SERVER_URL
-              value: {{ .Values.backend.environment.DID_WEB_SERVER_URL }}
+                  name: {{ include "backend.tractionSecretName" . }}
+                  key: {{ .Values.backend.traction.secretKeys.tenantId }}
 
             # MONGODB
             - name: MONGO_HOST

@@ -1,0 +1,49 @@
+## Development overlay (BC Gov OpenShift Gold).
+## From repo root:
+##   cd charts/untp-publisher && helm dependency update
+##   helm upgrade --install untp-publisher-service . -f ../../deploy/dev/values.yaml -n <namespace>
+##
+## Public URL: standard Gold Route host (*.apps.gold.devops.gov.bc.ca; same edge-TLS pattern as BC-Wallet-Demo on Silver).
+## OpenShift edge termination — no ingress.tls / no custom cert Secret.
+##
+## Pre-create Traction Secret (see backend.traction.existingSecret); keys traction_tenant_id + traction_api_key.
+
+ingress:
+  annotations:
+    route.openshift.io/termination: edge
+  # No tls: — router terminates HTTPS (see BC-Wallet-Demo deploy/showcase/values-dev.yaml).
+
+networkPolicy:
+  ingress:
+    namespaceSelector:
+      network.openshift.io/policy-group: ingress
+
+backend:
+  image:
+    repository: ghcr.io/bcgov/untp-publisher-service
+    tag: dev-0.0.2
+    pullPolicy: Always
+  # Hostname only (sets Ingress rule + pod DOMAIN). Public origin: https://untp-publisher-api-dev.apps.gold.devops.gov.bc.ca
+  host: untp-publisher-api-dev.apps.gold.devops.gov.bc.ca
+  traction:
+    apiUrl: "https://traction-tenant-proxy-dev.apps.silver.devops.gov.bc.ca"
+    existingSecret: untp-publisher-service-traction-tenant-info
+  didwebvh:
+    serverUrl: "https://registry-dev.digitaltrust.gov.bc.ca"
+    witnessPublicKeyMultibase: "z6MkekByGjKYvP6dpMBJEHt5UN72rKPVoDgzcS9Hoq6bjfr1"
+  environment:
+    orgbookUrl: "https://dev.orgbook.gov.bc.ca"
+    issuerRegistryUrl: "https://bcgov.github.io/digital-trust-toolkit/registrations/issuers/dev.json"
+  resources:
+    limits:
+      cpu: 400m
+      memory: 1600Mi
+    requests:
+      cpu: 200m
+      memory: 820Mi
+
+mongodb:
+  targetPlatform: openshift
+  commonLabels:
+    backup: "true"
+    env: dev

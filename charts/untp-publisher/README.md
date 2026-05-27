@@ -16,11 +16,14 @@ Helm chart for the [UNTP Publisher](https://github.com/bcgov/untp-publisher-serv
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | backend.containerSecurityContext | object | `{}` | Security context for backend containers |
-| backend.environment.DID_WEB_SERVER_URL | string | `""` | DID Web Server URL |
-| backend.environment.ISSUER_REGISTRY_URL | string | `""` | Issuer registry URL |
-| backend.environment.ORGBOOK_URL | string | `""` | Base URL for read-only entity lookup (OrgBook v4 search). Sets pod env `ORGBOOK_URL`. |
-| backend.environment.PUBLISHER_MULTIKEY | string | `""` | Publisher multikey |
-| backend.environment.TRACTION_API_URL | string | `""` | Traction API URL |
+| backend.didwebvh.serverUrl | string | `""` | DID WebVH server base URL (sets `DID_WEB_SERVER_URL`) |
+| backend.didwebvh.witnessPublicKeyMultibase | string | `""` | Witness public key multibase (sets `PUBLISHER_MULTIKEY`) |
+| backend.traction.apiUrl | string | `""` | Traction tenant proxy base URL (sets `TRACTION_API_URL`) |
+| backend.traction.existingSecret | string | `""` | Pre-created Traction Secret. When empty, Helm manages `{fullname}-traction`. When set, Helm does not create the Secret. |
+| backend.traction.secretKeys.apiKey | string | `"traction_api_key"` | Secret key for the Traction API key |
+| backend.traction.secretKeys.tenantId | string | `"traction_tenant_id"` | Secret key for the Traction tenant ID |
+| backend.environment.issuerRegistryUrl | string | `""` | Issuer registry URL. Sets pod env `ISSUER_REGISTRY_URL`. |
+| backend.environment.orgbookUrl | string | `""` | Base URL for read-only entity lookup (OrgBook v4 search). Sets pod env `ORGBOOK_URL`. |
 | backend.host | string | `""` | Backend hostname used for the Ingress rule and DOMAIN env var |
 | backend.image.pullPolicy | string | `"IfNotPresent"` | Backend image pull policy |
 | backend.image.pullSecrets | list | `[]` | Backend image pull secrets |

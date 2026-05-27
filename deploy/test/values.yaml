@@ -1,0 +1,43 @@
+## Test overlay — not yet validated against the untp-publisher chart.
+## Copy/adapt from deploy/dev/values.yaml before installing.
+
+ingress:
+  annotations:
+    route.openshift.io/termination: edge
+  tls:
+    - secretName: untp-publisher-tls
+      hosts:
+        - publisher-test.orgbook.gov.bc.ca
+
+networkPolicy:
+  ingress:
+    namespaceSelector:
+      network.openshift.io/policy-group: ingress
+
+backend:
+  image:
+    repository: ghcr.io/bcgov/untp-publisher-service
+    tag: v0.0.5
+    pullPolicy: Always
+  host: publisher-test.orgbook.gov.bc.ca
+  traction:
+    apiUrl: "https://traction-tenant-proxy-test.apps.silver.devops.gov.bc.ca"
+  didwebvh:
+    serverUrl: "https://registry-test.digitaltrust.gov.bc.ca"
+    witnessPublicKeyMultibase: "z6MkpiDTaJuPzFZpg8MCYRM4ff7i6hNMQaL7fUP5pHBFo75c"
+  environment:
+    orgbookUrl: "https://test.orgbook.gov.bc.ca"
+    issuerRegistryUrl: "https://bcgov.github.io/digital-trust-toolkit/registrations/issuers/test.json"
+  resources:
+    limits:
+      cpu: 400m
+      memory: 1600Mi
+    requests:
+      cpu: 200m
+      memory: 820Mi
+
+mongodb:
+  targetPlatform: openshift
+  commonLabels:
+    backup: "true"
+    env: test
