@@ -7,8 +7,10 @@ cd charts/untp-publisher
 helm dependency update
 helm upgrade --install untp-publisher-service . \
   -f ../../deploy/dev/values.yaml \
-  -n <namespace>
+  -n f890b1-dev
 ```
+
+Deploy into **`f890b1-dev`** with **`tests-untp-ri`**. Combined quota: see `tests-untp` repo [`deploy/f890b1-dev-quota.md`](https://github.com/bcgov/tests-untp/blob/charts/deploy/f890b1-dev-quota.md) (on `charts` branch until merged).
 
 Use release name **`untp-publisher-service`** (matches `fullnameOverride`, dev Traction Secret naming, and MongoDB `customUser.existingSecret`). MongoDB Service: `untp-publisher-service-mongodb`.
 

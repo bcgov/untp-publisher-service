@@ -1,7 +1,7 @@
-## Development overlay (BC Gov OpenShift Gold).
-## From repo root:
+## Development overlay — namespace f890b1-dev (shared with tests-untp-ri).
+## See tests-untp repo deploy/f890b1-dev-quota.md for combined quota split.
 ##   cd charts/untp-publisher && helm dependency update
-##   helm upgrade --install untp-publisher-service . -f ../../deploy/dev/values.yaml -n <namespace>
+##   helm upgrade --install untp-publisher-service . -f ../../deploy/dev/values.yaml -n f890b1-dev
 ##
 ## Public URL: standard Gold Route host (*.apps.gold.devops.gov.bc.ca; same edge-TLS pattern as BC-Wallet-Demo on Silver).
 ## OpenShift edge termination — no ingress.tls / no custom cert Secret.
@@ -37,25 +37,26 @@ backend:
     issuerRegistryUrl: "https://bcgov.github.io/digital-trust-toolkit/registrations/issuers/dev.json"
   resources:
     limits:
-      cpu: 400m
-      memory: 512Mi
+      cpu: 300m
+      memory: 384Mi
     requests:
-      cpu: 50m
-      memory: 256Mi
+      cpu: 25m
+      memory: 128Mi
 
 mongodb:
   customUser:
     # Must match Helm release name untp-publisher-service (parent-managed secret).
     existingSecret: untp-publisher-service-mongodb-custom-user-secret
   targetPlatform: openshift
+  # 512Mi PVC — half of namespace 1Gi netapp-file-standard (RI uses the other 512Mi).
   persistence:
     size: 512Mi
   resources:
     limits:
-      memory: 512Mi
+      memory: 384Mi
     requests:
-      cpu: 50m
-      memory: 256Mi
+      cpu: 25m
+      memory: 128Mi
   commonLabels:
     backup: "true"
     env: dev
