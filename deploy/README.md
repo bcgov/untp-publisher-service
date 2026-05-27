@@ -19,7 +19,6 @@ MongoDB app-user credentials are **not** regenerated on every `helm upgrade`: se
 | Path | Environment |
 |------|-------------|
 | `deploy/dev/values.yaml` | Development (BC Gov OpenShift Gold) |
-| `deploy/test/values.yaml` | Test (placeholder — align before use) |
 
 ## Prerequisites
 
@@ -56,8 +55,6 @@ Dev follows [BC-Wallet-Demo `deploy/showcase/values-dev.yaml`](https://github.co
 - **No** `ingress.tls` block and **no** custom cert Secret
 
 Traction dev tenant proxy remains on **Silver** (`traction-tenant-proxy-dev.apps.silver.devops.gov.bc.ca`) even though the publisher Route is on Gold.
-
-The test overlay may use ministry DNS (`*.orgbook.gov.bc.ca`) and TLS secrets when configured.
 
 ## Notes
 
