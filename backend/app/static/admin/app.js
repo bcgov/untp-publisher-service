@@ -21,7 +21,14 @@ let roleSearchTimer = null;
 let roleSearchRequestId = 0;
 let issuerDescriptionLastPrefill = "";
 
-/** UNTP 0.7.0 DCC template preset (JSON Pointer paths on issued credential). */
+/** UNTP 0.7.0 DCC mines-act preset (publication contract + templateRef). */
+const MINES_ACT_TEMPLATE_PRESET = {
+  templateRef: "untp_v0_7_0_dcc_mines_act_permit",
+  type: "BCMinesActPermitCredential",
+  version: "v1.0",
+};
+
+/** Legacy petroleum preset (no templateRef). */
 const TEMPLATE_DCC_PRESET = {
   subjectType: "PetroleumAndNaturalGasTitle",
   additionalType: "DigitalConformityCredential",
@@ -75,6 +82,16 @@ const TEMPLATE_OPTIONS_MAPPINGS = [
 ];
 
 function buildTemplateRegistrationPayload(form) {
+  const useMinesActPreset =
+    form.type.value.trim() === MINES_ACT_TEMPLATE_PRESET.type;
+  if (useMinesActPreset) {
+    return {
+      type: MINES_ACT_TEMPLATE_PRESET.type,
+      version: form.version.value.trim() || MINES_ACT_TEMPLATE_PRESET.version,
+      issuer: form.issuer.value.trim(),
+      templateRef: MINES_ACT_TEMPLATE_PRESET.templateRef,
+    };
+  }
   return {
     type: form.type.value.trim(),
     version: form.version.value.trim(),
@@ -86,7 +103,6 @@ function buildTemplateRegistrationPayload(form) {
     additionalPaths: { ...TEMPLATE_DCC_PRESET.additionalPaths },
     relatedResources: {
       context: deriveContextUrl(form.type.value, form.version.value),
-      legalAct: form.legalAct.value.trim(),
       governance: form.governance.value.trim(),
     },
   };
@@ -429,19 +445,30 @@ function bestActMatchFromScope(acts, scope) {
   return list[0];
 }
 
-async function deriveLegalActForIssuer(issuerDid, fallbackUrl = "") {
-  const scope = scopeFromIssuerDid(issuerDid);
-  if (!scope) return { legalActUrl: fallbackUrl, matched: false };
+async function deriveLegalActForIssuerScope(scope, fallbackUrl = "") {
+  const term = String(scope || "").trim();
+  if (!term) return { legalActUrl: fallbackUrl, matched: false, legalAct: null };
   try {
     const response = await apiFetch(
-      `/bclaws/acts?q=${encodeURIComponent(scope)}&limit=20&offset=0`
+      `/bclaws/acts?q=${encodeURIComponent(term)}&limit=20&offset=0`
     );
-    const match = bestActMatchFromScope(response?.acts || [], scope);
+    const match = bestActMatchFromScope(response?.acts || [], term);
     const legalActUrl = match?.id || fallbackUrl;
-    return { legalActUrl, matched: Boolean(match) };
+    return {
+      legalActUrl,
+      matched: Boolean(match),
+      legalAct: match
+        ? { id: match.id, name: match.name || match.title }
+        : null,
+    };
   } catch {
-    return { legalActUrl: fallbackUrl, matched: false };
+    return { legalActUrl: fallbackUrl, matched: false, legalAct: null };
   }
+}
+
+async function deriveLegalActForIssuerRecord(issuerRow, fallbackUrl = "") {
+  const scope = issuerRow?.scope || scopeFromIssuerDid(issuerRow?.id);
+  return deriveLegalActForIssuerScope(scope, fallbackUrl);
 }
 
 function deriveContextUrl(type, version) {
@@ -1094,52 +1121,68 @@ function closeCreateIssuer() {
   document.getElementById("issuer-wizard-modal").classList.add("d-none");
 }
 
+let templateIssuerRows = [];
+
 async function openCreateTemplate() {
   hideAlerts();
   hideModalAlert("template-wizard-alert");
   const modal = document.getElementById("template-wizard-modal");
   const form = document.getElementById("template-create-form");
   form.reset();
-  document.getElementById("template-type").value = "BCPetroleumAndNaturalGasTitleCredential";
-  document.getElementById("template-version").value = "v1.0";
-  document.getElementById("template-legal-act").value =
-    "https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/00_96361_01";
+  document.getElementById("template-type").value = MINES_ACT_TEMPLATE_PRESET.type;
+  document.getElementById("template-version").value = MINES_ACT_TEMPLATE_PRESET.version;
   document.getElementById("template-governance").value =
     "https://bcgov.github.io/digital-trust-toolkit/docs/governance/pilots/bc-petroleum-and-natural-gas-title";
 
   const issuerSelect = document.getElementById("template-issuer");
-  const legalActInput = document.getElementById("template-legal-act");
-  const defaultLegalActUrl = legalActInput.value;
+  const legalActDisplay = document.getElementById("template-legal-act-display");
   issuerSelect.innerHTML = '<option value="">Loading issuers...</option>';
   const issuerData = await apiFetch("/admin/api/collections/IssuerRecord?skip=0&limit=200");
-  const opts = (issuerData.items || [])
+  templateIssuerRows = issuerData.items || [];
+  const opts = templateIssuerRows
     .map(
       (row) =>
         `<option value="${escapeHtml(String(row.id))}">${escapeHtml(
           String(row.name || row.id)
-        )}</option>`
+        )}${row.scope ? ` — ${escapeHtml(String(row.scope))}` : ""}</option>`
     )
     .join("");
   issuerSelect.innerHTML = opts || '<option value="">No issuers found</option>';
 
   const applyIssuerScopeLegalAct = async () => {
     const selectedIssuer = issuerSelect.value;
-    if (!selectedIssuer) return;
-    const previous = legalActInput.value.trim();
-    legalActInput.value = "Resolving from issuer scope…";
-    legalActInput.disabled = true;
-    const result = await deriveLegalActForIssuer(
-      selectedIssuer,
-      previous || defaultLegalActUrl
-    );
-    legalActInput.value = result.legalActUrl || defaultLegalActUrl;
-    legalActInput.disabled = false;
+    if (!selectedIssuer) {
+      if (legalActDisplay) legalActDisplay.textContent = "Select an issuer first.";
+      return;
+    }
+    const row = templateIssuerRows.find((item) => item.id === selectedIssuer);
+    if (legalActDisplay) {
+      legalActDisplay.textContent = row?.scope
+        ? `Resolving legal act for scope: ${row.scope}…`
+        : "Issuer has no scope — re-register with a BC Laws act.";
+    }
+    try {
+      const resolved = await apiFetch(
+        `/admin/api/issuers/${encodeURIComponent(selectedIssuer)}/legal-act`
+      );
+      if (legalActDisplay) {
+        legalActDisplay.textContent = resolved?.name
+          ? `${resolved.name} (${resolved.id})`
+          : resolved?.id || "Could not resolve legal act.";
+      }
+    } catch (err) {
+      const fallback = await deriveLegalActForIssuerRecord(row);
+      if (legalActDisplay) {
+        legalActDisplay.textContent = fallback.legalAct?.name
+          ? `${fallback.legalAct.name} (${fallback.legalActUrl})`
+          : err.message || "Could not resolve legal act from issuer scope.";
+      }
+    }
   };
 
   issuerSelect.onchange = () => {
     applyIssuerScopeLegalAct().catch(() => {
-      legalActInput.disabled = false;
-      if (!legalActInput.value.trim()) legalActInput.value = defaultLegalActUrl;
+      if (legalActDisplay) legalActDisplay.textContent = "Could not resolve legal act.";
     });
   };
   if (issuerSelect.value) {
@@ -1158,6 +1201,16 @@ function closeCreateTemplate() {
 function syncTemplateWizard() {
   const stepLabel = document.getElementById("template-wizard-step-label");
   if (stepLabel) stepLabel.textContent = `Step ${templateWizardStep} of 3`;
+  const form = document.getElementById("template-create-form");
+  const useMinesActPreset =
+    form?.type?.value?.trim() === MINES_ACT_TEMPLATE_PRESET.type;
+  document.getElementById("template-governance-block")?.classList.toggle(
+    "d-none",
+    useMinesActPreset
+  );
+  document
+    .getElementById("template-governance-preset-note")
+    ?.classList.toggle("d-none", !useMinesActPreset);
   document.querySelectorAll(".template-wizard-step").forEach((el) => {
     const step = Number(el.getAttribute("data-step") || "0");
     el.classList.toggle("d-none", step !== templateWizardStep);
@@ -1185,13 +1238,17 @@ function templateWizardNext() {
     }
   }
   if (templateWizardStep === 2) {
-    if (
-      !form.legalAct.value.trim() ||
-      !form.governance.value.trim()
-    ) {
+    const useMinesActPreset =
+      form.type.value.trim() === MINES_ACT_TEMPLATE_PRESET.type;
+    if (!useMinesActPreset && !form.governance.value.trim()) {
+      showModalAlert("template-wizard-alert", "Governance URL is required.");
+      return;
+    }
+    const row = templateIssuerRows.find((item) => item.id === form.issuer.value);
+    if (!row?.scope) {
       showModalAlert(
         "template-wizard-alert",
-        "Legal act and governance URLs are required."
+        "Selected issuer has no scope. Re-register the issuer with a BC Laws act."
       );
       return;
     }

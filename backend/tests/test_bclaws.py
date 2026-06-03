@@ -39,6 +39,47 @@ def test_document_url():
     assert url.endswith("/civix/document/id/complete/statreg/96361_01")
 
 
+def test_resolve_legal_act_from_scope(monkeypatch):
+    def fake_list_public_acts(*, q=None, **kwargs):
+        assert q == "Mines Act"
+        return {
+            "acts": [
+                {
+                    "name": "Mines Act",
+                    "title": "Mines Act [RSBC 1996] c. 293",
+                    "documentId": "96293_01",
+                    "id": bclaws.document_url("96293_01"),
+                }
+            ]
+        }
+
+    def fake_get_act_metadata(document_id):
+        assert document_id == "96293_01"
+        return {
+            "id": bclaws.document_url(document_id),
+            "name": "Mines Act",
+            "effectiveDate": "1996-01-01",
+            "documentId": document_id,
+        }
+
+    monkeypatch.setattr(bclaws, "list_public_acts", fake_list_public_acts)
+    monkeypatch.setattr(bclaws, "get_act_metadata", fake_get_act_metadata)
+
+    resolved = bclaws.resolve_legal_act_from_scope("Mines Act")
+    assert resolved["name"] == "Mines Act"
+    assert "96293_01" in resolved["id"]
+    assert resolved["scope"] == "Mines Act"
+
+
+def test_best_act_match_from_scope_exact():
+    acts = [
+        {"name": "Petroleum and Natural Gas Act", "id": "https://example/a"},
+        {"name": "Mines Act", "id": "https://example/b"},
+    ]
+    match = bclaws.best_act_match_from_scope(acts, "Mines Act")
+    assert match["name"] == "Mines Act"
+
+
 def test_list_public_acts_filters(monkeypatch):
     def fake_fetch(*parts):
         if parts == ():

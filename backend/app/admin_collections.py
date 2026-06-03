@@ -18,7 +18,7 @@ ADMIN_COLLECTIONS: dict[str, dict[str, Any]] = {
         "prerequisites": [],
         "next_steps": [],
         "id_field": "id",
-        "list_columns": ["id", "name", "authorized_key"],
+        "list_columns": ["id", "name", "scope", "authorized_key"],
         "redact_fields": ["secret_hash"],
         "record_links": [],
     },

@@ -6,6 +6,8 @@ from app.plugins import MongoClient, TractionController
 from app.plugins.orgbook import OrgbookClient
 from app.plugins.untp import DigitalConformityCredential
 from app.plugins import webvh as webvh_log
+from app.services.dcc_builder import build_dcc_from_publication, publisher_origin
+from app.validators.untp import UntpValidationError, validate_untp_document
 from app.utils import multikey_to_jwk
 from base58 import b58encode
 import re
@@ -239,12 +241,96 @@ class PublisherRegistrar:
         credential_registration = mongo.find_one(
             "CredentialTypeRecord", {"type": credential_type}
         )
+        if not credential_registration:
+            raise HTTPException(status_code=404, detail="Unregistered credential type.")
+
         credential_template = credential_registration.get("template")
-
-        credential = credential_template.copy()
-
         credential_id = options.get("credentialId")
-        credential["id"] = f"https://{settings.DOMAIN}/credentials/{credential_id}"
+        origin = publisher_origin()
+
+        if credential_registration.get("template_ref"):
+            issuer = mongo.find_one("IssuerRecord", {"id": credential_registration["issuer"]})
+            if not issuer:
+                raise HTTPException(status_code=404, detail="Issuer not registered.")
+            entity = OrgbookClient().fetch_buisness_info(entity_id)
+            try:
+                credential = build_dcc_from_publication(
+                    template=credential_template,
+                    credential_input=credential_input,
+                    options=options,
+                    type_record=credential_registration,
+                    issuer=issuer,
+                    entity=entity,
+                )
+                validate_untp_document(credential)
+            except UntpValidationError as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"UNTP validation failed: {exc}",
+                ) from exc
+        else:
+            credential = await self._format_credential_legacy(
+                credential_input=credential_input,
+                options=options,
+                credential_registration=credential_registration,
+                credential_template=credential_template,
+                entity_id=entity_id,
+                credential_id=credential_id,
+                origin=origin,
+            )
+
+        credential["refreshService"] = [
+            {
+                "type": "SimpleRefreshQuery",
+                "id": (
+                    f"{origin}/credentials/refresh?type={credential_type}"
+                    f"&entity={entity_id}&cardinality={cardinality_id}"
+                ),
+            }
+        ]
+
+        status_list_id = credential_registration["status_lists"][-1]
+        status_list_record = mongo.find_one("StatusListRecord", {"id": status_list_id})
+        credential["credentialStatus"] = [
+            {
+                "type": "BitstringStatusListEntry",
+                "statusPurpose": purpose,
+                "statusListIndex": str(status_list_record["indexes"].pop()),
+                "statusListCredential": status_list_record["endpoint"],
+            }
+            for purpose in ["revocation", "suspension", "refresh"]
+        ]
+        mongo.replace("StatusListRecord", {"id": status_list_id}, status_list_record)
+
+        credential = Credential(
+            context=credential_template.get("@context"),
+            type=credential.get("type"),
+            id=credential.get("id"),
+            name=credential.get("name"),
+            issuer=credential.get("issuer"),
+            validFrom=credential.get("validFrom"),
+            validUntil=credential.get("validUntil") or None,
+            credentialSubject=credential.get("credentialSubject"),
+            credentialStatus=credential.get("credentialStatus"),
+            refreshService=credential.get("refreshService"),
+            renderMethod=credential_template.get("renderMethod"),
+        ).model_dump()
+
+        return credential
+
+    async def _format_credential_legacy(
+        self,
+        *,
+        credential_input,
+        options,
+        credential_registration,
+        credential_template,
+        entity_id,
+        credential_id,
+        origin,
+    ):
+        credential = credential_template.copy()
+        credential["id"] = f"{origin}/credentials/{credential_id}"
 
         credential["validFrom"] = credential_input.get("validFrom") or datetime.now(
             timezone.utc
@@ -270,55 +356,6 @@ class PublisherRegistrar:
                         value = options["additionalData"][attribute]
                         path = credential_registration["additional_paths"][attribute]
                         self._set_at_path(credential, path, value)
-
-        credential["refreshService"] = [
-            {
-                "type": "SimpleRefreshQuery",
-                "id": f"https://{settings.DOMAIN}/credentials/refresh?type={credential_type}&entity={entity_id}&cardinality={cardinality_id}",
-            }
-        ]
-
-        status_list_id = credential_registration["status_lists"][-1]
-        status_list_record = mongo.find_one("StatusListRecord", {"id": status_list_id})
-        credential["credentialStatus"] = [
-            (
-                {
-                    "type": "BitstringStatusListEntry",
-                    "statusPurpose": purpose,
-                    "statusListIndex": str(status_list_record["indexes"].pop()),
-                    "statusListCredential": status_list_record["endpoint"],
-                }
-            )
-            for purpose in ["revocation", "suspension", "refresh"]
-        ]
-        mongo.replace("StatusListRecord", {"id": status_list_id}, status_list_record)
-
-        entity_id_value = self._get_at_path(
-            credential, credential_registration["core_paths"]["entityId"]
-        )
-        cardinality_id_value = self._get_at_path(
-            credential, credential_registration["core_paths"]["cardinalityId"]
-        )
-        if entity_id_value != entity_id:
-            pass
-        if cardinality_id_value != cardinality_id:
-            pass
-        if credential["issuer"]["id"] != credential_registration["issuer"]:
-            pass
-
-        credential = Credential(
-            context=credential_template.get("@context"),
-            type=credential.get("type"),
-            id=credential.get("id"),
-            name=credential.get("name"),
-            issuer=credential.get("issuer"),
-            validFrom=credential.get("validFrom"),
-            validUntil=credential.get("validUntil") or None,
-            credentialSubject=credential.get("credentialSubject"),
-            credentialStatus=credential.get("credentialStatus"),
-            refreshService=credential.get("refreshService"),
-            renderMethod=credential_template.get("renderMethod"),
-        ).model_dump()
 
         return credential
 

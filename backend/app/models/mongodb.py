@@ -10,6 +10,10 @@ class BaseModel(BaseModel):
 class IssuerRecord(BaseModel):
     id: str = Field()
     name: str = Field()
+    scope: str = Field(
+        None,
+        description="Statutory scope (BC Laws act name) bound at issuer registration.",
+    )
     secret_hash: str = Field(None)
     authorized_key: str = Field()
 
@@ -23,10 +27,13 @@ class CredentialTypeRecord(BaseModel):
     oca_bundle: dict = Field()
     json_schema: dict = Field()
     core_paths: dict = Field()
-    subject_type: str = Field()
-    subject_paths: dict = Field()
+    subject_type: str = Field(None)
+    subject_paths: dict = Field(None)
     additional_type: str = Field(None)
     additional_paths: dict = Field(None)
+    template_ref: str = Field(None)
+    publication_rules: dict = Field(None)
+    cardinality_field: str = Field(None)
     status_lists: list = Field()
 
 

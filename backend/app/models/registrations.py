@@ -22,7 +22,8 @@ class IssuerRegistration(BaseModel):
 
 class RelatedResources(BaseModel):
     context: str = Field(
-        example="https://bcgov.github.io/digital-trust-toolkit/contexts/BCPetroleumAndNaturalGasTitle/v1.jsonld"
+        None,
+        example="https://bcgov.github.io/digital-trust-toolkit/contexts/BCPetroleumAndNaturalGasTitle/v1.jsonld",
     )
     legalAct: str = Field(
         None,
@@ -36,37 +37,34 @@ class RelatedResources(BaseModel):
 
 class CorePaths(BaseModel):
     entityId: str = Field(example="/credentialSubject/issuedToParty/registeredId")
-    cardinalityId: str = Field(example="/credentialSubject/id")
+    cardinalityId: str = Field(example="/credentialSubject/conformityAssessment/0/registeredId")
+
+
+class PublicationRule(BaseModel):
+    min: int | None = Field(None)
+    max: int | None = Field(None)
 
 
 class CredentialRegistration(BaseModel):
-    type: str = Field("BCPetroleumAndNaturalGasTitleCredential")
-    version: str = Field(example="1.0")
+    type: str = Field("BCMinesActPermitCredential")
+    version: str = Field(example="v1.0")
     issuer: str = Field(example="did:web:")
-    corePaths: CorePaths = Field()
-    subjectType: str = Field(None, example="PetroleumAndNaturalGasTitle")
-    subjectPaths: Dict[str, str] = Field(
-        example={
-            "name": "/credentialSubject/name",
-            "description": "/credentialSubject/description",
-            "assessorLevel": "/credentialSubject/assessorLevel",
-            "assessmentLevel": "/credentialSubject/assessmentLevel",
-            "attestationType": "/credentialSubject/attestationType",
-        }
-    )
-    additionalType: str = Field(None, example="DigitalConformityCredential")
-    additionalPaths: Dict[str, str] = Field(
+    templateRef: str | None = Field(
         None,
-        example={
-            "assessedFacility": "/credentialSubject/conformityAssessment/0/assessedFacility",
-            "assessedProduct": "/credentialSubject/conformityAssessment/0/assessedProduct",
-        },
+        example="untp_v0_7_0_dcc_mines_act_permit",
     )
-    relatedResources: RelatedResources = Field()
+    corePaths: CorePaths | None = Field(None)
+    subjectType: str = Field(None, example="ConformityAttestation")
+    subjectPaths: Dict[str, str] | None = Field(None)
+    additionalType: str | None = Field(None, example="DigitalConformityCredential")
+    additionalPaths: Dict[str, str] | None = Field(None)
+    relatedResources: RelatedResources = Field(default_factory=RelatedResources)
 
     @field_validator("additionalType")
     @classmethod
     def validate_untp_type(cls, value):
+        if value is None:
+            return value
         if value not in ["DigitalConformityCredential"]:
             raise ValueError(f"Unsupported UNTP type {value}.")
         return value
