@@ -43,4 +43,9 @@ The image published to GitHub Container Registry is **`ghcr.io/bcgov/untp-publis
 ## Configuration notes
 
 - **`ORGBOOK_URL`** — Base URL for OrgBook **read-only** lookups (`/api/v4/search`). Not used for OrgBook VC issuance.
-- **`MONGO_DB`** — Application database name; must match the MongoDB user’s authentication database when using chart defaults.
+- **MongoDB** — either a full URI or separate fields:
+  - **`MONGO_URI`** — e.g. `mongodb://user:pass@host:55128/untp-publisher` (overrides host/port/user/password)
+  - or **`MONGO_HOST`**, **`MONGO_PORT`**, **`MONGO_USER`**, **`MONGO_PASSWORD`**, **`MONGO_DB`**
+  - **`MONGO_AUTH_SOURCE`** — optional for split mode (e.g. `admin` on Railway/managed MongoDB)
+  - If the URI has no database path, set **`MONGO_DB`** to the database name.
+- **`PUBLISHER_WITNESS_ID`** — Witness `did:key` for DID WebVH endorsement (e.g. `did:key:z6Mk…`). The Ed25519 multikey is derived at runtime as **`PUBLISHER_WITNESS_MULTIKEY`** for Traction proof options.

@@ -44,6 +44,8 @@ spec:
             # Read-only entity lookup (OrgBook v4 search); app reads ORGBOOK_URL from config.
             - name: ORGBOOK_URL
               value: {{ .Values.backend.environment.orgbookUrl }}
+            - name: PUBLISHER_WITNESS_ID
+              value: {{ .Values.backend.environment.publisherWitnessId | quote }}
             - name: ISSUER_REGISTRY_URL
               value: {{ .Values.backend.environment.issuerRegistryUrl }}
 

@@ -1,6 +1,6 @@
 from config import settings
 import requests
-from fastapi import HTTPException
+from fastapi import HTTPException  # used by ensure_publisher_witness
 from app.utils import verkey_to_multikey, timestamp
 from app.plugins.mongodb import MongoClient
 import httpx
@@ -14,19 +14,41 @@ class TractionControllerError(Exception):
 class TractionController:
     def __init__(self):
         self.default_kid = "key-01"
-        self.publisher_multikey = settings.PUBLISHER_MULTIKEY
+        self.publisher_multikey = settings.PUBLISHER_WITNESS_MULTIKEY
         self.endpoint = settings.TRACTION_API_URL
         self.tenant_id = settings.TRACTION_TENANT_ID
         self.api_key = settings.TRACTION_API_KEY
         self.headers = {}
 
-    def _try_response(self, response, response_key=None):
+    def _traction_error(self, response: requests.Response, operation: str) -> HTTPException:
+        detail = response.text
         try:
-            return response.json()[response_key]
+            body = response.json()
+            detail = body.get("detail", body)
         except ValueError:
-            settings.LOGGER.info("Traction response error:")
-            settings.LOGGER.info(response)
-            return None
+            pass
+        settings.LOGGER.error("Traction %s failed (%s): %s", operation, response.status_code, detail)
+        return HTTPException(
+            status_code=502,
+            detail=f"Traction {operation} failed ({response.status_code}): {detail}",
+        )
+
+    def _try_response(self, response, response_key=None):
+        if not response.ok:
+            raise self._traction_error(response, response_key or "request")
+        try:
+            payload = response.json()
+        except ValueError as err:
+            settings.LOGGER.error("Traction returned non-JSON: %s", response.text)
+            raise HTTPException(status_code=502, detail="Traction returned non-JSON") from err
+        if response_key is None:
+            return payload
+        if response_key not in payload:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Traction response missing '{response_key}'",
+            )
+        return payload[response_key]
 
     async def provision(self):
         self.authorize()
@@ -76,6 +98,8 @@ class TractionController:
             json={"api_key": self.api_key},
         )
         token = self._try_response(r, "token")
+        if not token:
+            raise HTTPException(status_code=502, detail="Traction did not return a tenant token")
         self.headers = {"Authorization": f"Bearer {token}"}
 
     def resolve(self, did):
@@ -86,29 +110,52 @@ class TractionController:
         did_document = self._try_response(r, "did_document")
         return did_document
 
-    def create_did_key(self):
+    @staticmethod
+    def _multikey_from_did_key(did: str) -> str:
+        """Return the method-specific multikey from a ``did:key`` identifier."""
+        if not did.startswith("did:key:"):
+            raise HTTPException(status_code=502, detail=f"Expected did:key, got {did}")
+        return did.removeprefix("did:key:").split("#", 1)[0]
+
+    def create_did_key(self) -> str:
+        """Create a ``did:key`` in the tenant wallet and return its multikey."""
         r = requests.post(
             f"{self.endpoint}/wallet/did/create",
             headers=self.headers,
             json={"method": "key", "options": {"key_type": "ed25519"}},
         )
         did_info = self._try_response(r, "result")
-        return did_info["did"].split(":")[-1]
+        return self._multikey_from_did_key(did_info["did"])
 
     def get_multikey(self, did):
         r = requests.get(f"{self.endpoint}/wallet/did?did={did}", headers=self.headers)
         did_info = self._try_response(r, "results")
-        if len(did_info) == 0:
+        if not did_info:
             return None
         return verkey_to_multikey(did_info[0]["verkey"])
 
+    def create_issuer_update_multikey(self) -> str:
+        """
+        Provision the issuer genesis ``updateKeys`` multikey for DID WebVH registration.
+
+        ACA-Py cannot register ``did:webvh:…`` placeholders in the wallet; the update key is a
+        normal ``did:key`` used to sign the log entry and listed in ``parameters.updateKeys``.
+        """
+        return self.create_did_key()
+
     def create_did_web(self, did):
+        """Create a ``did:web`` in the wallet (must be a valid ``did:web:…`` identifier)."""
         r = requests.post(
             f"{self.endpoint}/wallet/did/create",
             headers=self.headers,
             json={"method": "web", "options": {"did": did, "key_type": "ed25519"}},
         )
         did_info = self._try_response(r, "result")
+        if not did_info or not did_info.get("verkey"):
+            raise HTTPException(
+                status_code=502,
+                detail="Traction did not return a verkey for did:web creation",
+            )
         return verkey_to_multikey(did_info["verkey"])
 
     def create_key(self, kid=None):
@@ -126,6 +173,29 @@ class TractionController:
             json={"multikey": multikey, "kid": kid},
         )
         return self._try_response(r, "kid")
+
+    def ensure_publisher_witness(self) -> str:
+        """
+        Ensure ``PUBLISHER_WITNESS_ID`` is usable in this tenant and return its multikey.
+
+        The witness ``did:key`` must be present in the wallet (bound to the configured multikey).
+        """
+        witness_did = settings.PUBLISHER_WITNESS_ID
+        multikey = self.publisher_multikey
+        if not witness_did or not multikey:
+            raise HTTPException(
+                status_code=500,
+                detail="PUBLISHER_WITNESS_ID is not configured or is invalid",
+            )
+        existing = self.get_multikey(witness_did)
+        witness_vm = f"{witness_did}#{multikey}"
+        if not existing:
+            self.bind_key(multikey, witness_vm)
+        elif existing != multikey:
+            settings.LOGGER.warning(
+                "Wallet multikey for witness DID does not match PUBLISHER_WITNESS_ID"
+            )
+        return multikey
 
     def sign_vc_jwt(self, document):
         did = document.get('issuer') if isinstance(document.get('issuer'), str) else document.get('issuer').get('id')
@@ -148,7 +218,7 @@ class TractionController:
         if did.startswith('did:web:'):
             verification_method = f"{did}#{self.default_kid}-multikey"
         elif did.startswith('did:key:'):
-            verification_method = f"{did}#{settings.PUBLISHER_MULTIKEY}"
+            verification_method = f"{did}#{settings.PUBLISHER_WITNESS_MULTIKEY}"
         proof_options = {
             "type": "DataIntegrityProof",
             "cryptosuite": "eddsa-jcs-2022",
@@ -164,7 +234,7 @@ class TractionController:
         if did.startswith('did:web:'):
             verification_method = f"{did}#{self.default_kid}-multikey"
         elif did.startswith('did:key:'):
-            verification_method = f"{did}#{settings.PUBLISHER_MULTIKEY}"
+            verification_method = f"{did}#{settings.PUBLISHER_WITNESS_MULTIKEY}"
         presentation = {
             '@context': [
                 'https://www.w3.org/ns/credentials/v2'

@@ -25,6 +25,7 @@ Helm chart for the [UNTP Publisher](https://github.com/bcgov/untp-publisher-serv
 | backend.traction.secretKeys.tenantId | string | `"traction_tenant_id"` | Secret key for the Traction tenant ID |
 | backend.environment.issuerRegistryUrl | string | `""` | Issuer registry URL. Sets pod env `ISSUER_REGISTRY_URL`. |
 | backend.environment.orgbookUrl | string | `""` | Base URL for read-only entity lookup (OrgBook v4 search). Sets pod env `ORGBOOK_URL`. |
+| backend.environment.publisherWitnessId | string | `""` | Witness `did:key` (sets `PUBLISHER_WITNESS_ID`; multikey derived at runtime) |
 | backend.host | string | `""` | Backend hostname used for the Ingress rule and DOMAIN env var |
 | backend.image.pullPolicy | string | `"IfNotPresent"` | Backend image pull policy |
 | backend.image.pullSecrets | list | `[]` | Backend image pull secrets |

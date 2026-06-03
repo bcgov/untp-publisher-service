@@ -16,6 +16,7 @@ from app.plugins import (
     PublisherRegistrar,
     OCAProcessor,
 )
+from app.services.issuer_registration import register_issuer as register_issuer_service
 import uuid
 import random
 import json
@@ -39,24 +40,8 @@ async def list_issuer_registrations():
 
 @router.post("/issuers", tags=["Admin"], dependencies=[Depends(check_api_key_header)])
 async def register_issuer(request_body: IssuerRegistration):
-    registration = vars(request_body)
-
-    # Register issuer on DID Web server and create DID Document
-    did_document, authorized_key = await PublisherRegistrar().register_issuer(
-        registration
-    )
-
-    mongo = MongoClient()
-    mongo.insert(
-        "IssuerRecord",
-        IssuerRecord(
-            id=did_document.get("id"),
-            name=registration.get("name"),
-            authorized_key=authorized_key,
-        ).model_dump(),
-    )
-
-    return JSONResponse(status_code=201, content=did_document)
+    result = await register_issuer_service(request_body.model_dump())
+    return JSONResponse(status_code=201, content=result)
 
 
 @router.post(

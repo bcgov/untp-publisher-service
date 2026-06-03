@@ -3,11 +3,27 @@ from __future__ import annotations
 import logging
 import os
 from logging import Logger
+from typing import Any
+from urllib.parse import urlparse
 
 from pydantic import Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from witness import did_key_to_multikey
+
 basedir = os.path.abspath(os.path.dirname(__file__))
+
+_MONGO_URI_PREFIXES = ("mongodb://", "mongodb+srv://")
+
+
+def _database_name_from_mongo_uri(uri: str) -> str | None:
+    normalised = uri.replace("mongodb+srv://", "https://", 1).replace(
+        "mongodb://", "http://", 1
+    )
+    path = (urlparse(normalised).path or "").strip("/")
+    if not path:
+        return None
+    return path.split("/")[0]
 
 
 class Settings(BaseSettings):
@@ -46,24 +62,53 @@ class Settings(BaseSettings):
     #: Base URL for read-only OrgBook entity lookup (``/api/v4/search``); not used for OrgBook VC APIs.
     ORGBOOK_URL: str = Field(default="http://localhost")
 
+    #: BC Laws / CiviX API base (Open Legislation).
+    BCLAWS_API_URL: str = Field(default="https://www.bclaws.gov.bc.ca")
+    #: BC Government Directory search endpoint for role/title lookup.
+    GTDS_URL: str = Field(default="https://www.dir.gov.bc.ca/gtds.cgi")
+
     DID_WEB_SERVER_URL: str = Field(default="http://localhost")
-    PUBLISHER_MULTIKEY: str = Field(default="dev-local")
+    #: Witness ``did:key`` (method id must be an Ed25519 multikey). Used for DID WebVH endorsement.
+    PUBLISHER_WITNESS_ID: str = Field(default="")
+
+    @computed_field
+    @property
+    def PUBLISHER_WITNESS_MULTIKEY(self) -> str:
+        if not self.PUBLISHER_WITNESS_ID:
+            return ""
+        return did_key_to_multikey(self.PUBLISHER_WITNESS_ID)
     ISSUER_REGISTRY_URL: str = Field(default="http://localhost")
 
     SECRET_KEY: str = Field(default="dev-local")
     JWT_SECRET: str = Field(default="dev-local")
     JWT_ALGORITHM: str = "HS256"
 
+    #: Full connection string (``mongodb://`` or ``mongodb+srv://``). When set, overrides
+    #: ``MONGO_HOST`` / ``MONGO_PORT`` / ``MONGO_USER`` / ``MONGO_PASSWORD``.
+    #: Database name comes from the URI path, or from ``MONGO_DB`` if the path is empty.
+    MONGO_URI: str = Field(default="")
+
     MONGO_HOST: str = Field(default="localhost")
     MONGO_PORT: str = Field(default="27017")
     MONGO_USER: str = Field(default="dev")
     MONGO_PASSWORD: str = Field(default="dev")
     MONGO_DB: str = Field(default="dev")
+    #: Auth database for split-variable mode only (e.g. ``admin`` on managed MongoDB).
+    MONGO_AUTH_SOURCE: str = Field(default="")
 
     @computed_field
     @property
     def ORGBOOK_API_URL(self) -> str:
         return f"{self.ORGBOOK_URL}/api/v4"
+
+    @model_validator(mode="after")
+    def _validate_mongo_settings(self) -> Settings:
+        if self.MONGO_DB.startswith(("mongodb://", "mongodb+srv://")):
+            raise ValueError(
+                "MONGO_DB must be the database name only (e.g. untp-publisher). "
+                "Put the full connection string in MONGO_URI instead."
+            )
+        return self
 
     @model_validator(mode="after")
     def _configure_logging(self) -> Settings:

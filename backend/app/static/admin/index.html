@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UNTP Publisher — Admin</title>
+    <link rel="icon" href="/admin/images/favicon.svg" type="image/svg+xml" />
+    <link href="https://preview.tabler.io/dist/css/tabler.min.css" rel="stylesheet" />
+    <link href="/admin/styles.css" rel="stylesheet" />
+  </head>
+  <body class="admin-app">
+    <nav class="bcgov-left-nav" id="admin-left-nav" aria-label="Main navigation">
+      <div class="bcgov-left-nav-inner">
+        <a href="/admin" class="bcgov-left-nav-brand" id="nav-home-brand">
+          <img
+            src="/admin/images/bcgov-mark.svg"
+            alt=""
+            class="bcgov-left-nav-mark"
+            width="40"
+            height="36"
+            decoding="async"
+          />
+          <span class="bcgov-left-nav-brand-text">UNTP Publisher</span>
+        </a>
+
+        <div class="bcgov-left-nav-scroll">
+          <p class="bcgov-left-nav-section">Setup</p>
+          <a href="/admin" class="bcgov-left-nav-link active" data-nav="home" id="nav-home">
+            Overview
+          </a>
+
+          <p class="bcgov-left-nav-section">Collections</p>
+          <div id="sidebar-collections" class="bcgov-left-nav-items"></div>
+        </div>
+
+        <div class="bcgov-left-nav-footer">
+          <span class="bcgov-left-nav-status" id="api-status">No API key</span>
+          <button type="button" class="btn btn-bcgov-gold btn-sm w-100" id="btn-set-key">
+            Set API key
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="admin-page">
+      <header class="admin-page-header d-print-none">
+        <div class="admin-page-header-inner">
+          <img
+            src="/admin/images/bcgov-mark.svg"
+            alt=""
+            class="admin-page-header-mark"
+            width="32"
+            height="28"
+            decoding="async"
+          />
+          <h1 class="admin-page-title" id="page-title">Overview</h1>
+        </div>
+      </header>
+
+      <main class="admin-page-main">
+        <div class="container-xl">
+          <div id="alert" class="alert alert-danger d-none" role="alert"></div>
+          <div id="alert-success" class="alert alert-success d-none" role="alert"></div>
+
+          <div id="view-home">
+            <section class="overview-section" aria-labelledby="collections-heading">
+              <div class="overview-section-head">
+                <div>
+                  <h2 class="overview-section-title" id="collections-heading">Browse data</h2>
+                  <p class="overview-section-subtitle" id="collections-subtitle">
+                    Open a collection to verify records after each action.
+                  </p>
+                </div>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-open-help" title="Getting started">
+                  Help
+                </button>
+              </div>
+              <div id="collection-sections"></div>
+            </section>
+          </div>
+
+          <div id="view-list" class="d-none">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+              <h2 class="mb-0" id="list-title"></h2>
+              <span class="badge bg-secondary" id="list-total"></span>
+              <div class="ms-auto" id="list-actions"></div>
+            </div>
+            <div id="issuer-fun-panel" class="d-none mb-3"></div>
+            <div id="issuer-secret-once" class="d-none mb-3"></div>
+            <div class="card mb-3">
+              <div class="card-body">
+                <form class="row g-2" id="search-form">
+                  <div class="col-auto flex-grow-1">
+                    <input
+                      type="search"
+                      class="form-control"
+                      id="search-input"
+                      placeholder="Search records…"
+                    />
+                  </div>
+                  <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+            <div class="card">
+              <div class="table-responsive">
+                <table class="table table-vcenter card-table table-striped" id="records-table">
+                  <thead id="records-thead"></thead>
+                  <tbody id="records-tbody"></tbody>
+                </table>
+              </div>
+              <div class="card-footer d-flex justify-content-between align-items-center">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-prev" disabled>
+                  Previous
+                </button>
+                <span class="text-secondary" id="page-info"></span>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-next" disabled>
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="view-detail" class="d-none">
+            <div class="card mb-3" id="detail-context"></div>
+            <div class="card mb-3 d-none" id="detail-related-card">
+              <div class="card-header">
+                <h3 class="card-title mb-0">Related records</h3>
+              </div>
+              <div class="card-body d-flex flex-wrap gap-2" id="detail-related"></div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title" id="detail-title"></h3>
+              </div>
+              <div class="card-body">
+                <pre class="detail-json" id="detail-json"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div id="issuer-wizard-modal" class="issuer-wizard-modal d-none" role="dialog" aria-modal="true" aria-labelledby="issuer-wizard-title">
+      <div class="issuer-wizard-backdrop" id="issuer-wizard-backdrop"></div>
+      <div class="issuer-wizard-panel card">
+        <div class="card-header d-flex align-items-center justify-content-between gap-2">
+          <div>
+            <h2 class="card-title mb-0" id="issuer-wizard-title">Register Issuer</h2>
+            <p class="text-secondary small mb-0" id="issuer-wizard-step-label">Step 1 of 3</p>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="issuer-wizard-close" aria-label="Close wizard">✕</button>
+        </div>
+        <div class="card-body">
+          <div id="issuer-wizard-alert" class="alert alert-danger d-none mb-3" role="alert"></div>
+          <form id="issuer-create-form" class="row g-3">
+            <div class="col-12 issuer-wizard-step" data-step="1">
+              <label class="form-label required" for="issuer-scope">Scope</label>
+              <input type="text" class="form-control" id="issuer-scope" name="scope" required placeholder="Start typing a BC legal act..." autocomplete="off" />
+              <input type="hidden" id="issuer-scope-legal-act-url" />
+              <div id="issuer-scope-results" class="issuer-scope-results d-none"></div>
+              <div class="form-hint mb-3">
+                Search
+                <a href="https://www.bclaws.gov.bc.ca/" target="_blank" rel="noopener noreferrer">BC Laws</a>
+                acts; selected act name is used as scope.
+              </div>
+              <label class="form-label required" for="issuer-name">Name</label>
+              <input type="text" class="form-control" id="issuer-name" name="name" required placeholder="Director of Petroleum Lands" autocomplete="off" />
+              <div id="issuer-name-results" class="issuer-scope-results d-none"></div>
+              <div class="form-hint">
+                Search the
+                <a href="https://www.dir.gov.bc.ca/gtds.cgi" target="_blank" rel="noopener noreferrer">BC Government Directory</a>
+                for role titles. Display name; used in the DID path identifier.
+              </div>
+            </div>
+
+            <div class="col-12 issuer-wizard-step d-none" data-step="2">
+              <label class="form-label required" for="issuer-description">Description</label>
+              <textarea class="form-control" id="issuer-description" name="description" rows="3" required placeholder="Officer or employee designated under the Act…"></textarea>
+              <div class="form-hint mb-3">Short description used for operator context.</div>
+              <label class="form-label" for="issuer-multikey">Delegated Multikey</label>
+              <input type="text" class="form-control font-monospace" id="issuer-multikey" name="multikey" placeholder="z6Mk…" />
+              <div class="form-hint">Optional external signing key.</div>
+            </div>
+
+            <div class="col-12 issuer-wizard-step d-none" data-step="3">
+              <p class="text-secondary small mb-2">Review before creating:</p>
+              <ul class="small mb-0 ps-3">
+                <li><strong>Name:</strong> <span id="issuer-review-name"></span></li>
+                <li><strong>Scope:</strong> <span id="issuer-review-scope"></span></li>
+                <li><strong>Description:</strong> <span id="issuer-review-description"></span></li>
+                <li><strong>Delegated key:</strong> <span id="issuer-review-multikey"></span></li>
+              </ul>
+            </div>
+
+            <div class="col-12 d-flex gap-2 justify-content-between">
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary d-none" id="issuer-wizard-back">Back</button>
+                <button type="button" class="btn btn-primary" id="issuer-wizard-next">Next</button>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary d-none" id="issuer-submit">Register issuer</button>
+                <button type="button" class="btn btn-outline-secondary" id="issuer-cancel">Cancel</button>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="card-body pt-0">
+          <div class="card d-none" id="issuer-result-card">
+            <div class="card-header">
+              <h3 class="card-title mb-0">Registration result</h3>
+            </div>
+            <div class="card-body">
+              <p class="mb-2"><strong>Issuer DID:</strong> <code id="issuer-result-id"></code></p>
+              <pre class="detail-json" id="issuer-result-json"></pre>
+              <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="issuer-view-record">
+                View issuer record
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="template-wizard-modal" class="issuer-wizard-modal d-none" role="dialog" aria-modal="true" aria-labelledby="template-wizard-title">
+      <div class="issuer-wizard-backdrop" id="template-wizard-backdrop"></div>
+      <div class="issuer-wizard-panel card">
+        <div class="card-header d-flex align-items-center justify-content-between gap-2">
+          <div>
+            <h2 class="card-title mb-0" id="template-wizard-title">Create Template</h2>
+            <p class="text-secondary small mb-0" id="template-wizard-step-label">Step 1 of 3</p>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="template-wizard-close" aria-label="Close wizard">✕</button>
+        </div>
+        <div class="card-body">
+          <div id="template-wizard-alert" class="alert alert-danger d-none mb-3" role="alert"></div>
+          <form id="template-create-form" class="row g-3">
+            <div class="col-12 template-wizard-step" data-step="1">
+              <label class="form-label required" for="template-issuer">Issuer</label>
+              <select class="form-select" id="template-issuer" name="issuer" required></select>
+              <div class="form-hint mb-3">Select a registered issuer DID.</div>
+              <label class="form-label required" for="template-type">Credential type</label>
+              <input type="text" class="form-control" id="template-type" name="type" value="BCPetroleumAndNaturalGasTitleCredential" required />
+              <div class="form-hint mb-3">Hard-coded DCC preset (editable only if needed).</div>
+              <label class="form-label required" for="template-version">Version</label>
+              <input type="text" class="form-control" id="template-version" name="version" value="v1.0" required />
+            </div>
+
+            <div class="col-12 template-wizard-step d-none" data-step="2">
+              <label class="form-label required mt-3" for="template-legal-act">Legal Act URL</label>
+              <input type="url" class="form-control" id="template-legal-act" name="legalAct" value="https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/00_96361_01" required />
+              <label class="form-label required mt-3" for="template-governance">Governance URL</label>
+              <input type="url" class="form-control" id="template-governance" name="governance" value="https://bcgov.github.io/digital-trust-toolkit/docs/governance/pilots/bc-petroleum-and-natural-gas-title" required />
+            </div>
+
+            <div class="col-12 template-wizard-step d-none" data-step="3">
+              <p class="text-secondary small mb-2">
+                Publication payload mappings (incoming <code>options</code> → credential subject):
+              </p>
+              <ul class="small ps-3 mb-3" id="template-review-paths"></ul>
+              <p class="text-secondary small mb-3">
+                Type: <code>DigitalConformityCredential</code>
+              </p>
+              <p class="mb-1"><strong>Issuer:</strong> <span id="template-review-issuer"></span></p>
+              <p class="mb-1"><strong>Type:</strong> <span id="template-review-type"></span></p>
+              <p class="mb-0"><strong>Version:</strong> <span id="template-review-version"></span></p>
+            </div>
+
+            <div class="col-12 d-flex gap-2 justify-content-between">
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary d-none" id="template-wizard-back">Back</button>
+                <button type="button" class="btn btn-primary" id="template-wizard-next">Next</button>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary d-none" id="template-submit">Create template</button>
+                <button type="button" class="btn btn-outline-secondary" id="template-cancel">Cancel</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div id="record-preview-modal" class="issuer-wizard-modal d-none" role="dialog" aria-modal="true" aria-labelledby="record-preview-title">
+      <div class="issuer-wizard-backdrop" id="record-preview-backdrop"></div>
+      <div class="issuer-wizard-panel card">
+        <div class="card-header d-flex align-items-center justify-content-between gap-2">
+          <div>
+            <h2 class="card-title mb-0" id="record-preview-title">Record preview</h2>
+            <p class="text-secondary small mb-0" id="record-preview-subtitle"></p>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="record-preview-close" aria-label="Close preview">✕</button>
+        </div>
+        <div class="card-body pt-2">
+          <pre class="record-preview-json" id="record-preview-json">Loading…</pre>
+        </div>
+        <div class="card-footer d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="record-preview-open-page">Open full page</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="api-key-modal" class="issuer-wizard-modal d-none" role="dialog" aria-modal="true" aria-labelledby="api-key-modal-title">
+      <div class="issuer-wizard-backdrop" id="api-key-modal-backdrop"></div>
+      <div class="issuer-wizard-panel card api-key-modal-panel">
+        <div class="card-header d-flex align-items-center justify-content-between gap-2">
+          <div>
+            <h2 class="card-title mb-0" id="api-key-modal-title">API key</h2>
+            <p class="text-secondary small mb-0">Tenant credential for admin API access</p>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="api-key-modal-close" aria-label="Close">✕</button>
+        </div>
+        <form id="api-key-form" class="card-body">
+          <div id="api-key-modal-alert" class="alert alert-danger d-none mb-3" role="alert"></div>
+          <label class="form-label required" for="api-key-input">TRACTION_API_KEY</label>
+          <div class="api-key-input-wrap">
+            <input
+              type="password"
+              class="form-control font-monospace api-key-input"
+              id="api-key-input"
+              name="apiKey"
+              autocomplete="off"
+              spellcheck="false"
+              required
+            />
+            <button
+              type="button"
+              class="btn btn-outline-secondary api-key-toggle-btn"
+              id="api-key-toggle"
+              aria-label="Show API key"
+              title="Show API key"
+            >
+              Show
+            </button>
+          </div>
+          <p class="form-hint mt-2 mb-0">
+            Stored in this browser session only. Never share or commit your API key.
+          </p>
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4">
+            <button type="button" class="btn btn-outline-danger btn-sm d-none" id="api-key-clear">
+              Clear saved key
+            </button>
+            <div class="d-flex gap-2 ms-auto">
+              <button type="button" class="btn btn-outline-secondary" id="api-key-cancel">Cancel</button>
+              <button type="submit" class="btn btn-bcgov-gold" id="api-key-save">Save API key</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="getting-started-modal" class="issuer-wizard-modal d-none" role="dialog" aria-modal="true" aria-labelledby="getting-started-title">
+      <div class="issuer-wizard-backdrop" id="getting-started-backdrop"></div>
+      <div class="issuer-wizard-panel card">
+        <div class="card-header d-flex align-items-center justify-content-between gap-2">
+          <div>
+            <h2 class="card-title mb-0" id="getting-started-title">Getting Started</h2>
+            <p class="text-secondary small mb-0" id="getting-started-counter">Step 1 of 3</p>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="getting-started-close" aria-label="Close help">✕</button>
+        </div>
+        <div class="card-body">
+          <div id="getting-started-prerequisite" class="getting-started-prerequisite d-none" role="note"></div>
+          <div class="getting-started-stepper mb-3" id="getting-started-stepper" aria-label="Getting started progress"></div>
+          <div id="getting-started-current"></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/admin/app.js" type="module"></script>
+  </body>
+</html>
