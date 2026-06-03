@@ -97,7 +97,7 @@ class Settings(BaseSettings):
     #: Auth database for split-variable mode only (e.g. ``admin`` on managed MongoDB).
     MONGO_AUTH_SOURCE: str = Field(default="")
 
-    #: Root directory for ``configs/`` (``publications/``, ``templates/``).
+    #: Root directory for ``configs/`` (``publications/``, ``templates/``, ``samples/``).
     #: Defaults to ``<repo>/configs``. In container images use ``/config``.
     CONFIG_ROOT: str = Field(default="")
 

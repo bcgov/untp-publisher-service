@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import json
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,10 @@ def publications_dir() -> Path:
 
 def templates_dir() -> Path:
     return config_root() / "templates"
+
+
+def samples_dir() -> Path:
+    return config_root() / "samples"
 
 
 def _load_yaml_file(path: Path) -> dict[str, Any]:
@@ -125,6 +130,60 @@ def _template_path_for_type(credential_type: str, credential: dict[str, Any]) ->
 
 def credential_version_for_type(credential_type: str) -> str:
     return _credential_version(_credential_entry(credential_type)["credential"])
+
+
+def sample_set_dir(credential_type: str) -> Path:
+    """``configs/samples/{type}.{version}/`` — inferred from publication config."""
+    version = credential_version_for_type(credential_type)
+    return samples_dir() / f"{credential_type}.{version}"
+
+
+def sample_publication_payload_path(credential_type: str) -> Path:
+    return sample_set_dir(credential_type) / "publication-payload.json"
+
+
+def sample_issued_credential_path(credential_type: str) -> Path:
+    return sample_set_dir(credential_type) / "issued-credential.json"
+
+
+def _load_json_file(path: Path, *, label: str) -> dict[str, Any]:
+    if not path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail=f"No {label} at {path.relative_to(config_root())}",
+        )
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise HTTPException(
+            status_code=500,
+            detail=f"Invalid {label} {path.name}: expected JSON object",
+        )
+    return data
+
+
+def load_sample_publication_payload(credential_type: str) -> dict[str, Any]:
+    path = sample_publication_payload_path(credential_type)
+    return _load_json_file(path, label="publication payload sample")
+
+
+def load_sample_publication_payload_optional(
+    credential_type: str | None,
+) -> dict[str, Any] | None:
+    if not credential_type:
+        return None
+    path = sample_publication_payload_path(credential_type)
+    if not path.is_file():
+        return None
+    return load_sample_publication_payload(credential_type)
+
+
+def load_sample_issued_credential_optional(credential_type: str | None) -> dict[str, Any] | None:
+    if not credential_type:
+        return None
+    path = sample_issued_credential_path(credential_type)
+    if not path.is_file():
+        return None
+    return _load_json_file(path, label="issued credential sample")
 
 
 def load_credential_template(credential_type: str) -> dict[str, Any]:

@@ -4,6 +4,10 @@ from app.repo_configs.loader import (
     load_credential_template,
     load_publication_config,
     load_publication_config_by_issuer,
+    load_sample_issued_credential_optional,
+    load_sample_publication_payload,
+    sample_publication_payload_path,
+    sample_set_dir,
 )
 
 
@@ -33,3 +37,22 @@ def test_load_publication_config_by_issuer():
     )
     assert len(config["credentials"]) == 1
     assert config["credentials"][0]["type"] == "BCMinesActPermitCredential"
+
+
+def test_inferred_sample_paths():
+    assert sample_set_dir("BCMinesActPermitCredential").name == "BCMinesActPermitCredential.v1.1"
+    assert sample_publication_payload_path("BCMinesActPermitCredential").name == "publication-payload.json"
+
+
+def test_load_sample_publication_payload():
+    payload = load_sample_publication_payload("BCMinesActPermitCredential")
+    assert payload["options"]["cardinalityId"] == "Q-20"
+    assert payload["options"]["additionalData"]["assessedFacility"]
+
+
+def test_load_sample_issued_credential():
+    issued = load_sample_issued_credential_optional("BCMinesActPermitCredential")
+    assert issued is not None
+    assessment = issued["credentialSubject"]["conformityAssessment"][0]
+    assert assessment["assessedFacility"]
+    assert assessment["assessedProduct"]

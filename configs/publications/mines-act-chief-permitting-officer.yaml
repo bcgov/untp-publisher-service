@@ -1,4 +1,6 @@
-# One issuer per publication config. Links to credential templates under configs/templates/.
+# One issuer per publication config.
+# Templates: configs/templates/{type}.{version}.yaml
+# Samples:    configs/samples/{type}.{version}/publication-payload.json (+ issued-credential.json)
 
 issuer:
   type: https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/96293_01#chief+permitting+officer
@@ -21,4 +23,3 @@ credentials:
 
     assets:
       ocaBundle: app/examples/untp_v0_7_0_dcc_mines_act_permit_oca_bundle.json
-      examplePayload: app/examples/untp_v0_7_0_dcc_mines_act_permit_publication_payload.example.json

@@ -8,20 +8,17 @@ from pathlib import Path
 
 import pytest
 
+from app.repo_configs.loader import load_sample_publication_payload
 from app.presets.loader import build_template_from_preset, load_instance_skeleton
 from app.services import dcc_builder
 
-EXAMPLES = Path(__file__).resolve().parents[1] / "app" / "examples"
 TEMPLATE_REF = "untp_v0_7_0_dcc_mines_act_permit"
+CREDENTIAL_TYPE = "BCMinesActPermitCredential"
 
 
 @pytest.fixture
 def publication_payload():
-    return json.loads(
-        (EXAMPLES / f"{TEMPLATE_REF}_publication_payload.example.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    return load_sample_publication_payload(CREDENTIAL_TYPE)
 
 
 @pytest.fixture
