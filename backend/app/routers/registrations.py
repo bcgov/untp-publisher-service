@@ -20,7 +20,11 @@ from app.services.issuer_registration import register_issuer as register_issuer_
 from app.presets.loader import (
     build_template_from_preset,
     get_preset,
-    load_oca_bundle,
+    load_oca_bundle as load_preset_oca_bundle,
+)
+from app.repo_configs.loader import (
+    load_oca_bundle as load_config_oca_bundle,
+    load_publication_config_optional,
 )
 from app.services.dcc_builder import publisher_origin
 from app.services.legal_act import legal_act_for_issuer
@@ -108,13 +112,18 @@ async def register_credential_type(request_body: CredentialRegistration):
     )
 
     json_schema = {}
+    pub_config = load_publication_config_optional(credential_type)
     if template_ref:
         credential_template = build_template_from_preset(
             template_ref=template_ref,
             issuer=issuer,
             domain_type=credential_registration["type"],
         )
-        oca_bundle = load_oca_bundle(template_ref)
+        oca_bundle = (
+            load_config_oca_bundle(credential_type)
+            if pub_config
+            else load_preset_oca_bundle(template_ref)
+        )
         context = {}
     else:
         if not related.get("context"):

@@ -9,13 +9,14 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from app.presets.loader import get_preset, product_slug
-from app.repo_configs.loader import load_credential_template_optional
+from app.presets.loader import get_preset
+from app.repo_configs.loader import load_credential_template_source_optional
 from app.services.legal_act import legal_act_for_issuer
 from app.services.publication_templates import (
-    apply_configured_text_fields,
+    apply_configured_template_fields,
     publication_template_context,
 )
+from app.utils import format_utc_datetime
 from config import settings
 
 
@@ -33,46 +34,6 @@ def _assessment_date(valid_from: str | None) -> str:
     if "T" in cleaned:
         return cleaned.split("T", 1)[0]
     return cleaned[:10]
-
-
-def normalize_facility(item: dict[str, Any]) -> dict[str, Any]:
-    facility_id = item.get("locationInformation") or item.get("id") or ""
-    verified = item.get("IDverifiedByCAB")
-    if verified is None:
-        verified = item.get("idVerifiedByCAB", False)
-    return {
-        "type": ["FacilityVerification"],
-        "facility": {
-            "type": ["Facility"],
-            "id": facility_id,
-            "name": item.get("name") or "",
-            **({"registeredId": item["registeredId"]} if item.get("registeredId") else {}),
-        },
-        "idVerifiedByCAB": bool(verified),
-    }
-
-
-def normalize_product(
-    item: dict[str, Any],
-    *,
-    permit_uri: str,
-    index: int,
-) -> dict[str, Any]:
-    name = item.get("name") or f"Product {index + 1}"
-    slug = product_slug(name)
-    verified = item.get("IDverifiedByCAB")
-    if verified is None:
-        verified = item.get("idVerifiedByCAB", False)
-    product_id = item.get("id") or f"{permit_uri}/products/{slug}"
-    return {
-        "type": ["ProductVerification"],
-        "product": {
-            "type": ["Product"],
-            "id": product_id,
-            "name": name,
-        },
-        "idVerifiedByCAB": bool(verified),
-    }
 
 
 def validate_publication(
@@ -151,25 +112,22 @@ def build_dcc_from_publication(
     )
 
     preset = get_preset(type_record["template_ref"])
-    legal_act = legal_act_for_issuer(issuer)
     cardinality_id = str(options["cardinalityId"])
     entity_id = str(options["entityId"])
     entity_name = entity.get("name") or entity_id
     permit_uri = f"{preset['registry_permit_base']}/{cardinality_id}"
-    valid_from = credential_input.get("validFrom") or datetime.now(timezone.utc).isoformat(
-        "T", "seconds"
-    )
-    assessment_date = _assessment_date(valid_from)
+    permit_issue_at = credential_input.get("validFrom")
+    assessment_date = _assessment_date(permit_issue_at)
+    published_at = format_utc_datetime(datetime.now(timezone.utc))
 
     credential = copy.deepcopy(template)
     credential_id = options.get("credentialId")
     credential["id"] = f"{publisher_origin()}/credentials/{credential_id}"
-    credential["validFrom"] = valid_from
+    credential["validFrom"] = published_at
     if credential_input.get("validUntil"):
         credential["validUntil"] = credential_input["validUntil"]
 
     subject = credential["credentialSubject"]
-    subject["id"] = permit_uri
     facility_names: list[str] = []
     additional = options.get("additionalData") or {}
     for facility in additional.get("assessedFacility") or []:
@@ -179,61 +137,62 @@ def build_dcc_from_publication(
     text_context = publication_template_context(
         credential=credential_input,
         options=options,
-        entity=entity,
+        organization=entity,
     )
-    credential_template_yaml = load_credential_template_optional(type_record.get("type"))
-    if credential_template_yaml:
-        apply_configured_text_fields(
-            config=credential_template_yaml,
+    text_context["permit_uri"] = permit_uri
+    text_context["assessment_date"] = assessment_date
+    template_source = load_credential_template_source_optional(type_record.get("type"))
+    if template_source:
+        apply_configured_template_fields(
+            template_source=template_source,
+            credential=credential,
             subject=subject,
             assessment=subject["conformityAssessment"][0],
             context=text_context,
         )
     else:
+        legal_act = legal_act_for_issuer(issuer)
+        subject["id"] = permit_uri
         subject["name"] = f"Mines Act Permit {cardinality_id} — {entity_name}"
         subject["description"] = (
             f"Mines Act permit issued to {entity_name} for {facility_hint} "
             f"(permit {cardinality_id}). One conformity assessment represents this permit."
         )
-
-    subject["issuedToParty"] = {
-        "type": ["Party"],
-        "id": entity["id"],
-        "name": entity_name,
-        "registeredId": entity_id,
-        "idScheme": {
-            "type": ["IdentifierScheme"],
-            "id": "https://www.bcregistry.gov.bc.ca/",
-            "name": "BC Registry",
-        },
-    }
+        subject["issuedToParty"] = {
+            "type": ["Party"],
+            "id": entity["id"],
+            "name": entity_name,
+            "registeredId": entity_id,
+            "idScheme": {
+                "type": ["IdentifierScheme"],
+                "id": "https://www.bcregistry.gov.bc.ca/",
+                "name": "BC Registry",
+            },
+        }
 
     assessment = subject["conformityAssessment"][0]
-    assessment["id"] = permit_uri
-    assessment["registeredId"] = cardinality_id
-    if not credential_template_yaml:
+    if not template_source:
+        assessment["id"] = permit_uri
+        assessment["registeredId"] = cardinality_id
         assessment["name"] = f"Mines Act Permit {cardinality_id} — {facility_hint}"
         assessment["description"] = (
             f"This conformity assessment is the Mines Act permit. Permit {cardinality_id} "
             f"authorizes operations at {facility_hint} for the stated product scope under "
             f"{legal_act['name']}."
         )
-    assessment["assessmentDate"] = assessment_date
-    assessment["assessedOrganisation"] = {
-        "type": ["Party"],
-        "id": entity["id"],
-        "name": entity_name,
-    }
-
-    assessment["assessedFacility"] = [
-        normalize_facility(item)
-        for item in additional.get("assessedFacility") or []
-        if isinstance(item, dict)
-    ]
-    assessment["assessedProduct"] = [
-        normalize_product(item, permit_uri=permit_uri, index=index)
-        for index, item in enumerate(additional.get("assessedProduct") or [])
-        if isinstance(item, dict)
-    ]
+        assessment["assessmentDate"] = assessment_date
+        assessment["assessedOrganisation"] = {
+            "type": ["Party"],
+            "id": entity["id"],
+            "name": entity_name,
+            "registeredId": entity_id,
+            "idScheme": {
+                "type": ["IdentifierScheme"],
+                "id": "https://www.bcregistry.gov.bc.ca/",
+                "name": "BC Registry",
+            },
+        }
+        assessment["assessedFacility"] = []
+        assessment["assessedProduct"] = []
 
     return credential

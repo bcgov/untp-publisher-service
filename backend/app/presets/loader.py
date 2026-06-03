@@ -41,6 +41,14 @@ def list_preset_refs() -> list[str]:
     return sorted(PRESET_REGISTRY.keys())
 
 
+def template_ref_for_domain_type(domain_type: str) -> str | None:
+    """Return bundled preset ref for a domain credential type (e.g. ``BCMinesActPermitCredential``)."""
+    for ref, meta in PRESET_REGISTRY.items():
+        if meta.get("domain_type") == domain_type:
+            return ref
+    return None
+
+
 def get_preset(template_ref: str) -> dict[str, Any]:
     if template_ref not in PRESET_REGISTRY:
         raise HTTPException(
@@ -117,14 +125,12 @@ def build_template_from_preset(
             detail=f"type {domain_type!r} does not match preset domain type {preset['domain_type']!r}",
         )
 
-    legal_act = legal_act_for_issuer(issuer)
     skeleton = load_instance_skeleton(template_ref)
 
     skeleton["name"] = preset["display_name"]
     skeleton["type"] = [
         "VerifiableCredential",
         "DigitalConformityCredential",
-        preset["domain_type"],
     ]
     skeleton["issuer"] = {
         "type": ["CredentialIssuer"],
@@ -161,7 +167,9 @@ def build_template_from_preset(
         ):
             assessment.pop(key, None)
 
-    _apply_legal_act_to_skeleton(skeleton, legal_act)
+    if not (subject.get("referenceScheme") or {}).get("id"):
+        legal_act = legal_act_for_issuer(issuer)
+        _apply_legal_act_to_skeleton(skeleton, legal_act)
     return skeleton
 
 
