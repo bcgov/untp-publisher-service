@@ -18,10 +18,27 @@ uv run uvicorn app:app --reload --host 0.0.0.0 --port 8000
 
 ## Test suite mode (`TEST_SUITE`)
 
-Set **`TEST_SUITE=true`** in the environment to run a **minimal** app: only **`GET /server/status`** and **`POST /test-suite/validate`**. The publisher API (auth, registrations, credentials, static) is **not** registered. Use this for isolated UNTP validation in CI or harnesses.
+Set **`TEST_SUITE=true`** in the environment to run a **minimal** app: **`GET /server/status`**, **`POST /test-suite/validate`**, and **`POST /test-suite/build-credential`**. The publisher API (auth, registrations, credentials, static) is **not** registered. Use this for isolated UNTP validation and credential templating in CI or local harnesses.
+
+```bash
+cd backend
+TEST_SUITE=true DOMAIN=http://localhost:8000 uv run uvicorn app:app --reload --host 0.0.0.0 --port 8000
+```
+
+Build an unsigned Mines Act credential from the sample publication payload:
+
+```bash
+curl -sS -X POST http://localhost:8000/test-suite/build-credential \
+  -H 'Content-Type: application/json' \
+  -d @../configs/samples/BCMinesActPermitCredential.v1.1/publication-payload.json \
+  | jq .
+```
+
+Optional top-level **`organization`** (`id`, `name`) avoids OrgBook lookup. When omitted, OrgBook is tried; if lookup fails, a stub organization is used.
 
 - **`POST /test-suite/validate`** — JSON body is the UNTP document; optional query **`kind`** (`dcc_credential` or `dcc_attestation`) skips automatic `type` detection.
-- Response: **`success`**, **`validation_checks`** (same structure as the validator’s per-check report), **`artefact_kind`**, and **`error`** when validation fails.
+- **`POST /test-suite/build-credential`** — JSON body is a publication payload (`credential`, `options`); returns **`credential`** (unsigned, no `proof`) after UNTP validation (400 when invalid).
+- Response (validate): **`success`**, **`validation_checks`** (same structure as the validator’s per-check report), **`artefact_kind`**, and **`error`** when validation fails.
 
 When **`TEST_SUITE`** is unset or false, **`/test-suite/*`** routes are omitted entirely.
 

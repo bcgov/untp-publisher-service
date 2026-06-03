@@ -25,6 +25,10 @@ def samples_dir() -> Path:
     return config_root() / "samples"
 
 
+def oca_dir() -> Path:
+    return config_root() / "oca"
+
+
 def _load_yaml_file(path: Path) -> dict[str, Any]:
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     if not isinstance(data, dict):
@@ -186,10 +190,44 @@ def load_sample_issued_credential_optional(credential_type: str | None) -> dict[
     return _load_json_file(path, label="issued credential sample")
 
 
-def load_credential_template(credential_type: str) -> dict[str, Any]:
+def oca_bundle_path(credential_type: str) -> Path:
+    """``configs/oca/{type}.{version}.json`` — inferred from publication config."""
+    version = credential_version_for_type(credential_type)
+    explicit = _credential_entry(credential_type)["credential"].get("assets", {}).get("ocaBundle")
+    if isinstance(explicit, str) and explicit.strip():
+        return resolve_repo_path(explicit.strip())
+    return oca_dir() / f"{credential_type}.{version}.json"
+
+
+def load_oca_bundle(credential_type: str) -> dict[str, Any]:
+    path = oca_bundle_path(credential_type)
+    if not path.is_file():
+        raise HTTPException(
+            status_code=500,
+            detail=f"No OCA bundle for credential type {credential_type!r} at {path}",
+        )
+    return _load_json_file(path, label="OCA bundle")
+
+
+def load_oca_bundle_optional(credential_type: str | None) -> dict[str, Any] | None:
+    if not credential_type:
+        return None
+    if credential_type not in _publication_index()["by_type"]:
+        return None
+    path = oca_bundle_path(credential_type)
+    if not path.is_file():
+        return None
+    return load_oca_bundle(credential_type)
+
+
+def load_credential_template_source(credential_type: str) -> str:
+    """Raw credential template YAML (may contain Jinja)."""
     credential = _credential_entry(credential_type)["credential"]
     if isinstance(credential.get("template"), dict):
-        return credential["template"]
+        raise HTTPException(
+            status_code=500,
+            detail=f"Inline credential template for {credential_type!r} has no source text",
+        )
     path = _template_path_for_type(credential_type, credential)
     if not path.is_file():
         raise HTTPException(
@@ -199,7 +237,28 @@ def load_credential_template(credential_type: str) -> dict[str, Any]:
                 f"(expected {path.relative_to(config_root())})"
             ),
         )
-    return _load_yaml_file(path)
+    return path.read_text(encoding="utf-8")
+
+
+def load_credential_template_source_optional(credential_type: str | None) -> str | None:
+    if not credential_type:
+        return None
+    if credential_type not in _publication_index()["by_type"]:
+        return None
+    return load_credential_template_source(credential_type)
+
+
+def load_credential_template(credential_type: str) -> dict[str, Any]:
+    """Parse credential template after rendering with a stub context (empty arrays)."""
+    from app.services.publication_templates import render_template_yaml, template_stub_context
+
+    credential = _credential_entry(credential_type)["credential"]
+    if isinstance(credential.get("template"), dict):
+        return credential["template"]
+    return render_template_yaml(
+        load_credential_template_source(credential_type),
+        template_stub_context(),
+    )
 
 
 def load_credential_template_optional(credential_type: str | None) -> dict[str, Any] | None:

@@ -1,9 +1,13 @@
-"""Loaders for ``configs/publications/``, ``configs/templates/``, and ``configs/samples/``."""
+"""Loaders for ``configs/publications/``, ``configs/templates/``, ``configs/samples/``, and ``configs/oca/``."""
 
 from app.repo_configs.loader import (
     credential_version_for_type,
     load_credential_template,
     load_credential_template_optional,
+    load_credential_template_source,
+    load_credential_template_source_optional,
+    load_oca_bundle,
+    load_oca_bundle_optional,
     load_publication_config,
     load_publication_config_by_issuer,
     load_publication_config_by_issuer_optional,
@@ -12,6 +16,7 @@ from app.repo_configs.loader import (
     load_sample_publication_payload,
     load_sample_publication_payload_optional,
     list_publication_config_types,
+    oca_bundle_path,
     resolve_config_path,
     resolve_repo_path,
     sample_issued_credential_path,
@@ -23,6 +28,10 @@ __all__ = [
     "credential_version_for_type",
     "load_credential_template",
     "load_credential_template_optional",
+    "load_credential_template_source",
+    "load_credential_template_source_optional",
+    "load_oca_bundle",
+    "load_oca_bundle_optional",
     "load_publication_config",
     "load_publication_config_by_issuer",
     "load_publication_config_by_issuer_optional",
@@ -31,6 +40,7 @@ __all__ = [
     "load_sample_publication_payload",
     "load_sample_publication_payload_optional",
     "list_publication_config_types",
+    "oca_bundle_path",
     "resolve_config_path",
     "resolve_repo_path",
     "sample_issued_credential_path",

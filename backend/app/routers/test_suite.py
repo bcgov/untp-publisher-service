@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Query
 
+from app.models.test_suite import MINES_ACT_BUILD_EXAMPLE, TestSuiteBuildRequest
+from app.services.test_suite_build import build_unsigned_credential_from_publication
 from app.validators.untp import UntpArtefactKind, validate_untp_document_with_checks
 
 router = APIRouter(prefix="/test-suite", tags=["Test suite"])
@@ -33,3 +35,38 @@ async def post_validate(
     if run.raising is not None:
         out["error"] = str(run.raising)
     return out
+
+
+@router.post("/build-credential")
+async def post_build_credential(
+    body: Annotated[
+        TestSuiteBuildRequest,
+        Body(
+            openapi_examples={
+                "mines_act": {
+                    "summary": "BC Mines Act Permit Q-20",
+                    "description": "From configs/samples/BCMinesActPermitCredential.v1.1/publication-payload.json",
+                    "value": MINES_ACT_BUILD_EXAMPLE,
+                }
+            }
+        ),
+    ],
+) -> dict[str, Any]:
+    """
+    Build an unsigned credential from a publication payload (``credential`` + ``options``).
+
+    Optional top-level ``organization`` (``id``, ``name``) skips OrgBook lookup. When omitted,
+    OrgBook is tried and a stub organization is used if lookup fails.
+
+    The assembled credential is validated (JSON Schema, JSON-LD, Pydantic) before return;
+    invalid output yields HTTP 400.
+    """
+    organization = (
+        body.organization.model_dump(exclude_none=True) if body.organization else None
+    )
+    credential = build_unsigned_credential_from_publication(
+        credential_input=body.credential,
+        options=body.options,
+        organization=organization,
+    )
+    return {"credential": credential}
