@@ -19,6 +19,7 @@ from app.models.registrations import IssuerRegistration
 from app.plugins import MongoClient
 from app.security import check_api_key_header
 from app.services.issuer_registration import register_issuer as register_issuer_service
+from app.services.legal_act import legal_act_for_issuer_id
 
 router = APIRouter(
     prefix="/admin/api",
@@ -67,6 +68,12 @@ async def admin_register_issuer(request_body: IssuerRegistration):
     """Register a new issuer (same as POST /registrations/issuers, with structured response)."""
     result = await register_issuer_service(request_body.model_dump())
     return JSONResponse(status_code=201, content=result)
+
+
+@router.get("/issuers/{issuer_id}/legal-act")
+async def admin_issuer_legal_act(issuer_id: str):
+    """Resolve BC Laws statute metadata from the issuer's registered scope."""
+    return JSONResponse(content=legal_act_for_issuer_id(issuer_id))
 
 
 @router.get("/collections")

@@ -1,0 +1,24 @@
+# One issuer per publication config. Links to credential templates under configs/templates/.
+
+issuer:
+  type: https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/96293_01#chief+permitting+officer
+  id: did:web:registry.digitaltrust.gov.bc.ca:mines-act:chief-permitting-officer
+  name: Chief Permitting Officer
+  description: The Chief Permitting Officer is responsible for issuing Mines Act permits.
+
+credentials:
+  - type: BCMinesActPermitCredential
+    version: v1.1
+
+    validation:
+      permitNumberField: permitNumber
+      permitBase: https://registry.digitaltrust.gov.bc.ca/mines-act/permits
+      additionalData:
+        assessedFacility:
+          min: 1
+        assessedProduct:
+          min: 0
+
+    assets:
+      ocaBundle: app/examples/untp_v0_7_0_dcc_mines_act_permit_oca_bundle.json
+      examplePayload: app/examples/untp_v0_7_0_dcc_mines_act_permit_publication_payload.example.json

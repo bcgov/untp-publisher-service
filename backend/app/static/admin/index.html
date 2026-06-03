@@ -244,16 +244,23 @@
               <div class="form-hint mb-3">Select a registered issuer DID.</div>
               <label class="form-label required" for="template-type">Credential type</label>
               <input type="text" class="form-control" id="template-type" name="type" value="BCPetroleumAndNaturalGasTitleCredential" required />
-              <div class="form-hint mb-3">Hard-coded DCC preset (editable only if needed).</div>
+              <div class="form-hint mb-3">Use <code>BCMinesActPermitCredential</code> for the bundled mines-act UNTP preset.</div>
               <label class="form-label required" for="template-version">Version</label>
               <input type="text" class="form-control" id="template-version" name="version" value="v1.0" required />
             </div>
 
             <div class="col-12 template-wizard-step d-none" data-step="2">
-              <label class="form-label required mt-3" for="template-legal-act">Legal Act URL</label>
-              <input type="url" class="form-control" id="template-legal-act" name="legalAct" value="https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/00_96361_01" required />
-              <label class="form-label required mt-3" for="template-governance">Governance URL</label>
-              <input type="url" class="form-control" id="template-governance" name="governance" value="https://bcgov.github.io/digital-trust-toolkit/docs/governance/pilots/bc-petroleum-and-natural-gas-title" required />
+              <p class="text-secondary small mb-2">
+                Legal act is resolved from the selected issuer&apos;s scope (BC Laws) at registration time.
+              </p>
+              <p class="mb-3 font-monospace small" id="template-legal-act-display">Select an issuer in step 1.</p>
+              <div id="template-governance-block">
+                <label class="form-label required mt-3" for="template-governance">Governance URL</label>
+                <input type="url" class="form-control" id="template-governance" name="governance" value="https://bcgov.github.io/digital-trust-toolkit/docs/governance/pilots/bc-petroleum-and-natural-gas-title" required />
+              </div>
+              <p class="text-secondary small mb-0 d-none" id="template-governance-preset-note">
+                Governance profile is bundled in the mines-act preset (no separate URL required).
+              </p>
             </div>
 
             <div class="col-12 template-wizard-step d-none" data-step="3">

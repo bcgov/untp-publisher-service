@@ -33,6 +33,7 @@ async def register_issuer(registration: dict[str, Any]) -> dict[str, Any]:
     issuer_record = IssuerRecord(
         id=issuer_id,
         name=registration.get("name"),
+        scope=registration.get("scope"),
         authorized_key=authorized_key,
     ).model_dump()
 

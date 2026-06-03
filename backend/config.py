@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 import logging
 import os
 from logging import Logger
@@ -96,6 +97,10 @@ class Settings(BaseSettings):
     #: Auth database for split-variable mode only (e.g. ``admin`` on managed MongoDB).
     MONGO_AUTH_SOURCE: str = Field(default="")
 
+    #: Root directory for ``configs/`` (``publications/``, ``templates/``).
+    #: Defaults to ``<repo>/configs``. In container images use ``/config``.
+    CONFIG_ROOT: str = Field(default="")
+
     @computed_field
     @property
     def ORGBOOK_API_URL(self) -> str:
@@ -117,3 +122,13 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def repo_root() -> Path:
+    return Path(basedir).parent
+
+
+def config_root() -> Path:
+    if settings.CONFIG_ROOT.strip():
+        return Path(settings.CONFIG_ROOT)
+    return repo_root() / "configs"

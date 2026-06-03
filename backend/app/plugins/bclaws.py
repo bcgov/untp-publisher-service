@@ -197,6 +197,65 @@ def list_public_acts(
     }
 
 
+def best_act_match_from_scope(
+    acts: list[dict[str, Any]], scope: str
+) -> dict[str, Any] | None:
+    """Pick the best BC Laws catalog act for an issuer scope string."""
+    term = (scope or "").strip().casefold()
+    if not term or not acts:
+        return None
+    for act in acts:
+        name = str(act.get("name") or "").casefold()
+        if name == term:
+            return act
+    for act in acts:
+        name = str(act.get("name") or "").casefold()
+        title = str(act.get("title") or "").casefold()
+        if term in name or term in title or name in term:
+            return act
+    for act in acts:
+        name = str(act.get("name") or "").casefold()
+        title = str(act.get("title") or "").casefold()
+        if name.startswith(term) or title.startswith(term):
+            return act
+    return acts[0]
+
+
+def resolve_legal_act_from_scope(scope: str) -> dict[str, Any]:
+    """
+    Resolve BC Laws statute metadata from issuer scope (act name).
+
+    Returns ``id`` (document URL), ``name``, and optional ``effectiveDate``.
+    """
+    term = (scope or "").strip()
+    if not term:
+        raise HTTPException(
+            status_code=400,
+            detail="Issuer scope is required to resolve the legal act",
+        )
+    result = list_public_acts(q=term, limit=20, offset=0)
+    match = best_act_match_from_scope(result.get("acts") or [], term)
+    if not match:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No BC Laws act found for scope: {term}",
+        )
+    document_id = match.get("documentId")
+    if not document_id:
+        raise HTTPException(
+            status_code=502,
+            detail=f"BC Laws act match for scope {term!r} has no document id",
+        )
+    metadata = get_act_metadata(document_id)
+    return {
+        "id": metadata["id"],
+        "name": metadata["name"],
+        "effectiveDate": metadata.get("effectiveDate"),
+        "documentId": document_id,
+        "scope": term,
+    }
+
+
 def get_act_metadata(document_id: str) -> dict[str, Any]:
     """Resolve title and currency date from the statute HTML page."""
     url = document_url(document_id)
