@@ -1,5 +1,37 @@
 # Administrative role
 
+## MongoDB browser (dev / ops)
+
+When the full publisher API is enabled (`TEST_SUITE=false`), an admin UI and JSON API expose read-only access to MongoDB collections:
+
+| URL | Auth | Purpose |
+|-----|------|---------|
+| `/admin` | None (HTML only) | Collection browser UI — set `X-API-Key` in the page (same as `TRACTION_API_KEY`) |
+| `GET /admin/api/collections` | `X-API-Key` | List collections and record counts |
+| `GET /admin/api/collections/{name}` | `X-API-Key` | Paginated list (`skip`, `limit`, optional `q` search) |
+| `GET /admin/api/collections/{name}/records/{id}` | `X-API-Key` | Full record (sensitive fields redacted/truncated in list view) |
+| `POST /admin/api/issuers` | `X-API-Key` | Register issuer (same as `POST /registrations/issuers`; returns issuer + DID document) |
+
+The admin UI includes a **Register issuer** form on the Issuers collection (and on setup step 1).
+
+Collections: `IssuerRecord`, `CredentialTypeRecord`, `CredentialRecord`, `StatusListRecord`, `CredentialPickupRecord`.
+
+The admin UI at `/admin` shows a **recommended setup order** and groups collections by phase (Setup → Configuration → Runtime → Operations).
+
+### Recommended setup order
+
+| Step | Action | API | MongoDB |
+|------|--------|-----|---------|
+| 1 | Register issuer | `POST /registrations/issuers` | `IssuerRecord` |
+| 2 | Issue client secret | `POST /auth/secret` | updates `IssuerRecord.secret_hash` |
+| 3 | Register credential type | `POST /registrations/credentials` | `CredentialTypeRecord` + `StatusListRecord` (auto) |
+| 4 | Issue credentials | Issuer APIs (JWT from `/auth/token`) | `CredentialRecord` |
+| 5 | Pickup (optional) | Pickup flow if enabled | `CredentialPickupRecord` |
+
+Status lists are **not** registered separately — they are created in step 3 with the credential type.
+
+---
+
 A publisher software admin has 3 key functions:
 - Register issuers
 - Register credential types

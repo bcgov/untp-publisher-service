@@ -44,14 +44,18 @@ spec:
             # Read-only entity lookup (OrgBook v4 search); app reads ORGBOOK_URL from config.
             - name: ORGBOOK_URL
               value: {{ .Values.backend.environment.orgbookUrl }}
+            - name: BCLAWS_API_URL
+              value: {{ .Values.backend.environment.bclawsApiUrl | quote }}
+            - name: GTDS_URL
+              value: {{ .Values.backend.environment.gtdsUrl | quote }}
             - name: ISSUER_REGISTRY_URL
               value: {{ .Values.backend.environment.issuerRegistryUrl }}
 
             # DID WebVH
             - name: DID_WEB_SERVER_URL
               value: {{ .Values.backend.didwebvh.serverUrl }}
-            - name: PUBLISHER_MULTIKEY
-              value: {{ .Values.backend.didwebvh.witnessPublicKeyMultibase }}
+            - name: PUBLISHER_WITNESS_ID
+              value: {{ .Values.backend.didwebvh.witnessDid | quote }}
 
             # TRACTION
             - name: TRACTION_API_URL

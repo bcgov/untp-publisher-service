@@ -18,7 +18,7 @@ Helm chart for the [UNTP Publisher](https://github.com/bcgov/untp-publisher-serv
 | backend.containerSecurityContext | object | `{}` | Security context for backend containers |
 | backend.testSuite | bool | `false` | When true, sets `TEST_SUITE` and exposes only `/server/status` and `/test-suite/validate` |
 | backend.didwebvh.serverUrl | string | `""` | DID WebVH server base URL (sets `DID_WEB_SERVER_URL`) |
-| backend.didwebvh.witnessPublicKeyMultibase | string | `""` | Witness public key multibase (sets `PUBLISHER_MULTIKEY`) |
+| backend.didwebvh.witnessDid | string | `""` | Witness `did:key` (sets `PUBLISHER_WITNESS_ID`; multikey derived at runtime) |
 | backend.traction.apiUrl | string | `""` | Traction tenant proxy base URL (sets `TRACTION_API_URL`) |
 | backend.traction.existingSecret | string | `""` | Pre-created Traction Secret. When empty, Helm manages `{fullname}-traction`. When set, Helm does not create the Secret. |
 | backend.traction.secretKeys.apiKey | string | `"traction_api_key"` | Secret key for the Traction API key |

@@ -32,8 +32,8 @@ backend:
   didwebvh:
     # -- DID WebVH server base URL. Sets pod env DID_WEB_SERVER_URL.
     serverUrl: ""
-    # -- Witness public key (multibase). Sets pod env PUBLISHER_MULTIKEY.
-    witnessPublicKeyMultibase: ""
+    # -- Witness did:key (Ed25519 multikey in method id). Sets pod env PUBLISHER_WITNESS_ID.
+    witnessDid: ""
 
   # -- Traction tenant proxy configuration
   traction:
@@ -50,6 +50,10 @@ backend:
   environment:
     # -- Base URL for read-only entity lookup (OrgBook v4 search). Sets pod env ORGBOOK_URL.
     orgbookUrl: ""
+    # -- BC Laws CiviX API base URL. Sets pod env BCLAWS_API_URL.
+    bclawsApiUrl: "https://www.bclaws.gov.bc.ca"
+    # -- BC Government Directory search endpoint. Sets pod env GTDS_URL.
+    gtdsUrl: "https://www.dir.gov.bc.ca/gtds.cgi"
     # -- Issuer registry URL. Sets pod env ISSUER_REGISTRY_URL.
     issuerRegistryUrl: ""
 

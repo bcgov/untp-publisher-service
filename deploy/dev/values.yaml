@@ -31,9 +31,11 @@ backend:
     existingSecret: untp-publisher-service-traction-tenant-info
   didwebvh:
     serverUrl: "https://registry-dev.digitaltrust.gov.bc.ca"
-    witnessPublicKeyMultibase: "z6MkekByGjKYvP6dpMBJEHt5UN72rKPVoDgzcS9Hoq6bjfr1"
+    witnessDid: "did:key:z6MkekByGjKYvP6dpMBJEHt5UN72rKPVoDgzcS9Hoq6bjfr1"
   environment:
     orgbookUrl: "https://dev.orgbook.gov.bc.ca"
+    bclawsApiUrl: "https://www.bclaws.gov.bc.ca"
+    gtdsUrl: "https://www.dir.gov.bc.ca/gtds.cgi"
     issuerRegistryUrl: "https://bcgov.github.io/digital-trust-toolkit/registrations/issuers/dev.json"
   resources:
     limits:

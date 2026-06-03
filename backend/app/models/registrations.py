@@ -35,8 +35,8 @@ class RelatedResources(BaseModel):
 
 
 class CorePaths(BaseModel):
-    entityId: str = Field(example="$.credentialSubject.issuedToParty.registeredId")
-    cardinalityId: str = Field(example="$.credentialSubject.titleNumber")
+    entityId: str = Field(example="/credentialSubject/issuedToParty/registeredId")
+    cardinalityId: str = Field(example="/credentialSubject/id")
 
 
 class CredentialRegistration(BaseModel):
@@ -47,19 +47,19 @@ class CredentialRegistration(BaseModel):
     subjectType: str = Field(None, example="PetroleumAndNaturalGasTitle")
     subjectPaths: Dict[str, str] = Field(
         example={
-            "titleType": "$.credentialSubject.titleType",
-            "titleNumber": "$.credentialSubject.titleNumber",
-            "originType": "$.credentialSubject.originType",
-            "originNumber": "$.credentialSubject.originNumber",
-            "caveats": "$.credentialSubject.caveats",
+            "name": "/credentialSubject/name",
+            "description": "/credentialSubject/description",
+            "assessorLevel": "/credentialSubject/assessorLevel",
+            "assessmentLevel": "/credentialSubject/assessmentLevel",
+            "attestationType": "/credentialSubject/attestationType",
         }
     )
     additionalType: str = Field(None, example="DigitalConformityCredential")
     additionalPaths: Dict[str, str] = Field(
         None,
         example={
-            "wells": "$.credentialSubject.assessment[0].assessedFacility",
-            "tracts": "$.credentialSubject.assessment[0].assessedProduct",
+            "assessedFacility": "/credentialSubject/conformityAssessment/0/assessedFacility",
+            "assessedProduct": "/credentialSubject/conformityAssessment/0/assessedProduct",
         },
     )
     relatedResources: RelatedResources = Field()
