@@ -8,11 +8,8 @@ from datetime import datetime, timezone
 import pytest
 
 from app.repo_configs.loader import load_sample_publication_payload
-from app.services.registration_template import (
-    build_registration_template,
-    load_instance_skeleton,
-)
-from app.services import dcc_builder
+from app.services.registration_template import build_registration_template
+from app.services import credential_builder
 
 CREDENTIAL_TYPE = "BCMinesActPermitCredential"
 MINES_ACT_URL = (
@@ -36,12 +33,15 @@ def issuer():
 
 
 @pytest.fixture
-def type_record():
+def type_record(issuer):
     return {
         "type": CREDENTIAL_TYPE,
-        "version": "v1.0",
-        "issuer": "did:web:registry.example.ca:mines-act:chief-permitting-officer",
-        "template": load_instance_skeleton(CREDENTIAL_TYPE),
+        "version": "v1.1",
+        "issuer": issuer["id"],
+        "template": build_registration_template(
+            credential_type=CREDENTIAL_TYPE,
+            issuer=issuer,
+        ),
     }
 
 
@@ -53,6 +53,7 @@ def test_build_registration_template(issuer):
     assert "DigitalConformityCredential" in template["type"]
     assert "BCMinesActPermitCredential" not in template["type"]
     assert template["issuer"]["id"] == issuer["id"]
+    assert template["@context"][0] == "https://www.w3.org/ns/credentials/v2"
     assert template["credentialSubject"]["referenceScheme"]["id"] == MINES_ACT_URL
 
 
@@ -60,7 +61,7 @@ def test_validate_publication_requires_cardinality_id(publication_payload, type_
     payload = copy.deepcopy(publication_payload)
     payload["options"]["cardinalityId"] = ""
     with pytest.raises(Exception) as exc:
-        dcc_builder.validate_publication(
+        credential_builder.validate_publication(
             credential_input=payload["credential"],
             options=payload["options"],
             type_record=type_record,
@@ -68,7 +69,7 @@ def test_validate_publication_requires_cardinality_id(publication_payload, type_
     assert "cardinalityId" in str(exc.value.detail)
 
 
-def test_build_dcc_from_publication(
+def test_build_credential(
     publication_payload, type_record, issuer, monkeypatch
 ):
     published_at = datetime(2026, 6, 2, 15, 30, 0, tzinfo=timezone.utc)
@@ -78,7 +79,7 @@ def test_build_dcc_from_publication(
         def now(cls, tz=None):
             return published_at
 
-    monkeypatch.setattr(dcc_builder, "datetime", FixedDateTime)
+    monkeypatch.setattr(credential_builder, "datetime", FixedDateTime)
 
     entity = {
         "id": "https://www.bcregistry.gov.bc.ca/business/A0034771",
@@ -91,7 +92,7 @@ def test_build_dcc_from_publication(
     )
     type_record["template"] = template
 
-    credential = dcc_builder.build_dcc_from_publication(
+    credential = credential_builder.build_credential(
         template=template,
         credential_input=publication_payload["credential"],
         options=publication_payload["options"],

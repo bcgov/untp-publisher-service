@@ -23,6 +23,10 @@ OPENAPI_TAGS = [
         "description": "Credential templates and OCA bundles by type and version.",
     },
     {
+        "name": "Contexts",
+        "description": "Publisher JSON-LD extension contexts.",
+    },
+    {
         "name": "Status-Lists",
         "description": "Bitstring status list credentials (revocation, suspension, refresh).",
     },
@@ -65,6 +69,7 @@ def build_app(cfg: Settings) -> FastAPI:
     else:
         from app.routers import (
             authentication,
+            contexts,
             credentials,
             issuers,
             status_lists,
@@ -76,6 +81,7 @@ def build_app(cfg: Settings) -> FastAPI:
         api_router.include_router(issuers.router)
         api_router.include_router(credentials.router)
         api_router.include_router(templates.router)
+        api_router.include_router(contexts.router)
         api_router.include_router(status_lists.router)
 
     app.include_router(api_router)

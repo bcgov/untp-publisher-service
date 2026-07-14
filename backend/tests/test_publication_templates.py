@@ -5,7 +5,7 @@ from fastapi import HTTPException
 
 from app.repo_configs.loader import load_credential_template_source
 from app.services.publication_templates import (
-    apply_configured_template_fields,
+    materialize_credential_document,
     publication_template_context,
     render_template_text,
     render_template_yaml,
@@ -109,93 +109,29 @@ def test_mines_act_template_requires_exactly_one_assessed_facility():
     assert "exactly 1" in str(exc.value.detail)
 
 
-def test_render_template_yaml_parses_assessment_arrays():
+def test_materialize_credential_document_from_mines_act_template():
     source = load_credential_template_source("BCMinesActPermitCredential")
     context = publication_template_context(
         credential=PAYLOAD["credential"],
         options=PAYLOAD["options"],
         organization=ORGANIZATION,
     )
-    rendered = render_template_yaml(source, context)
-    assessment = rendered["credentialSubject"]["conformityAssessment"]
+    credential = materialize_credential_document(source, context)
+    assert credential["@context"][0] == "https://www.w3.org/ns/credentials/v2"
+    assert "context" not in credential
+    assert "Mines Act (British Columbia)" in credential["description"]
+    assert credential["credentialSubject"]["type"] == ["ConformityAttestation"]
+    assert credential["credentialSubject"]["referenceScheme"]["name"] == (
+        "Mines Act (British Columbia)"
+    )
+    assessment = credential["credentialSubject"]["conformityAssessment"][0]
+    assert assessment["type"] == ["ConformityAssessment"]
     assert len(assessment["assessedFacility"]) == 1
     assert assessment["assessedFacility"][0]["type"] == ["FacilityVerification"]
-    assert assessment["assessedProduct"][0]["product"]["id"] == (
-        "urn:ca:bcgov:mines-act:permit:Q-20:commodity:construction-aggregate"
-    )
-
-
-def test_template_renders_assessed_facility_from_config():
-    source = load_credential_template_source("BCMinesActPermitCredential")
-    context = publication_template_context(
-        credential=PAYLOAD["credential"],
-        options=PAYLOAD["options"],
-        organization=ORGANIZATION,
-    )
-
-    assessment = {}
-    credential = {}
-    apply_configured_template_fields(
-        template_source=source,
-        credential=credential,
-        subject={"conformityAssessment": [assessment]},
-        assessment=assessment,
-        context=context,
-    )
-
-    facilities = assessment["assessedFacility"]
-    assert len(facilities) == 1
-    assert facilities[0]["type"] == ["FacilityVerification"]
-    assert facilities[0]["facility"]["name"] == "Kootenay West"
-
-
-def test_apply_configured_template_fields_sets_assessment_arrays():
-    source = load_credential_template_source("BCMinesActPermitCredential")
-    subject = {"conformityAssessment": [{}]}
-    assessment = subject["conformityAssessment"][0]
-    credential = {}
-    context = publication_template_context(
-        credential=PAYLOAD["credential"],
-        options=PAYLOAD["options"],
-        organization=ORGANIZATION,
-    )
-
-    apply_configured_template_fields(
-        template_source=source,
-        credential=credential,
-        subject=subject,
-        assessment=assessment,
-        context=context,
-    )
-
-    assert "Mines Act (British Columbia)" in credential["description"]
-
-    assert len(assessment["assessedFacility"]) == 1
+    assert assessment["assessedFacility"][0]["facility"]["name"] == "Kootenay West"
     assert len(assessment["assessedProduct"]) == 1
     assert assessment["assessedProduct"][0]["product"]["id"] == (
         "urn:ca:bcgov:mines-act:permit:Q-20:commodity:construction-aggregate"
     )
-
-
-def test_apply_configured_template_fields_merges_reference_scheme():
-    source = load_credential_template_source("BCMinesActPermitCredential")
-    subject = {"conformityAssessment": [{}]}
-    assessment = subject["conformityAssessment"][0]
-    credential = {}
-    context = publication_template_context(
-        credential=PAYLOAD["credential"],
-        options=PAYLOAD["options"],
-        organization=ORGANIZATION,
-    )
-
-    apply_configured_template_fields(
-        template_source=source,
-        credential=credential,
-        subject=subject,
-        assessment=assessment,
-        context=context,
-    )
-
-    assert subject["referenceScheme"]["name"] == "Mines Act (British Columbia)"
     assert assessment["referenceRegulation"][0]["name"] == "Mines Act"
     assert assessment["assessmentCriteria"][0]["id"].endswith("96293_01")

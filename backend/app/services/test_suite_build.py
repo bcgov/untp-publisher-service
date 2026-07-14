@@ -8,7 +8,7 @@ from fastapi import HTTPException
 
 from app.services.registration_template import build_registration_template
 from app.repo_configs.loader import load_publication_config
-from app.services.dcc_builder import build_dcc_from_publication
+from app.services.credential_builder import build_credential
 from app.services.entity import entity_from_options
 from app.validators.untp import UntpValidationError, validate_untp_document
 
@@ -40,7 +40,7 @@ def build_unsigned_credential_from_publication(
         "template": template,
     }
 
-    credential = build_dcc_from_publication(
+    credential = build_credential(
         template=template,
         credential_input=credential_input,
         options=options,

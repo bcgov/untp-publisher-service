@@ -61,9 +61,8 @@ The image published to GitHub Container Registry is **`ghcr.io/bcgov/untp-publis
 
 - **`PUBLISHER_DOMAIN`** — Public publisher host/origin used in credential IDs and related resource URLs (e.g. `http://localhost:8000` or `publisher.example.com`).
 - **MongoDB** — either a full URI or separate fields:
-  - **`MONGO_URI`** — e.g. `mongodb://user:pass@host:55128/untp-publisher` (overrides host/port/user/password)
+  - **`MONGO_URI`** — connection string (overrides host/port/user/password); database selection always uses **`MONGO_DB`**
   - or **`MONGO_HOST`**, **`MONGO_PORT`**, **`MONGO_USER`**, **`MONGO_PASSWORD`**, **`MONGO_DB`**
   - **`MONGO_AUTH_SOURCE`** — optional for split mode (e.g. `admin` on Railway/managed MongoDB)
-  - If the URI has no database path, set **`MONGO_DB`** to the database name.
 - **`WEBVH_SERVER_URL`** — WebVH / DID web server base URL (e.g. `https://sandbox.bcvh.vonx.io`). Issuer DIDs from `configs/issuers.yaml` use this URL's hostname: alias `mines-act:chief-permitting-officer` becomes `did:web:{host}:mines-act:chief-permitting-officer`.
 - **`PUBLISHER_WITNESS_ID`** — Witness `did:key` for Traction proof options (e.g. `did:key:z6Mk…`). The Ed25519 multikey is derived at runtime as **`PUBLISHER_WITNESS_MULTIKEY`**.

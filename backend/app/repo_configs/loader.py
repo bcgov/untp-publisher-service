@@ -356,12 +356,15 @@ def load_credential_template_source_optional(credential_type: str | None) -> str
 
 def load_credential_template(credential_type: str) -> dict[str, Any]:
     """Parse credential template after rendering with a stub context (empty arrays)."""
-    from app.services.publication_templates import render_template_yaml, template_stub_context
+    from app.services.publication_templates import (
+        materialize_credential_document,
+        template_stub_context,
+    )
 
     credential = _credential_entry(credential_type)["credential"]
     if isinstance(credential.get("template"), dict):
         return credential["template"]
-    return render_template_yaml(
+    return materialize_credential_document(
         load_credential_template_source(credential_type),
         template_stub_context(),
     )
@@ -377,6 +380,18 @@ def load_credential_template_optional(credential_type: str | None) -> dict[str, 
 
 def list_publication_config_types() -> list[str]:
     return sorted(_publication_index()["by_type"].keys())
+
+
+def publisher_extension_context_path() -> Path:
+    return config_root() / "contexts" / "publisher-v1.jsonld"
+
+
+def load_publisher_extension_context() -> dict[str, Any]:
+    """JSON-LD document for publisher terms (``SimpleRefreshQuery``, ``OCABundle``)."""
+    path = publisher_extension_context_path()
+    if not path.is_file():
+        raise FileNotFoundError(f"Publisher extension context missing at {path}")
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def resolve_config_path(relative_path: str) -> Path:

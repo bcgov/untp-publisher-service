@@ -128,70 +128,30 @@ def render_template_yaml(template_source: str, context: dict[str, Any]) -> dict[
     return data
 
 
-def apply_configured_template_fields(
-    *,
+def materialize_credential_document(
     template_source: str,
-    credential: dict[str, Any],
-    subject: dict[str, Any],
-    assessment: dict[str, Any],
     context: dict[str, Any],
-) -> None:
-    """Render the credential template YAML and merge text + array fields onto the VC."""
-    rendered = render_template_yaml(template_source, context)
-    subject_cfg = rendered.get("credentialSubject") or {}
-    assessment_cfg = subject_cfg.get("conformityAssessment") or {}
+) -> dict[str, Any]:
+    """Render ``template.yaml`` into a VC-shaped dict (``@context``, assessment array, …)."""
+    document = render_template_yaml(template_source, context)
 
-    for field in ("name", "description"):
-        if field in rendered:
-            credential[field] = rendered[field]
+    if "context" in document and "@context" not in document:
+        document["@context"] = document.pop("context")
 
-    for field in (
-        "id",
-        "name",
-        "description",
-        "issuedToParty",
-        "assessorLevel",
-        "assessmentLevel",
-        "attestationType",
-        "referenceScheme",
-        "referenceProfile",
-    ):
-        if field in subject_cfg:
-            subject[field] = subject_cfg[field]
+    subject = document.setdefault("credentialSubject", {})
+    if not isinstance(subject, dict):
+        raise HTTPException(
+            status_code=500,
+            detail="credentialSubject must be a mapping after template render",
+        )
 
-    for field in (
-        "id",
-        "registeredId",
-        "idScheme",
-        "assessmentDate",
-        "name",
-        "description",
-        "assessedFacility",
-        "assessedProduct",
-        "assessedOrganisation",
-        "assessmentCriteria",
-        "assessedPerformance",
-        "referenceRegulation",
-        "conformityTopic",
-        "conformance",
-    ):
-        if field in assessment_cfg:
-            assessment[field] = assessment_cfg[field]
+    assessment = subject.get("conformityAssessment")
+    if isinstance(assessment, dict):
+        subject["conformityAssessment"] = [assessment]
+    elif not isinstance(assessment, list) or not assessment:
+        raise HTTPException(
+            status_code=500,
+            detail="credentialSubject.conformityAssessment must be a non-empty list after render",
+        )
 
-
-def apply_configured_text_fields(
-    *,
-    template_source: str,
-    credential: dict[str, Any],
-    subject: dict[str, Any],
-    assessment: dict[str, Any],
-    context: dict[str, Any],
-) -> None:
-    """Backward-compatible alias."""
-    apply_configured_template_fields(
-        template_source=template_source,
-        credential=credential,
-        subject=subject,
-        assessment=assessment,
-        context=context,
-    )
+    return document

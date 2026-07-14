@@ -5,7 +5,11 @@ from app.models.credential import Credential
 from app.models.did_document import DidDocument, VerificationMethod
 from app.plugins import MongoClient, TractionController
 from app.services.entity import entity_from_options
-from app.services.dcc_builder import build_dcc_from_publication, publisher_origin
+from app.services.credential_builder import (
+    build_credential,
+    ensure_publisher_extension_context,
+    publisher_origin,
+)
 from app.validators.untp import UntpValidationError, validate_untp_document
 from app.utils import multikey_to_jwk
 from base58 import b58encode
@@ -203,7 +207,7 @@ class PublisherRegistrar:
             raise HTTPException(status_code=404, detail="Issuer not registered.")
         entity = entity_from_options(options)
         try:
-            credential = build_dcc_from_publication(
+            credential = build_credential(
                 template=credential_template,
                 credential_input=credential_input,
                 options=options,
@@ -218,6 +222,8 @@ class PublisherRegistrar:
                 detail=f"UNTP validation failed: {exc}",
             ) from exc
 
+        # After UNTP checks: publisher terms need the extension context.
+        ensure_publisher_extension_context(credential)
         credential["refreshService"] = [
             {
                 "type": "SimpleRefreshQuery",
@@ -258,7 +264,7 @@ class PublisherRegistrar:
         credential["credentialStatus"] = status_entries
 
         credential = Credential(
-            context=credential_template.get("@context"),
+            context=credential.get("@context"),
             type=credential.get("type"),
             id=credential.get("id"),
             name=credential.get("name"),

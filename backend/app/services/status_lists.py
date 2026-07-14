@@ -9,7 +9,7 @@ from typing import Any
 from app.models.mongodb import StatusListRecord
 from app.plugins.mongodb import MongoClient
 from app.plugins.status_list import BitstringStatusList
-from app.services.dcc_builder import publisher_origin
+from app.services.credential_builder import publisher_origin
 from config import settings
 
 STATUS_PURPOSES = ("revocation", "suspension", "refresh")

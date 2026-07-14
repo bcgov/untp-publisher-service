@@ -91,7 +91,7 @@ class Settings(BaseSettings):
 
     #: Full connection string (``mongodb://`` or ``mongodb+srv://``). When set, overrides
     #: ``MONGO_HOST`` / ``MONGO_PORT`` / ``MONGO_USER`` / ``MONGO_PASSWORD``.
-    #: Database name comes from the URI path, or from ``MONGO_DB`` if the path is empty.
+    #: Database name is always ``MONGO_DB`` (URI path is ignored for selection).
     MONGO_URI: str = Field(default="")
 
     MONGO_HOST: str = Field(default="localhost")

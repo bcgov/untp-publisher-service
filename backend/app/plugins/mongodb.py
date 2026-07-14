@@ -1,38 +1,11 @@
 import pymongo
 from bson.objectid import ObjectId
-from urllib.parse import urlparse
 
 from config import settings
 
 
 class MongoClientError(Exception):
     """Generic MongoClient Error."""
-
-
-def _database_name_from_uri(uri: str) -> str | None:
-    """Return database segment from a MongoDB URI path, or None if omitted."""
-    # urlparse needs a scheme with // for netloc/path split
-    normalised = uri.replace("mongodb+srv://", "https://", 1).replace(
-        "mongodb://", "http://", 1
-    )
-    parsed = urlparse(normalised)
-    path = (parsed.path or "").strip("/")
-    if not path:
-        return None
-    return path.split("/")[0]
-
-
-def _resolve_database_name() -> str:
-    if settings.MONGO_URI:
-        from_uri = _database_name_from_uri(settings.MONGO_URI)
-        if from_uri:
-            return from_uri
-        if settings.MONGO_DB:
-            return settings.MONGO_DB
-        raise MongoClientError(
-            "MONGO_URI has no database in the path; set MONGO_DB to the database name."
-        )
-    return settings.MONGO_DB
 
 
 class MongoClient:
@@ -47,7 +20,7 @@ class MongoClient:
                 password=settings.MONGO_PASSWORD,
                 authSource=auth_source,
             )
-        self.db = self.client[_resolve_database_name()]
+        self.db = self.client[settings.MONGO_DB]
 
     def provision(self):
         self.db["IssuerInstanceRecord"].create_index([("id")], unique=True)

@@ -10,7 +10,7 @@ from app.models.mongodb import CredentialTemplateRecord
 from app.plugins.mongodb import MongoClient, MongoClientError
 from app.services.registration_template import build_registration_template
 from app.repo_configs.loader import load_oca_bundle
-from app.services.dcc_builder import publisher_origin
+from app.services.credential_builder import publisher_origin
 from app.utils import generate_digest_multibase
 from config import settings
 
