@@ -5,14 +5,10 @@ from app.models.credential import Credential
 from app.models.did_document import DidDocument, VerificationMethod
 from app.plugins import MongoClient, TractionController
 from app.services.entity import entity_from_options
-from app.plugins.untp import DigitalConformityCredential
 from app.services.dcc_builder import build_dcc_from_publication, publisher_origin
 from app.validators.untp import UntpValidationError, validate_untp_document
 from app.utils import multikey_to_jwk
 from base58 import b58encode
-import re
-from datetime import datetime, timezone
-from jsonpath_ng import parse
 from canonicaljson import encode_canonical_json
 import hashlib
 
@@ -35,75 +31,10 @@ class PublisherRegistrar:
             pass
         raise HTTPException(status_code=response.status_code, detail=f"{message}: {detail}")
 
-    @staticmethod
-    def _is_json_pointer(path: str) -> bool:
-        return isinstance(path, str) and path.startswith("/")
-
-    @staticmethod
-    def _pointer_tokens(pointer: str) -> list[str]:
-        if pointer == "/":
-            return [""]
-        return [
-            token.replace("~1", "/").replace("~0", "~")
-            for token in pointer.lstrip("/").split("/")
-        ]
-
-    def _set_by_pointer(self, document: dict, pointer: str, value) -> None:
-        tokens = self._pointer_tokens(pointer)
-        current = document
-        for idx, token in enumerate(tokens):
-            last = idx == len(tokens) - 1
-            next_token = tokens[idx + 1] if not last else None
-            if isinstance(current, list):
-                position = int(token)
-                while len(current) <= position:
-                    current.append({} if not str(next_token or "").isdigit() else [])
-                if last:
-                    current[position] = value
-                    return
-                current = current[position]
-                continue
-            if last:
-                current[token] = value
-                return
-            if token not in current or current[token] is None:
-                current[token] = [] if str(next_token).isdigit() else {}
-            current = current[token]
-
-    def _get_by_pointer(self, document: dict, pointer: str):
-        current = document
-        for token in self._pointer_tokens(pointer):
-            if isinstance(current, list):
-                position = int(token)
-                if position >= len(current):
-                    raise KeyError(pointer)
-                current = current[position]
-                continue
-            if token not in current:
-                raise KeyError(pointer)
-            current = current[token]
-        return current
-
-    def _set_at_path(self, document: dict, path: str, value) -> None:
-        if self._is_json_pointer(path):
-            self._set_by_pointer(document, path, value)
-            return
-        parse(path).update(document, value)
-
-    def _get_at_path(self, document: dict, path: str):
-        if self._is_json_pointer(path):
-            return self._get_by_pointer(document, path)
-        matches = parse(path).find(document)
-        if not matches:
-            raise KeyError(path)
-        return matches[0].value
-
     async def register_issuer(self, registration):
         """Register a new issuer with the TDW server."""
         # Derive did path components from registration
-        namespace = (
-            registration.get("namespace") or registration.get("scope") or ""
-        ).replace(" ", "-").lower()
+        namespace = (registration.get("namespace") or "").replace(" ", "-").lower()
         identifier = registration.get("name").replace(" ", "-").lower()
 
         # Request identifier from TDW server
@@ -242,46 +173,6 @@ class PublisherRegistrar:
 
         return did_document, authorized_key
 
-    async def template_credential(self, credential_registration):
-        mongo = MongoClient()
-        issuer = mongo.find_one(
-            "IssuerInstanceRecord", {"id": credential_registration["issuer"]}
-        )
-        if not issuer:
-            raise HTTPException(status_code=404, detail="Issuer not registered.")
-        credential_type = credential_registration["type"]
-        credential_version = credential_registration["version"]
-
-        credential_template = {
-            "@context": ["https://www.w3.org/ns/credentials/v2"],
-            "type": ["VerifiableCredential"],
-            "name": " ".join(
-                re.findall("[A-Z][^A-Z]*", credential_registration["subjectType"])
-            )
-            .strip(),
-            "issuer": {"id": issuer["id"], "name": issuer["name"]},
-            "credentialSubject": {"type": []},
-        }
-
-        if credential_registration.get("additionalType"):
-            if (
-                credential_registration.get("additionalType")
-                == "DigitalConformityCredential"
-            ):
-                credential_template = DigitalConformityCredential().extend_template(
-                    credential_registration=credential_registration,
-                    credential_template=credential_template,
-                )
-
-        credential_template["@context"].append(
-            f"https://{settings.PUBLISHER_DOMAIN}/contexts/{credential_type}/{credential_version}"
-        )
-        credential_template["type"].append(credential_type)
-        credential_template["credentialSubject"]["type"].append(
-            credential_registration["subjectType"]
-        )
-        return credential_template
-
     async def format_credential(self, credential_input, options):
         entity_id = options.get("entityId")
         cardinality_id = options.get("cardinalityId")
@@ -295,39 +186,37 @@ class PublisherRegistrar:
             raise HTTPException(status_code=404, detail="Unregistered credential type.")
 
         credential_template = credential_registration.get("template")
-        credential_id = options.get("credentialId")
+        if not credential_template:
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    f"No stored template for credential type {credential_type!r}; "
+                    "provision from configs/credentials/"
+                ),
+            )
         origin = publisher_origin()
 
-        if credential_registration.get("template_ref"):
-            issuer = mongo.find_one("IssuerInstanceRecord", {"id": credential_registration["issuer"]})
-            if not issuer:
-                raise HTTPException(status_code=404, detail="Issuer not registered.")
-            entity = entity_from_options(options)
-            try:
-                credential = build_dcc_from_publication(
-                    template=credential_template,
-                    credential_input=credential_input,
-                    options=options,
-                    type_record=credential_registration,
-                    issuer=issuer,
-                    entity=entity,
-                )
-                validate_untp_document(credential)
-            except UntpValidationError as exc:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"UNTP validation failed: {exc}",
-                ) from exc
-        else:
-            credential = await self._format_credential_legacy(
+        issuer = mongo.find_one(
+            "IssuerInstanceRecord", {"id": credential_registration["issuer"]}
+        )
+        if not issuer:
+            raise HTTPException(status_code=404, detail="Issuer not registered.")
+        entity = entity_from_options(options)
+        try:
+            credential = build_dcc_from_publication(
+                template=credential_template,
                 credential_input=credential_input,
                 options=options,
-                credential_registration=credential_registration,
-                credential_template=credential_template,
-                entity_id=entity_id,
-                credential_id=credential_id,
-                origin=origin,
+                type_record=credential_registration,
+                issuer=issuer,
+                entity=entity,
             )
+            validate_untp_document(credential)
+        except UntpValidationError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"UNTP validation failed: {exc}",
+            ) from exc
 
         credential["refreshService"] = [
             {
@@ -348,13 +237,6 @@ class PublisherRegistrar:
                     "StatusListRecord",
                     {"issuer": issuer_id, "purpose": purpose, "active": True},
                 )
-            if not status_list_record:
-                # Legacy CredentialTemplateRecord with a single combined list id.
-                for list_id in reversed(credential_registration.get("status_lists") or []):
-                    candidate = mongo.find_one("StatusListRecord", {"id": list_id})
-                    if candidate:
-                        status_list_record = candidate
-                        break
             if not status_list_record:
                 raise HTTPException(
                     status_code=500,
@@ -388,47 +270,6 @@ class PublisherRegistrar:
             refreshService=credential.get("refreshService"),
             renderMethod=credential_template.get("renderMethod"),
         ).model_dump()
-
-        return credential
-
-    async def _format_credential_legacy(
-        self,
-        *,
-        credential_input,
-        options,
-        credential_registration,
-        credential_template,
-        entity_id,
-        credential_id,
-        origin,
-    ):
-        credential = credential_template.copy()
-        credential["id"] = f"{origin}/credentials/{credential_id}"
-
-        credential["validFrom"] = credential_input.get("validFrom") or datetime.now(
-            timezone.utc
-        ).isoformat("T", "seconds")
-        if credential_input.get("validUntil"):
-            credential["validUntil"] = credential_input.get("validUntil")
-
-        credential["credentialSubject"] |= credential_input["credentialSubject"]
-        if credential_registration.get("additional_type"):
-            if (
-                credential_registration.get("additional_type")
-                == "DigitalConformityCredential"
-            ):
-                entity = entity_from_options(options)
-                credential["credentialSubject"]["issuedToParty"] |= {
-                    "id": entity["id"],
-                    "name": entity["name"],
-                    "registeredId": entity["registeredId"],
-                }
-
-                if credential_registration.get("additional_paths"):
-                    for attribute in credential_registration["additional_paths"]:
-                        value = options["additionalData"][attribute]
-                        path = credential_registration["additional_paths"][attribute]
-                        self._set_at_path(credential, path, value)
 
         return credential
 

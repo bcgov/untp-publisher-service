@@ -6,31 +6,11 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from app.presets.loader import (
-    build_template_from_preset,
-    get_preset,
-    template_ref_for_domain_type,
-)
+from app.services.registration_template import build_registration_template
 from app.repo_configs.loader import load_publication_config
 from app.services.dcc_builder import build_dcc_from_publication
 from app.services.entity import entity_from_options
 from app.validators.untp import UntpValidationError, validate_untp_document
-
-
-def _template_ref_for_publication(credential_type: str, cred_cfg: dict[str, Any]) -> str:
-    explicit = cred_cfg.get("templateRef")
-    if isinstance(explicit, str) and explicit.strip():
-        return explicit.strip()
-    inferred = template_ref_for_domain_type(credential_type)
-    if inferred:
-        return inferred
-    raise HTTPException(
-        status_code=400,
-        detail=(
-            f"No templateRef for credential type {credential_type!r}. "
-            "Set credentials[].templateRef in the publication config or register a preset."
-        ),
-    )
 
 
 def build_unsigned_credential_from_publication(
@@ -48,20 +28,15 @@ def build_unsigned_credential_from_publication(
     pub = load_publication_config(credential_type)
     issuer = pub["issuer"]
     cred_cfg = pub["credential"]
-    template_ref = _template_ref_for_publication(credential_type, cred_cfg)
-    preset = get_preset(template_ref)
 
-    template = build_template_from_preset(
-        template_ref=template_ref,
+    template = build_registration_template(
+        credential_type=credential_type,
         issuer=issuer,
-        domain_type=credential_type,
     )
     type_record = {
         "type": credential_type,
         "version": cred_cfg.get("version", "v1.0"),
         "issuer": issuer.get("id"),
-        "template_ref": template_ref,
-        "core_paths": preset["core_paths"],
         "template": template,
     }
 

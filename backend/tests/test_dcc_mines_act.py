@@ -1,4 +1,4 @@
-"""Tests for mines-act DCC preset loader and publication builder."""
+"""Tests for mines-act DCC registration template and publication builder."""
 
 from __future__ import annotations
 
@@ -8,10 +8,12 @@ from datetime import datetime, timezone
 import pytest
 
 from app.repo_configs.loader import load_sample_publication_payload
-from app.presets.loader import build_template_from_preset, load_instance_skeleton
+from app.services.registration_template import (
+    build_registration_template,
+    load_instance_skeleton,
+)
 from app.services import dcc_builder
 
-TEMPLATE_REF = "untp_v0_7_0_dcc_mines_act_permit"
 CREDENTIAL_TYPE = "BCMinesActPermitCredential"
 MINES_ACT_URL = (
     "https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/96293_01"
@@ -36,21 +38,16 @@ def issuer():
 @pytest.fixture
 def type_record():
     return {
-        "type": "BCMinesActPermitCredential",
+        "type": CREDENTIAL_TYPE,
         "version": "v1.0",
         "issuer": "did:web:registry.example.ca:mines-act:chief-permitting-officer",
-        "template_ref": TEMPLATE_REF,
-        "core_paths": {
-            "entityId": "/credentialSubject/issuedToParty/registeredId",
-            "cardinalityId": "/credentialSubject/conformityAssessment/0/registeredId",
-        },
-        "template": load_instance_skeleton(TEMPLATE_REF),
+        "template": load_instance_skeleton(CREDENTIAL_TYPE),
     }
 
 
-def test_build_template_from_preset(issuer):
-    template = build_template_from_preset(
-        template_ref=TEMPLATE_REF,
+def test_build_registration_template(issuer):
+    template = build_registration_template(
+        credential_type=CREDENTIAL_TYPE,
         issuer=issuer,
     )
     assert "DigitalConformityCredential" in template["type"]
@@ -59,16 +56,16 @@ def test_build_template_from_preset(issuer):
     assert template["credentialSubject"]["referenceScheme"]["id"] == MINES_ACT_URL
 
 
-def test_validate_publication_rejects_cardinality_mismatch(publication_payload, type_record):
+def test_validate_publication_requires_cardinality_id(publication_payload, type_record):
     payload = copy.deepcopy(publication_payload)
-    payload["options"]["cardinalityId"] = "WRONG"
+    payload["options"]["cardinalityId"] = ""
     with pytest.raises(Exception) as exc:
         dcc_builder.validate_publication(
             credential_input=payload["credential"],
             options=payload["options"],
             type_record=type_record,
         )
-    assert "must match" in str(exc.value.detail)
+    assert "cardinalityId" in str(exc.value.detail)
 
 
 def test_build_dcc_from_publication(
@@ -88,7 +85,10 @@ def test_build_dcc_from_publication(
         "name": "EXAMPLE MINING CO",
         "registeredId": "A0034771",
     }
-    template = build_template_from_preset(template_ref=TEMPLATE_REF, issuer=issuer)
+    template = build_registration_template(
+        credential_type=CREDENTIAL_TYPE,
+        issuer=issuer,
+    )
     type_record["template"] = template
 
     credential = dcc_builder.build_dcc_from_publication(
@@ -104,12 +104,14 @@ def test_build_dcc_from_publication(
         "VerifiableCredential",
         "DigitalConformityCredential",
     ]
-    assert credential["credentialSubject"]["id"].endswith("/permits/Q-20")
+    assert credential["credentialSubject"]["id"] == (
+        "urn:ca:bcgov:mines-act:permit:Q-20"
+    )
     assert credential["credentialSubject"]["issuedToParty"]["registeredId"] == "A0034771"
     assessment = credential["credentialSubject"]["conformityAssessment"][0]
     assert assessment["registeredId"] == "Q-20"
     assert assessment["assessmentDate"] == "1999-04-19"
-    assert assessment["id"].endswith("/permits/Q-20")
+    assert assessment["id"] == "urn:ca:bcgov:mines-act:permit:Q-20:assessment"
     assert credential["validFrom"] == "2026-06-02T15:30:00Z"
     assert credential["validFrom"] != "1999-04-19T00:00:00+00:00"
     assert "Permit Q-20 authorizes" in assessment["description"]
@@ -121,7 +123,12 @@ def test_build_dcc_from_publication(
     assert "Kootenay West" in credential["credentialSubject"]["description"]
     assert assessment["assessedOrganisation"]["name"] == "EXAMPLE MINING CO"
     assert assessment["assessedOrganisation"]["registeredId"] == "A0034771"
-    assert assessment["assessedOrganisation"]["id"] == entity["id"]
+    assert assessment["assessedOrganisation"]["id"] == (
+        "urn:ca:bcgov:mines-act:permit:Q-20:permittee:A0034771"
+    )
+    assert credential["credentialSubject"]["issuedToParty"]["id"] == (
+        "urn:ca:bcgov:mines-act:permit:Q-20:permittee:A0034771"
+    )
     ref_scheme = credential["credentialSubject"]["referenceScheme"]
     assert ref_scheme["id"].endswith("96293_01")
     assert ref_scheme["name"] == "Mines Act (British Columbia)"
@@ -131,12 +138,12 @@ def test_build_dcc_from_publication(
     assert len(assessment["assessedFacility"]) == 1
     assert assessment["assessedFacility"][0]["type"] == ["FacilityVerification"]
     facility_obj = assessment["assessedFacility"][0]["facility"]
-    assert facility_obj["id"] == "https://mines.nrs.gov.bc.ca/0500956"
+    assert facility_obj["id"] == "urn:ca:bcgov:mines-act:permit:Q-20:mine:0500956"
     assert facility_obj["locationInformation"]["plusCode"] == (
         "https://plus.codes/9526679P+4V"
     )
     assert len(assessment["assessedProduct"]) == 1
     assert assessment["assessedProduct"][0]["product"]["name"] == "Construction Aggregate"
-    assert assessment["assessedProduct"][0]["product"]["id"].endswith(
-        "/products/construction-aggregate"
+    assert assessment["assessedProduct"][0]["product"]["id"] == (
+        "urn:ca:bcgov:mines-act:permit:Q-20:commodity:construction-aggregate"
     )

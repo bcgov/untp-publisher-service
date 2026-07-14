@@ -8,13 +8,11 @@ from app.services.credential_type_provision import ensure_credential_type
 class _FakeMongo:
     def __init__(self):
         self.types: list[dict] = []
-        self.status: list[dict] = []
         self.issuers: dict[str, dict] = {}
 
     def find_one(self, collection, query):
         rows = {
             "CredentialTemplateRecord": self.types,
-            "StatusListRecord": self.status,
             "IssuerInstanceRecord": list(self.issuers.values()),
         }[collection]
         for record in rows:
@@ -25,8 +23,6 @@ class _FakeMongo:
     def insert(self, collection, item):
         if collection == "CredentialTemplateRecord":
             self.types.append(dict(item))
-        elif collection == "StatusListRecord":
-            self.status.append(dict(item))
         elif collection == "IssuerInstanceRecord":
             self.issuers[item["id"]] = dict(item)
 
@@ -35,15 +31,6 @@ def test_ensure_credential_type_creates_once(monkeypatch):
     mongo = _FakeMongo()
     issuer_id = "did:web:example.ca:mines-act:officer"
     mongo.issuers[issuer_id] = {"id": issuer_id, "name": "Officer"}
-    for purpose in ("revocation", "suspension", "refresh"):
-        mongo.status.append(
-            {
-                "id": f"list-{purpose}",
-                "issuer": issuer_id,
-                "purpose": purpose,
-                "active": True,
-            }
-        )
 
     monkeypatch.setattr(
         "app.services.credential_type_provision.publisher_origin",
@@ -69,12 +56,8 @@ def test_ensure_credential_type_creates_once(monkeypatch):
     )
     assert first["type"] == "BCMinesActPermitCredential"
     assert first["version"] == "v1.1"
-    assert first["template_ref"] == "untp_v0_7_0_dcc_mines_act_permit"
-    assert first["status_lists"] == [
-        "list-revocation",
-        "list-suspension",
-        "list-refresh",
-    ]
+    assert "template_ref" not in first
+    assert "status_lists" not in first
     assert len(mongo.types) == 1
 
     second = ensure_credential_type(

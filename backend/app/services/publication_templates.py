@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 import yaml
@@ -10,17 +11,43 @@ from fastapi import HTTPException
 from jinja2 import StrictUndefined, TemplateSyntaxError, UndefinedError
 from jinja2.sandbox import SandboxedEnvironment
 
-from app.presets.loader import product_slug
-
 _JINJA = SandboxedEnvironment(autoescape=False, undefined=StrictUndefined)
 _JINJA.filters["tojson"] = json.dumps
+
+
+def product_slug(name: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", (name or "").lower()).strip("-")
+    return slug or "product"
+
+
 _JINJA.filters["product_slug"] = product_slug
+
+
+def _fail(message: str) -> str:
+    """Raise a client error from a credential template (Jinja ``fail`` helper)."""
+    raise HTTPException(status_code=400, detail=str(message))
+
+
+def exactly_one(value: Any, label: str = "list") -> Any:
+    """Return the sole list item, or 400 if missing / not a single-item list."""
+    if isinstance(value, str) or not isinstance(value, (list, tuple)):
+        _fail(f"{label} must contain exactly 1 item")
+    if len(value) != 1:
+        _fail(f"{label} must contain exactly 1 item")
+    return value[0]
+
+
+_JINJA.globals["fail"] = _fail
+_JINJA.filters["exactly_one"] = exactly_one
 
 
 def template_stub_context() -> dict[str, Any]:
     """Minimal context to render a template for structure inspection (empty arrays)."""
     return {
-        "credential": {"credentialSubject": {"permitNumber": "STUB"}},
+        "credential": {
+            "credentialSubject": {},
+            "validFrom": "1999-01-01T00:00:00Z",
+        },
         "options": {
             "cardinalityId": "STUB",
             "entityId": "STUB",
@@ -39,8 +66,6 @@ def template_stub_context() -> dict[str, Any]:
             "name": "Stub Organization",
             "registeredId": "STUB",
         },
-        "permit_uri": "https://registry.digitaltrust.gov.bc.ca/mines-act/permits/STUB",
-        "assessment_date": "1999-01-01",
     }
 
 
@@ -51,6 +76,8 @@ def render_template_text(template: str, context: dict[str, Any]) -> str:
         return template
     try:
         return _JINJA.from_string(template).render(**context)
+    except HTTPException:
+        raise
     except TemplateSyntaxError as exc:
         raise HTTPException(
             status_code=500,

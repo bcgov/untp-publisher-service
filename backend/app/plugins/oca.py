@@ -79,8 +79,13 @@ class OCAProcessor:
             "attribute_clusters": {},
         }
         attributes = (
-            credential_registration["corePaths"]
-            | credential_registration["subjectPaths"]
+            credential_registration.get("corePaths")
+            or credential_registration.get("core_paths")
+            or {}
+        ) | (
+            credential_registration.get("subjectPaths")
+            or credential_registration.get("subject_paths")
+            or {}
         )
         for attribute in attributes:
             capture_base["attributes"][attribute] = "Text"

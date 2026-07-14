@@ -10,7 +10,7 @@ MINES_ACT_BUILD_EXAMPLE: dict[str, Any] = {
     "credential": {
         "type": "BCMinesActPermitCredential",
         "validFrom": "1999-04-19T00:00:00+00:00",
-        "credentialSubject": {"permitNumber": "Q-20"},
+        "credentialSubject": {},
     },
     "options": {
         "entityId": "A0034771",

@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 from fastapi import HTTPException
 
@@ -12,7 +14,8 @@ from app.services.publication_templates import (
 PAYLOAD = {
     "credential": {
         "type": "BCMinesActPermitCredential",
-        "credentialSubject": {"permitNumber": "Q-20"},
+        "validFrom": "1999-04-19T00:00:00+00:00",
+        "credentialSubject": {},
     },
     "options": {
         "entityId": "A0034771",
@@ -77,6 +80,35 @@ def test_render_template_text_rejects_undefined_variables():
     assert "undefined variable" in str(exc.value.detail).lower()
 
 
+def test_mines_act_template_requires_exactly_one_assessed_facility():
+    source = load_credential_template_source("BCMinesActPermitCredential")
+    options = copy.deepcopy(PAYLOAD["options"])
+    options["additionalData"]["assessedFacility"] = []
+    context = publication_template_context(
+        credential=PAYLOAD["credential"],
+        options=options,
+        organization=ORGANIZATION,
+    )
+    with pytest.raises(HTTPException) as exc:
+        render_template_yaml(source, context)
+    assert exc.value.status_code == 400
+    assert "exactly 1" in str(exc.value.detail)
+
+    options["additionalData"]["assessedFacility"] = [
+        {"name": "A", "registeredId": "1"},
+        {"name": "B", "registeredId": "2"},
+    ]
+    context = publication_template_context(
+        credential=PAYLOAD["credential"],
+        options=options,
+        organization=ORGANIZATION,
+    )
+    with pytest.raises(HTTPException) as exc:
+        render_template_yaml(source, context)
+    assert exc.value.status_code == 400
+    assert "exactly 1" in str(exc.value.detail)
+
+
 def test_render_template_yaml_parses_assessment_arrays():
     source = load_credential_template_source("BCMinesActPermitCredential")
     context = publication_template_context(
@@ -84,14 +116,12 @@ def test_render_template_yaml_parses_assessment_arrays():
         options=PAYLOAD["options"],
         organization=ORGANIZATION,
     )
-    context["permit_uri"] = "https://registry.digitaltrust.gov.bc.ca/mines-act/permits/Q-20"
-    context["assessment_date"] = "1999-04-19"
     rendered = render_template_yaml(source, context)
     assessment = rendered["credentialSubject"]["conformityAssessment"]
     assert len(assessment["assessedFacility"]) == 1
     assert assessment["assessedFacility"][0]["type"] == ["FacilityVerification"]
-    assert assessment["assessedProduct"][0]["product"]["id"].endswith(
-        "/products/construction-aggregate"
+    assert assessment["assessedProduct"][0]["product"]["id"] == (
+        "urn:ca:bcgov:mines-act:permit:Q-20:commodity:construction-aggregate"
     )
 
 
@@ -102,8 +132,6 @@ def test_template_renders_assessed_facility_from_config():
         options=PAYLOAD["options"],
         organization=ORGANIZATION,
     )
-    context["permit_uri"] = "https://registry.digitaltrust.gov.bc.ca/mines-act/permits/Q-20"
-    context["assessment_date"] = "1999-04-19"
 
     assessment = {}
     credential = {}
@@ -131,8 +159,6 @@ def test_apply_configured_template_fields_sets_assessment_arrays():
         options=PAYLOAD["options"],
         organization=ORGANIZATION,
     )
-    context["permit_uri"] = "https://registry.digitaltrust.gov.bc.ca/mines-act/permits/Q-20"
-    context["assessment_date"] = "1999-04-19"
 
     apply_configured_template_fields(
         template_source=source,
@@ -146,8 +172,8 @@ def test_apply_configured_template_fields_sets_assessment_arrays():
 
     assert len(assessment["assessedFacility"]) == 1
     assert len(assessment["assessedProduct"]) == 1
-    assert assessment["assessedProduct"][0]["product"]["id"].endswith(
-        "/products/construction-aggregate"
+    assert assessment["assessedProduct"][0]["product"]["id"] == (
+        "urn:ca:bcgov:mines-act:permit:Q-20:commodity:construction-aggregate"
     )
 
 
@@ -161,8 +187,6 @@ def test_apply_configured_template_fields_merges_reference_scheme():
         options=PAYLOAD["options"],
         organization=ORGANIZATION,
     )
-    context["permit_uri"] = "https://registry.digitaltrust.gov.bc.ca/mines-act/permits/Q-20"
-    context["assessment_date"] = "1999-04-19"
 
     apply_configured_template_fields(
         template_source=source,

@@ -25,19 +25,8 @@ class CredentialTemplateRecord(BaseModel):
     type: str = Field()
     version: str = Field()
     issuer: str = Field()
-    context: dict = Field()
     template: dict = Field()
     oca_bundle: dict = Field()
-    json_schema: dict = Field()
-    core_paths: dict = Field()
-    subject_type: str = Field(None)
-    subject_paths: dict = Field(None)
-    additional_type: str = Field(None)
-    additional_paths: dict = Field(None)
-    template_ref: str = Field(None)
-    publication_rules: dict = Field(None)
-    cardinality_field: str = Field(None)
-    status_lists: list = Field()
 
 
 class CredentialRecord(BaseModel):

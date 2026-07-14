@@ -235,9 +235,9 @@ def _asset_path(credential_type: str, filename: str) -> Path:
 
 
 def _template_path_for_type(credential_type: str, credential: dict[str, Any]) -> Path:
-    template_ref = credential.get("template")
-    if isinstance(template_ref, str) and template_ref.strip():
-        return resolve_config_path(template_ref.strip())
+    template_path = credential.get("template")
+    if isinstance(template_path, str) and template_path.strip():
+        return resolve_config_path(template_path.strip())
     return credential_set_dir(credential_type) / "template.yaml"
 
 

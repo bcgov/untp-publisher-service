@@ -69,8 +69,6 @@ def ensure_issuer_record(issuer: dict[str, Any], *, mongo: MongoClient | None = 
         refreshed = {**existing, **updates}
         # Drop Mongo projection artifacts if any leaked in.
         refreshed.pop("_id", None)
-        # Migrate legacy field name if present.
-        refreshed.pop("scope", None)
         mongo.replace("IssuerInstanceRecord", {"id": issuer_id}, refreshed)
         settings.LOGGER.info(
             "Local issuer record updated for %s (%s).",

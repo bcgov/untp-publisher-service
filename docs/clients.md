@@ -87,24 +87,6 @@ A list of assessed products
 {
   "type": "BCPetroleumAndNaturalGasTitleCredential",
   "version": "v1.0",
-  "additionalType": "DigitalConformityCredential",
-  "corePaths": {
-    "entityId": "$.credentialSubject.issuedToParty.registeredId",
-    "cardinalityId": "$.credentialSubject.titleNumber"
-  },
-  "subjectPaths": {
-    "term": "$.credentialSubject.term",
-    "area": "$.credentialSubject.area",
-    "caveats": "$.credentialSubject.caveats",
-    "titleType": "$.credentialSubject.titleType",
-    "titleNumber": "$.credentialSubject.titleNumber",
-    "originType": "$.credentialSubject.originType",
-    "originNumber": "$.credentialSubject.originNumber"
-  },
-  "additionalPaths": {
-    "wells": "$.credentialSubject.assessment[0].assessedFacility",
-    "tracts": "$.credentialSubject.assessment[0].assessedProduct"
-  },
   "relatedResources": {
     "context": "https://bcgov.github.io/digital-trust-toolkit/contexts/BCPetroleumAndNaturalGasTitle/v1.jsonld",
     "legalAct": "https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/00_96361_01",
@@ -182,24 +164,7 @@ A list of assessed products
 ```json
 {
   "type": "BCMinesActPermitCredential",
-  "version": "v1.0",
-  "additionalType": "DigitalConformityCredential",
-  "corePaths": {
-    "entityId": "$.credentialSubject.issuedToParty.registeredId",
-    "cardinalityId": "$.credentialSubject.permitNumber"
-  },
-  "subjectPaths": {
-    "permitNumber": "$.credentialSubject.titleNumber"
-  },
-  "additionalPaths": {
-    "assessedProduct": "$.credentialSubject.assessment[0].assessedProduct",
-    "assessedFacility": "$.credentialSubject.assessment[0].assessedFacility"
-  },
-  "relatedResources": {
-    "context": "https://bcgov.github.io/digital-trust-toolkit/contexts/BCPetroleumAndNaturalGasTitle/v1.jsonld",
-    "legalAct": "https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/00_96361_01",
-    "governance": "https://bcgov.github.io/digital-trust-toolkit/docs/governance/pilots/bc-petroleum-and-natural-gas-title"
-  }
+  "version": "v1.1"
 }
 ```
 ##### Publication Payload
@@ -209,10 +174,7 @@ A list of assessed products
         "type": "BCMinesActPermitCredential",
         "validFrom": "2024-06-01T00:00:00Z",
         "validUntil": "2025-06-01T00:00:00Z",
-        "credentialSubject": {
-            "type": "MinesActPermit",
-            "permitNumber": "62715"
-        }
+        "credentialSubject": {}
     },
     "options": {
         "entityId": "",
