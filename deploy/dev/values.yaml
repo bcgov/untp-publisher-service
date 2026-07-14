@@ -1,0 +1,62 @@
+## Development overlay — namespace f890b1-dev (shared with tests-untp-ri).
+## See tests-untp repo deploy/f890b1-dev-quota.md for combined quota split.
+##   cd charts/untp-publisher && helm dependency update
+##   helm upgrade --install untp-publisher-service . -f ../../deploy/dev/values.yaml -n f890b1-dev
+##
+## Public URL: standard Gold Route host (*.apps.gold.devops.gov.bc.ca; same edge-TLS pattern as BC-Wallet-Demo on Silver).
+## OpenShift edge termination — no ingress.tls / no custom cert Secret.
+##
+## Pre-create Traction Secret (see backend.traction.existingSecret).
+
+ingress:
+  annotations:
+    route.openshift.io/termination: edge
+  # No tls: — router terminates HTTPS (see BC-Wallet-Demo deploy/showcase/values-dev.yaml).
+
+networkPolicy:
+  ingress:
+    namespaceSelector:
+      network.openshift.io/policy-group: ingress
+
+backend:
+  testSuite: false
+  image:
+    repository: ghcr.io/bcgov/untp-publisher-service
+    tag: dev-0.0.2
+    pullPolicy: Always
+  # Hostname only (sets Ingress rule + pod DOMAIN). Public origin: https://untp-publisher-api-dev.apps.gold.devops.gov.bc.ca
+  host: untp-publisher-api-dev.apps.gold.devops.gov.bc.ca
+  traction:
+    apiUrl: "https://traction-tenant-proxy-dev.apps.silver.devops.gov.bc.ca"
+    existingSecret: untp-publisher-service-traction-tenant-info
+  didwebvh:
+    serverUrl: "https://registry-dev.digitaltrust.gov.bc.ca"
+    witnessPublicKeyMultibase: "z6MkekByGjKYvP6dpMBJEHt5UN72rKPVoDgzcS9Hoq6bjfr1"
+  environment:
+    orgbookUrl: "https://dev.orgbook.gov.bc.ca"
+    issuerRegistryUrl: "https://bcgov.github.io/digital-trust-toolkit/registrations/issuers/dev.json"
+  resources:
+    limits:
+      cpu: 300m
+      memory: 384Mi
+    requests:
+      cpu: 25m
+      memory: 128Mi
+
+mongodb:
+  customUser:
+    # Must match Helm release name untp-publisher-service (parent-managed secret).
+    existingSecret: untp-publisher-service-mongodb-custom-user-secret
+  targetPlatform: openshift
+  # 512Mi PVC — half of namespace 1Gi netapp-file-standard (RI uses the other 512Mi).
+  persistence:
+    size: 512Mi
+  resources:
+    limits:
+      memory: 384Mi
+    requests:
+      cpu: 25m
+      memory: 128Mi
+  commonLabels:
+    backup: "true"
+    env: dev
