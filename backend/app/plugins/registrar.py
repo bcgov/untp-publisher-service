@@ -178,12 +178,12 @@ class PublisherRegistrar:
 
         return did_document, authorized_key
 
-    async def format_credential(self, credential_input, options):
+    async def format_credential(self, options):
         entity_id = options.get("entityId")
         cardinality_id = options.get("cardinalityId")
+        credential_type = options.get("template")
 
         mongo = MongoClient()
-        credential_type = credential_input.get("type")
         credential_registration = mongo.find_one(
             "CredentialTemplateRecord", {"type": credential_type}
         )
@@ -210,7 +210,6 @@ class PublisherRegistrar:
         try:
             credential = build_credential(
                 template=credential_template,
-                credential_input=credential_input,
                 options=options,
                 type_record=credential_registration,
                 issuer=issuer,
@@ -280,12 +279,14 @@ class PublisherRegistrar:
 
         return credential
 
-    async def check_cardinality(self, credential_input, options):
-        if options.get("additionalData"):
-            credential_input["credentialSubject"] |= options.get("additionalData")
-
+    async def check_cardinality(self, options):
+        hash_input = {
+            "template": options.get("template"),
+            "version": options.get("version"),
+            "data": options.get("data") or {},
+        }
         cardinality_hash = b58encode(
-            hashlib.sha256(encode_canonical_json(credential_input)).digest()
+            hashlib.sha256(encode_canonical_json(hash_input)).digest()
         ).decode()
         cardinality_hash = f"z{cardinality_hash}"
         settings.LOGGER.info(cardinality_hash)
@@ -295,7 +296,7 @@ class PublisherRegistrar:
         credential_collection = mongo.find(
             "CredentialRecord",
             {
-                "type": credential_input.get("type"),
+                "type": options.get("template"),
                 "entity_id": options.get("entityId"),
                 "cardinality_id": options.get("cardinalityId"),
                 "refresh": False,

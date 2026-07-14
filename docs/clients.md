@@ -1,37 +1,43 @@
 # Publishing credentials
-Instructions for lines of business to obtain Verifiable Credentials from the publisher. Include the holder’s `entityId` and `entityName` on each publication request.
+Instructions for lines of business to obtain Verifiable Credentials from the publisher.
+
+Send ``template``, ``version``, and ``data``. Entity and cardinality values are taken from
+``data`` using JSON Pointers configured on that credential type in ``configs/issuers.yaml``.
 
 ## Integration
 ### Issuer and credential type setup
 1. Open an issue on the [digital trust toolkit](https://github.com/bcgov/digital-trust-toolkit)
     Include the name, namespace and description of the issuing entity (and credential types to publish).
-2. An admin adds the issuer (and `credentials[]`) to `configs/issuers.yaml` and merges related credential assets under `configs/credentials/`. Startup provisioning creates local issuer, status list, and credential type records.
+2. An admin adds the issuer (and `credentials[]` with `pointers`) to `configs/issuers.yaml` and merges related credential assets under `configs/credentials/`. Startup provisioning creates local issuer, status list, and credential type records.
 3. Once deployed, a secret key will be provided to you (`POST /auth/secret`).
 
 ### Credential publication
 #### By api
-1. Request an access token from the UNTP publisher
-    ```json
-    {
-        "client_id": "",
-        "client_secret": ""
-    }
-    ```
-2. Send a publication request
+1. Authenticate with either:
+    - a client access token from `POST /auth/token` (`Authorization: Bearer …`), or
+    - an admin `X-API-Key` (same key used for `POST /auth/secret` / issuer ops)
+2. Send a publication request to `POST /credentials/publish`
     *Publication requests will depend on the provisioned credential type.*
     ```json
     {
-        "credential": {
-            "type": "",
-            "validFrom": "",
-            "validUntil": "",
-            "credentialSubject": {}
-        },
-        "options": {
-            "entityId": "",
-            "entityName": "Example Mining Co.",
-            "credentialId": "",
-            "cardinalityId": ""
+        "template": "BCMinesActPermitCredential",
+        "version": "v1.1",
+        "credentialId": "",
+        "data": {
+            "permit": {
+                "issuanceDate": "",
+                "identifier": ""
+            },
+            "permittee": {
+                "name": "Example Mining Co.",
+                "identifier": ""
+            },
+            "mine": {
+                "name": "",
+                "identifier": "",
+                "infoPageId": ""
+            },
+            "commodities": []
         }
     }
     ```

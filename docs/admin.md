@@ -17,6 +17,7 @@ Publisher admins work from **repo configs** and a few API-key / client-auth endp
 | `GET /status-lists/{id}` | None | Status list credential |
 | `POST /auth/secret` | `X-API-Key` | Generate issuer client secret |
 | `POST /auth/token` | Client secret | Exchange for publish JWT |
+| `POST /credentials/publish` | Client JWT **or** `X-API-Key` | Issue and store a credential |
 
 Mongo inspection, when needed, is done with normal DB tools (Compass, `mongosh`), not the publisher API.
 

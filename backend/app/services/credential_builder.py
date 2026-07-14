@@ -43,35 +43,28 @@ def ensure_publisher_extension_context(credential: dict[str, Any]) -> None:
         credential["@context"] = [*ctx, url]
 
 
-def validate_publication(
-    *,
-    credential_input: dict[str, Any],
-    options: dict[str, Any],
-    type_record: dict[str, Any],
-) -> None:
+def validate_publication(*, options: dict[str, Any]) -> None:
     cardinality_id = options.get("cardinalityId")
     if cardinality_id is None or str(cardinality_id).strip() == "":
         raise HTTPException(
             status_code=400,
-            detail="options.cardinalityId is required",
+            detail="cardinalityId is required",
         )
+    entity_id = options.get("entityId")
+    if entity_id is None or str(entity_id).strip() == "":
+        raise HTTPException(status_code=400, detail="entityId is required")
 
 
 def build_credential(
     *,
     template: dict[str, Any],
-    credential_input: dict[str, Any],
     options: dict[str, Any],
     type_record: dict[str, Any],
     issuer: dict[str, Any],
     entity: dict[str, Any],
 ) -> dict[str, Any]:
     """Assemble a credential by rendering ``template.yaml`` for the publication request."""
-    validate_publication(
-        credential_input=credential_input,
-        options=options,
-        type_record=type_record,
-    )
+    validate_publication(options=options)
 
     template_source = load_credential_template_source_optional(type_record.get("type"))
     if not template_source:
@@ -84,7 +77,6 @@ def build_credential(
         )
 
     text_context = publication_template_context(
-        credential=credential_input,
         options=options,
         organization=entity,
     )
@@ -102,8 +94,11 @@ def build_credential(
     published_at = format_utc_datetime(datetime.now(timezone.utc))
     credential_id = options.get("credentialId")
     credential["id"] = f"{publisher_origin()}/credentials/{credential_id}"
-    credential["validFrom"] = published_at
-    if credential_input.get("validUntil"):
-        credential["validUntil"] = credential_input["validUntil"]
+    if options.get("validFrom"):
+        credential["validFrom"] = options["validFrom"]
+    else:
+        credential["validFrom"] = published_at
+    if options.get("validUntil"):
+        credential["validUntil"] = options["validUntil"]
 
     return credential

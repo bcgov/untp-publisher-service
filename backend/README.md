@@ -34,10 +34,11 @@ curl -sS -X POST http://localhost:8000/test-suite/build-credential \
   | jq .
 ```
 
-Include **`options.entityId`** and **`options.entityName`** on the publication payload (holder registered id and legal name).
+Include **`template`**, **`version`**, and **`data`** on the publication payload.
+Holder and permit ids are resolved from `data` via `issuers.yaml` pointers.
 
 - **`POST /test-suite/validate`** — JSON body is the UNTP document; optional query **`kind`** (`dcc_credential` or `dcc_attestation`) skips automatic `type` detection.
-- **`POST /test-suite/build-credential`** — JSON body is a publication payload (`credential`, `options`); returns **`credential`** (unsigned, no `proof`) after UNTP validation (400 when invalid).
+- **`POST /test-suite/build-credential`** — JSON body is a publication payload (`template`, `version`, `data`); returns **`credential`** (unsigned, no `proof`) after UNTP validation (400 when invalid).
 - Response (validate): **`success`**, **`validation_checks`** (same structure as the validator’s per-check report), **`artefact_kind`**, and **`error`** when validation fails.
 
 When **`TEST_SUITE`** is unset or false, **`/test-suite/*`** routes are omitted entirely.

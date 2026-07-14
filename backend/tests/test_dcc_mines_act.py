@@ -6,8 +6,10 @@ import copy
 from datetime import datetime, timezone
 
 import pytest
+from fastapi import HTTPException
 
 from app.repo_configs.loader import load_sample_publication_payload
+from app.services.publication_request import normalize_publication
 from app.services.registration_template import build_registration_template
 from app.services import credential_builder
 
@@ -57,21 +59,15 @@ def test_build_registration_template(issuer):
     assert template["credentialSubject"]["referenceScheme"]["id"] == MINES_ACT_URL
 
 
-def test_validate_publication_requires_cardinality_id(publication_payload, type_record):
+def test_normalize_publication_requires_permit_id(publication_payload):
     payload = copy.deepcopy(publication_payload)
-    payload["options"]["cardinalityId"] = ""
-    with pytest.raises(Exception) as exc:
-        credential_builder.validate_publication(
-            credential_input=payload["credential"],
-            options=payload["options"],
-            type_record=type_record,
-        )
-    assert "cardinalityId" in str(exc.value.detail)
+    payload["data"]["permit"]["identifier"] = ""
+    with pytest.raises(HTTPException) as exc:
+        normalize_publication(payload)
+    assert exc.value.status_code == 400
 
 
-def test_build_credential(
-    publication_payload, type_record, issuer, monkeypatch
-):
+def test_build_credential(publication_payload, type_record, issuer, monkeypatch):
     published_at = datetime(2026, 6, 2, 15, 30, 0, tzinfo=timezone.utc)
 
     class FixedDateTime(datetime):
@@ -81,11 +77,8 @@ def test_build_credential(
 
     monkeypatch.setattr(credential_builder, "datetime", FixedDateTime)
 
-    entity = {
-        "id": "https://www.bcregistry.gov.bc.ca/business/A0034771",
-        "name": "EXAMPLE MINING CO",
-        "registeredId": "A0034771",
-    }
+    options = normalize_publication(publication_payload)
+    entity = options["organization"]
     template = build_registration_template(
         credential_type=CREDENTIAL_TYPE,
         issuer=issuer,
@@ -94,8 +87,7 @@ def test_build_credential(
 
     credential = credential_builder.build_credential(
         template=template,
-        credential_input=publication_payload["credential"],
-        options=publication_payload["options"],
+        options=options,
         type_record=type_record,
         issuer=issuer,
         entity=entity,
@@ -114,7 +106,6 @@ def test_build_credential(
     assert assessment["assessmentDate"] == "1999-04-19"
     assert assessment["id"] == "urn:ca:bcgov:mines-act:permit:Q-20:assessment"
     assert credential["validFrom"] == "2026-06-02T15:30:00Z"
-    assert credential["validFrom"] != "1999-04-19T00:00:00+00:00"
     assert "Permit Q-20 authorizes" in assessment["description"]
     assert "Construction Aggregate" in assessment["description"]
     assert credential["credentialSubject"]["name"] == (
@@ -134,8 +125,8 @@ def test_build_credential(
     assert ref_scheme["id"].endswith("96293_01")
     assert ref_scheme["name"] == "Mines Act (British Columbia)"
     criteria = assessment["assessmentCriteria"][0]
-    assert criteria["id"].endswith("96293_01")
-    assert criteria["name"] == "Mines Act"
+    assert criteria["id"].endswith("#section10")
+    assert criteria["name"] == "Permits"
     assert len(assessment["assessedFacility"]) == 1
     assert assessment["assessedFacility"][0]["type"] == ["FacilityVerification"]
     facility_obj = assessment["assessedFacility"][0]["facility"]

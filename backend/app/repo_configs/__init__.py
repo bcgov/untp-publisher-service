@@ -3,6 +3,7 @@
 from app.repo_configs.loader import (
     credential_set_dir,
     credential_version_for_type,
+    credential_yaml_entry,
     issuer_did_from_alias,
     list_issuer_instances,
     load_credential_template,
@@ -31,6 +32,7 @@ from app.repo_configs.loader import (
 __all__ = [
     "credential_set_dir",
     "credential_version_for_type",
+    "credential_yaml_entry",
     "issuer_did_from_alias",
     "list_issuer_instances",
     "load_credential_template",

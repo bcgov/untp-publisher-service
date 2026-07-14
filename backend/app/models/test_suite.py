@@ -7,34 +7,31 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 MINES_ACT_BUILD_EXAMPLE: dict[str, Any] = {
-    "credential": {
-        "type": "BCMinesActPermitCredential",
-        "validFrom": "1999-04-19T00:00:00+00:00",
-        "credentialSubject": {},
-    },
-    "options": {
-        "entityId": "A0034771",
-        "entityName": "EXAMPLE MINING CO",
-        "cardinalityId": "Q-20",
-        "additionalData": {
-            "assessedFacility": [
-                {
-                    "type": "Facility",
-                    "name": "Kootenay West",
-                    "registeredId": "0500956",
-                    "locationInformation": "https://plus.codes/9526679P+4V",
-                    "IDverifiedByCAB": True,
-                }
-            ],
-            "assessedProduct": [
-                {
-                    "type": "Product",
-                    "name": "Construction Aggregate",
-                    "IDverifiedByCAB": False,
-                }
-            ],
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "credentialId": "ab2bac74-4bff-4686-a54f-e850d8408de8",
+    "data": {
+        "permit": {
+            "issuanceDate": "1999-04-19",
+            "identifier": "Q-20",
         },
-        "credentialId": "ab2bac74-4bff-4686-a54f-e850d8408de8",
+        "permittee": {
+            "name": "EXAMPLE MINING CO",
+            "identifier": "A0034771",
+        },
+        "mine": {
+            "name": "Kootenay West",
+            "identifier": "0500956",
+            "infoPageId": "5fa1e3ec4635c865df00c420",
+            "locationInformation": "https://plus.codes/9526679P+4V",
+            "IDverifiedByCAB": True,
+        },
+        "commodities": [
+            {
+                "name": "Construction Aggregate",
+                "IDverifiedByCAB": False,
+            }
+        ],
     },
 }
 
@@ -46,12 +43,15 @@ class TestSuiteBuildRequest(BaseModel):
         json_schema_extra={"examples": [MINES_ACT_BUILD_EXAMPLE]},
     )
 
-    credential: dict[str, Any] = Field(
-        description="Publication credential input (`type`, `validFrom`, `credentialSubject`, …).",
+    template: str = Field(description="Credential type / template id.")
+    version: str = Field(description="Credential template version.")
+    credentialId: str | None = Field(
+        default=None,
+        description="Optional credential id.",
     )
-    options: dict[str, Any] = Field(
-        description=(
-            "Publication options (`entityId`, `entityName`, `cardinalityId`, "
-            "`additionalData`, …)."
-        ),
+    validFrom: str | None = Field(
+        default=None,
+        description="Optional VC envelope validFrom (usually omitted; server sets publish time).",
     )
+    validUntil: str | None = Field(default=None)
+    data: dict[str, Any] = Field(description="Template input data.")

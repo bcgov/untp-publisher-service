@@ -175,6 +175,11 @@ def _credential_entry(credential_type: str) -> dict[str, Any]:
     return entry
 
 
+def credential_yaml_entry(credential_type: str) -> dict[str, Any]:
+    """Issuers.yaml credential entry (type, version, pointers, …)."""
+    return dict(_credential_entry(credential_type)["credential"])
+
+
 def load_publication_config(credential_type: str) -> dict[str, Any]:
     """Issuer config plus the matching ``credentials[]`` entry for ``credential_type``."""
     entry = _credential_entry(credential_type)

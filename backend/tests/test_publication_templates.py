@@ -11,47 +11,53 @@ from app.services.publication_templates import (
     render_template_yaml,
 )
 
-PAYLOAD = {
-    "credential": {
-        "type": "BCMinesActPermitCredential",
-        "validFrom": "1999-04-19T00:00:00+00:00",
-        "credentialSubject": {},
-    },
-    "options": {
-        "entityId": "A0034771",
-        "entityName": "EXAMPLE MINING CO",
-        "cardinalityId": "Q-20",
-        "additionalData": {
-            "assessedFacility": [{"name": "Kootenay West", "registeredId": "0500956"}],
-            "assessedProduct": [{"name": "Construction Aggregate"}],
+OPTIONS = {
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "entityId": "A0034771",
+    "entityName": "EXAMPLE MINING CO",
+    "cardinalityId": "Q-20",
+    "data": {
+        "permit": {
+            "issuanceDate": "1999-04-19",
+            "identifier": "Q-20",
         },
+        "permittee": {
+            "name": "EXAMPLE MINING CO",
+            "identifier": "A0034771",
+        },
+        "mine": {
+            "name": "Kootenay West",
+            "identifier": "0500956",
+            "infoPageId": "5fa1e3ec4635c865df00c420",
+        },
+        "commodities": [{"name": "Construction Aggregate"}],
     },
 }
 ORGANIZATION = {
     "id": "https://www.bcregistry.gov.bc.ca/business/A0034771",
     "name": "EXAMPLE MINING CO",
+    "registeredId": "A0034771",
 }
 
 
 def test_publication_template_context_mirrors_payload():
     context = publication_template_context(
-        credential=PAYLOAD["credential"],
-        options=PAYLOAD["options"],
+        options=OPTIONS,
         organization=ORGANIZATION,
     )
-    assert context["options"]["cardinalityId"] == "Q-20"
+    assert context["data"]["permit"]["identifier"] == "Q-20"
     assert context["organization"]["name"] == "EXAMPLE MINING CO"
     assert context["organization"]["registeredId"] == "A0034771"
 
 
 def test_render_template_text_uses_payload_paths():
     context = publication_template_context(
-        credential=PAYLOAD["credential"],
-        options=PAYLOAD["options"],
+        options=OPTIONS,
         organization=ORGANIZATION,
     )
     result = render_template_text(
-        "Permit {{ options.cardinalityId }} for {{ organization.name }}.",
+        "Permit {{ data.permit.identifier }} for {{ organization.name }}.",
         context,
     )
     assert result == "Permit Q-20 for EXAMPLE MINING CO."
@@ -61,16 +67,12 @@ def test_render_template_text_passthrough_without_jinja():
     assert render_template_text("Plain text.", {}) == "Plain text."
 
 
-def test_render_template_text_supports_payload_additional_data():
+def test_render_template_text_supports_mine_data():
     context = publication_template_context(
-        credential=PAYLOAD["credential"],
-        options=PAYLOAD["options"],
+        options=OPTIONS,
         organization=ORGANIZATION,
     )
-    template = (
-        "{%- set facilities = options.additionalData.assessedFacility | default([]) -%}"
-        "{{ facilities | map(attribute='name') | join(', ') }}"
-    )
+    template = "{{ data.mine.name }}"
     assert render_template_text(template, context) == "Kootenay West"
 
 
@@ -80,40 +82,33 @@ def test_render_template_text_rejects_undefined_variables():
     assert "undefined variable" in str(exc.value.detail).lower()
 
 
-def test_mines_act_template_requires_exactly_one_assessed_facility():
+def test_mines_act_template_requires_mine_object():
     source = load_credential_template_source("BCMinesActPermitCredential")
-    options = copy.deepcopy(PAYLOAD["options"])
-    options["additionalData"]["assessedFacility"] = []
+    options = copy.deepcopy(OPTIONS)
+    options["data"]["mine"] = []
     context = publication_template_context(
-        credential=PAYLOAD["credential"],
         options=options,
         organization=ORGANIZATION,
     )
     with pytest.raises(HTTPException) as exc:
         render_template_yaml(source, context)
     assert exc.value.status_code == 400
-    assert "exactly 1" in str(exc.value.detail)
+    assert "data.mine must be an object" in str(exc.value.detail)
 
-    options["additionalData"]["assessedFacility"] = [
-        {"name": "A", "registeredId": "1"},
-        {"name": "B", "registeredId": "2"},
-    ]
+    options["data"].pop("mine", None)
     context = publication_template_context(
-        credential=PAYLOAD["credential"],
         options=options,
         organization=ORGANIZATION,
     )
     with pytest.raises(HTTPException) as exc:
         render_template_yaml(source, context)
     assert exc.value.status_code == 400
-    assert "exactly 1" in str(exc.value.detail)
 
 
 def test_materialize_credential_document_from_mines_act_template():
     source = load_credential_template_source("BCMinesActPermitCredential")
     context = publication_template_context(
-        credential=PAYLOAD["credential"],
-        options=PAYLOAD["options"],
+        options=OPTIONS,
         organization=ORGANIZATION,
     )
     credential = materialize_credential_document(source, context)
@@ -133,5 +128,25 @@ def test_materialize_credential_document_from_mines_act_template():
     assert assessment["assessedProduct"][0]["product"]["id"] == (
         "urn:ca:bcgov:mines-act:permit:Q-20:commodity:construction-aggregate"
     )
-    assert assessment["referenceRegulation"][0]["name"] == "Mines Act"
-    assert assessment["assessmentCriteria"][0]["id"].endswith("96293_01")
+    assert assessment["referenceRegulation"][0]["name"] == (
+        "Health, Safety and Reclamation Code for Mines in British Columbia"
+    )
+    assert assessment["assessmentCriteria"][0]["id"].endswith("#section10")
+    assert assessment["assessmentCriteria"][0]["name"] == "Permits"
+    assert assessment["evidence"][0]["linkURL"] == (
+        "https://mines.nrs.gov.bc.ca/mine/5fa1e3ec4635c865df00c420"
+        "/authorizations#authorization-MEM"
+    )
+
+
+def test_mines_act_template_omits_evidence_without_info_page_id():
+    source = load_credential_template_source("BCMinesActPermitCredential")
+    options = copy.deepcopy(OPTIONS)
+    options["data"]["mine"].pop("infoPageId")
+    context = publication_template_context(
+        options=options,
+        organization=ORGANIZATION,
+    )
+    credential = materialize_credential_document(source, context)
+    assessment = credential["credentialSubject"]["conformityAssessment"][0]
+    assert "evidence" not in assessment

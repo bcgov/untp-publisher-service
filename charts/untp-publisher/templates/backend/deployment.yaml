@@ -43,8 +43,10 @@ spec:
               value: {{ .Values.backend.host }}
             - name: PUBLISHER_WITNESS_ID
               value: {{ .Values.backend.environment.publisherWitnessId | quote }}
-            - name: ISSUER_REGISTRY_URL
-              value: {{ .Values.backend.environment.issuerRegistryUrl }}
+            - name: PROJECT_TITLE
+              value: {{ .Values.backend.environment.projectTitle | quote }}
+            - name: PROJECT_VERSION
+              value: {{ .Values.backend.environment.projectVersion | quote }}
 
             # WEBVH SERVER
             - name: WEBVH_SERVER_URL

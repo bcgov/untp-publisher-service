@@ -53,16 +53,15 @@ async def post_build_credential(
     ],
 ) -> dict[str, Any]:
     """
-    Build an unsigned credential from a publication payload (``credential`` + ``options``).
+    Build an unsigned credential from a publication payload
+    (``template`` + ``version`` + ``data``).
 
-    ``options.entityId`` and ``options.entityName`` identify the permit holder
-    (no external entity registry lookup).
+    Entity and cardinality are resolved from ``data`` via issuers.yaml pointers.
 
     The assembled credential is validated (JSON Schema, JSON-LD, Pydantic) before return;
     invalid output yields HTTP 400.
     """
     credential = build_unsigned_credential_from_publication(
-        credential_input=body.credential,
-        options=body.options,
+        publication=body.model_dump(exclude_none=True),
     )
     return {"credential": credential}

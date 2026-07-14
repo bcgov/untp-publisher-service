@@ -68,8 +68,8 @@ def test_test_suite_build_credential_openapi_has_example() -> None:
             examples = schema.get("examples") or []
             example = examples[0] if examples else schema.get("example")
     assert example
-    assert example["credential"]["type"] == "BCMinesActPermitCredential"
-    assert example["options"]["cardinalityId"] == "Q-20"
+    assert example["template"] == "BCMinesActPermitCredential"
+    assert example["data"]["permit"]["identifier"] == "Q-20"
 
 
 def test_test_suite_build_credential_from_sample_payload() -> None:

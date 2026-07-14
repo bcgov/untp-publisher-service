@@ -83,8 +83,6 @@ class Settings(BaseSettings):
             raw = f"https://{raw}"
         return (urlparse(raw).hostname or "").strip()
 
-    ISSUER_REGISTRY_URL: str = Field(default="http://localhost")
-
     SECRET_KEY: str = Field(default="dev-local")
     JWT_SECRET: str = Field(default="dev-local")
     JWT_ALGORITHM: str = "HS256"

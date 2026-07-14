@@ -42,24 +42,25 @@ _JINJA.filters["exactly_one"] = exactly_one
 
 
 def template_stub_context() -> dict[str, Any]:
-    """Minimal context to render a template for structure inspection (empty arrays)."""
+    """Minimal context to render a template for structure inspection."""
     return {
-        "credential": {
-            "credentialSubject": {},
-            "validFrom": "1999-01-01T00:00:00Z",
-        },
-        "options": {
-            "cardinalityId": "STUB",
-            "entityId": "STUB",
-            "entityName": "Stub Organization",
-            "additionalData": {
-                "assessedFacility": [{
-                    "name": "Stub Site",
-                    "registeredId": "0000000",
-                    "locationInformation": "https://plus.codes/EXAMPLE+CODE",
-                }],
-                "assessedProduct": [],
+        "template": "BCMinesActPermitCredential",
+        "version": "v1.1",
+        "data": {
+            "permit": {
+                "issuanceDate": "1999-01-01",
+                "identifier": "STUB",
             },
+            "permittee": {
+                "name": "Stub Organization",
+                "identifier": "STUB",
+            },
+            "mine": {
+                "name": "Stub Site",
+                "identifier": "0000000",
+                "locationInformation": "https://plus.codes/EXAMPLE+CODE",
+            },
+            "commodities": [],
         },
         "organization": {
             "id": "https://www.bcregistry.gov.bc.ca/business/STUB",
@@ -92,20 +93,16 @@ def render_template_text(template: str, context: dict[str, Any]) -> str:
 
 def publication_template_context(
     *,
-    credential: dict[str, Any],
     options: dict[str, Any],
     organization: dict[str, Any],
 ) -> dict[str, Any]:
-    """Jinja context mirrors the publication request body plus holder organization."""
+    """Jinja context: request ``data`` plus resolved holder ``organization``."""
     org = dict(organization)
-    entity_id = options.get("entityId")
-    if entity_id is not None:
-        org["registeredId"] = str(entity_id)
-    if options.get("entityName") and not org.get("name"):
-        org["name"] = str(options["entityName"])
+    data = options.get("data") if isinstance(options.get("data"), dict) else {}
     return {
-        "credential": credential,
-        "options": options,
+        "template": options.get("template"),
+        "version": options.get("version"),
+        "data": data,
         "organization": org,
     }
 

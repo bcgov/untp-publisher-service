@@ -89,8 +89,9 @@ def test_inferred_credential_paths():
 
 def test_load_sample_publication_payload():
     payload = load_sample_publication_payload("BCMinesActPermitCredential")
-    assert payload["options"]["cardinalityId"] == "Q-20"
-    assert payload["options"]["additionalData"]["assessedFacility"]
+    assert payload["template"] == "BCMinesActPermitCredential"
+    assert payload["data"]["permit"]["identifier"] == "Q-20"
+    assert payload["data"]["mine"]
 
 
 def test_load_sample_issued_credential():

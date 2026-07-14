@@ -10,32 +10,31 @@ from app.plugins import (
     TractionController,
     PublisherRegistrar,
 )
-from app.security import JWTBearer
+from app.security import jwt_or_api_key
+from app.services.publication_request import normalize_publication
 import uuid
-import copy
 
 router = APIRouter(prefix="/credentials", tags=["Credentials"])
 
 
-@router.post("/publish", dependencies=[Depends(JWTBearer())])
+@router.post("/publish", dependencies=[Depends(jwt_or_api_key)])
 async def publish_credential(request_body: Publication):
     settings.LOGGER.info("Publication request")
-    credential_input = request_body.model_dump()["credential"]
+    raw = request_body.model_dump()
+    options = normalize_publication(raw)
 
-    options = request_body.model_dump()["options"]
     if not options.get("credentialId"):
         options["credentialId"] = str(uuid.uuid4())
         settings.LOGGER.info("No credential id provided, new id generated.")
-        
-    settings.LOGGER.info('Credential Id: ' + options["credentialId"])
-    
+
+    settings.LOGGER.info("Credential Id: " + options["credentialId"])
+
     mongo = MongoClient()
-    
-    # Check if credential type has a registration
-    credential_type = credential_input.get("type")
+
+    credential_type = options["template"]
     credential_registration = mongo.find_one(
-        'CredentialTemplateRecord',
-        {'type': credential_type}
+        "CredentialTemplateRecord",
+        {"type": credential_type},
     )
     if not credential_registration:
         raise HTTPException(
@@ -45,16 +44,10 @@ async def publish_credential(request_body: Publication):
 
     entity_id = options.get("entityId")
 
-    # Check cardinality, returns hash if new issuance is required
-    cardinality_hash = await PublisherRegistrar().check_cardinality(
-        credential_input=copy.deepcopy(credential_input), options=options
-    )
-        
+    cardinality_hash = await PublisherRegistrar().check_cardinality(options=options)
+
     if cardinality_hash:
-        # Format credential
-        credential = await PublisherRegistrar().format_credential(
-            credential_input=copy.deepcopy(credential_input), options=options
-        )
+        credential = await PublisherRegistrar().format_credential(options=options)
 
         traction = TractionController()
         traction.authorize()
@@ -88,19 +81,17 @@ async def publish_credential(request_body: Publication):
         )
         return JSONResponse(status_code=201, content={"credentialId": vc["id"]})
 
-    else:
-        credential_records = mongo.find_one(
-            "CredentialRecord",
-            {
-                "type": credential_input.get("type"),
-                "entity_id": options.get("entityId"),
-                "cardinality_id": options.get("cardinalityId"),
-                "refresh": False,
-            },
-        )
-        vc = credential_records['vc']
-        return JSONResponse(status_code=200, content={"credentialId": vc['id']})
-
+    credential_records = mongo.find_one(
+        "CredentialRecord",
+        {
+            "type": credential_type,
+            "entity_id": options.get("entityId"),
+            "cardinality_id": options.get("cardinalityId"),
+            "refresh": False,
+        },
+    )
+    vc = credential_records["vc"]
+    return JSONResponse(status_code=200, content={"credentialId": vc["id"]})
 
 
 def _enveloped_credential_response(credential_record: dict) -> JSONResponse:
