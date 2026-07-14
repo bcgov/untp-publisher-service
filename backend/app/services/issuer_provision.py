@@ -9,11 +9,11 @@ from app.plugins.mongodb import MongoClient
 from config import settings
 
 
-def scope_from_issuer_config(issuer: dict[str, Any]) -> str | None:
-    """Prefer explicit scope; else namespace from alias (``namespace:name``)."""
-    scope = (issuer.get("scope") or "").strip()
-    if scope:
-        return scope
+def namespace_from_issuer_config(issuer: dict[str, Any]) -> str | None:
+    """Prefer explicit namespace; else namespace from alias (``namespace:name``)."""
+    namespace = (issuer.get("namespace") or "").strip()
+    if namespace:
+        return namespace
     alias = (issuer.get("alias") or "").strip()
     if ":" in alias and not alias.startswith("did:"):
         return alias.split(":", 1)[0] or None
@@ -32,7 +32,7 @@ def ensure_issuer_record(issuer: dict[str, Any], *, mongo: MongoClient | None = 
         raise ValueError("issuer id is required")
 
     name = (issuer.get("name") or issuer_id).strip()
-    scope = scope_from_issuer_config(issuer)
+    namespace = namespace_from_issuer_config(issuer)
     configured_key = (issuer.get("verificationMethod") or "").strip() or None
 
     existing = mongo.find_one("IssuerInstanceRecord", {"id": issuer_id})
@@ -40,7 +40,7 @@ def ensure_issuer_record(issuer: dict[str, Any], *, mongo: MongoClient | None = 
         record = IssuerInstanceRecord(
             id=issuer_id,
             name=name,
-            scope=scope,
+            namespace=namespace,
             authorized_key=configured_key,
         ).model_dump()
         mongo.insert("IssuerInstanceRecord", record)
@@ -50,8 +50,8 @@ def ensure_issuer_record(issuer: dict[str, Any], *, mongo: MongoClient | None = 
     updates: dict[str, Any] = {}
     if name and existing.get("name") != name:
         updates["name"] = name
-    if scope and existing.get("scope") != scope:
-        updates["scope"] = scope
+    if namespace and existing.get("namespace") != namespace:
+        updates["namespace"] = namespace
     if configured_key:
         existing_key = existing.get("authorized_key")
         if not existing_key:
@@ -69,6 +69,8 @@ def ensure_issuer_record(issuer: dict[str, Any], *, mongo: MongoClient | None = 
         refreshed = {**existing, **updates}
         # Drop Mongo projection artifacts if any leaked in.
         refreshed.pop("_id", None)
+        # Migrate legacy field name if present.
+        refreshed.pop("scope", None)
         mongo.replace("IssuerInstanceRecord", {"id": issuer_id}, refreshed)
         settings.LOGGER.info(
             "Local issuer record updated for %s (%s).",

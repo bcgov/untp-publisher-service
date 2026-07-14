@@ -101,7 +101,9 @@ class PublisherRegistrar:
     async def register_issuer(self, registration):
         """Register a new issuer with the TDW server."""
         # Derive did path components from registration
-        namespace = registration.get("scope").replace(" ", "-").lower()
+        namespace = (
+            registration.get("namespace") or registration.get("scope") or ""
+        ).replace(" ", "-").lower()
         identifier = registration.get("name").replace(" ", "-").lower()
 
         # Request identifier from TDW server

@@ -28,7 +28,7 @@ def issuer():
     return {
         "id": "did:web:registry.example.ca:mines-act:chief-permitting-officer",
         "name": "Chief Permitting Officer",
-        "scope": "Mines Act",
+        "namespace": "mines-act",
         "authorized_key": "z6Mtest",
     }
 

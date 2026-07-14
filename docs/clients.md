@@ -4,7 +4,7 @@ Instructions for lines of business to obtain Verifiable Credentials from the pub
 ## Integration
 ### Issuer and credential type setup
 1. Open an issue on the [digital trust toolkit](https://github.com/bcgov/digital-trust-toolkit)
-    Include the name, scope and description of the issuing entity (and credential types to publish).
+    Include the name, namespace and description of the issuing entity (and credential types to publish).
 2. An admin adds the issuer (and `credentials[]`) to `configs/issuers.yaml` and merges related credential assets under `configs/credentials/`. Startup provisioning creates local issuer, status list, and credential type records.
 3. Once deployed, a secret key will be provided to you (`POST /auth/secret`).
 

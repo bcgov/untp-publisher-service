@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.services.issuer_provision import ensure_issuer_record, scope_from_issuer_config
+from app.services.issuer_provision import ensure_issuer_record, namespace_from_issuer_config
 
 
 class _FakeMongo:
@@ -23,12 +23,15 @@ class _FakeMongo:
         self.records[query["id"]] = dict(new_item)
 
 
-def test_scope_from_alias_namespace():
+def test_namespace_from_alias():
     assert (
-        scope_from_issuer_config({"alias": "mines-act:chief-permitting-officer"})
+        namespace_from_issuer_config({"alias": "mines-act:chief-permitting-officer"})
         == "mines-act"
     )
-    assert scope_from_issuer_config({"scope": "Mines Act", "alias": "x:y"}) == "Mines Act"
+    assert (
+        namespace_from_issuer_config({"namespace": "Mines Act", "alias": "x:y"})
+        == "Mines Act"
+    )
 
 
 def test_ensure_issuer_record_creates_from_yaml():
@@ -42,7 +45,7 @@ def test_ensure_issuer_record_creates_from_yaml():
     record = ensure_issuer_record(issuer, mongo=mongo)
     assert record["id"] == issuer["id"]
     assert record["name"] == "Chief Permitting Officer"
-    assert record["scope"] == "mines-act"
+    assert record["namespace"] == "mines-act"
     assert "authorized_key" not in record or record.get("authorized_key") is None
     assert len(mongo.records) == 1
 

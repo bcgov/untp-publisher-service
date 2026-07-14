@@ -10,9 +10,9 @@ class BaseModel(BaseModel):
 class IssuerInstanceRecord(BaseModel):
     id: str = Field()
     name: str = Field()
-    scope: str = Field(
+    namespace: str = Field(
         None,
-        description="Issuer scope / namespace (from configs or registration).",
+        description="Issuer namespace (from configs or registration).",
     )
     secret_hash: str = Field(None)
     authorized_key: str | None = Field(
