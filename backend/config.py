@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     GTDS_URL: str = Field(default="https://www.dir.gov.bc.ca/gtds.cgi")
 
     DID_WEB_SERVER_URL: str = Field(default="http://localhost")
+    #: Hostname only for issuer ``did:web`` IDs from ``issuers.yaml`` aliases
+    #: (e.g. ``registry.digitaltrust.gov.bc.ca`` — not a URL).
+    #: Alias ``mines-act:chief-permitting-officer`` →
+    #: ``did:web:registry.digitaltrust.gov.bc.ca:mines-act:chief-permitting-officer``.
+    #: When empty, the hostname is taken from ``DID_WEB_SERVER_URL``.
+    PUBLISHER_DOMAIN: str = Field(default="")
     #: Witness ``did:key`` (method id must be an Ed25519 multikey). Used for DID WebVH endorsement.
     PUBLISHER_WITNESS_ID: str = Field(default="")
 
@@ -78,6 +84,24 @@ class Settings(BaseSettings):
         if not self.PUBLISHER_WITNESS_ID:
             return ""
         return did_key_to_multikey(self.PUBLISHER_WITNESS_ID)
+
+    def publisher_domain(self) -> str:
+        """Effective publisher hostname (``PUBLISHER_DOMAIN``, else host of ``DID_WEB_SERVER_URL``)."""
+        domain = (self.PUBLISHER_DOMAIN or "").strip()
+        if domain:
+            if "://" in domain or "/" in domain:
+                raise ValueError(
+                    "PUBLISHER_DOMAIN must be a hostname only "
+                    "(e.g. registry.digitaltrust.gov.bc.ca), not a URL"
+                )
+            return domain.rstrip(".")
+        raw = (self.DID_WEB_SERVER_URL or "").strip()
+        if not raw:
+            return ""
+        if "://" not in raw:
+            raw = f"https://{raw}"
+        return (urlparse(raw).hostname or "").strip()
+
     ISSUER_REGISTRY_URL: str = Field(default="http://localhost")
 
     SECRET_KEY: str = Field(default="dev-local")
@@ -97,7 +121,7 @@ class Settings(BaseSettings):
     #: Auth database for split-variable mode only (e.g. ``admin`` on managed MongoDB).
     MONGO_AUTH_SOURCE: str = Field(default="")
 
-    #: Root directory for ``configs/`` (``publications/``, ``templates/``, ``samples/``, ``oca/``).
+    #: Root directory for ``configs/`` (``issuers.yaml``, ``credentials/{type}/{version}/``).
     #: Defaults to ``<repo>/configs``. In container images use ``/config``.
     CONFIG_ROOT: str = Field(default="")
 

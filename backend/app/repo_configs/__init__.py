@@ -1,7 +1,10 @@
-"""Loaders for ``configs/publications/``, ``configs/templates/``, ``configs/samples/``, and ``configs/oca/``."""
+"""Loaders for ``configs/issuers.yaml`` and ``configs/credentials/{type}/{version}/``."""
 
 from app.repo_configs.loader import (
+    credential_set_dir,
     credential_version_for_type,
+    issuer_did_from_alias,
+    list_issuer_instances,
     load_credential_template,
     load_credential_template_optional,
     load_credential_template_source,
@@ -25,7 +28,10 @@ from app.repo_configs.loader import (
 )
 
 __all__ = [
+    "credential_set_dir",
     "credential_version_for_type",
+    "issuer_did_from_alias",
+    "list_issuer_instances",
     "load_credential_template",
     "load_credential_template_optional",
     "load_credential_template_source",

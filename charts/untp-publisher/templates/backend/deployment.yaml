@@ -69,6 +69,9 @@ spec:
                   name: {{ include "backend.tractionSecretName" . }}
                   key: {{ .Values.backend.traction.secretKeys.tenantId }}
 
+            - name: PUBLISHER_DOMAIN
+              value: {{ .Values.backend.environment.publisherDomain | quote }}
+
             # MONGODB
             - name: MONGO_HOST
               value: {{ include "backend.mongodb.host" . | quote }}

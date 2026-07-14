@@ -54,6 +54,9 @@ backend:
     issuerRegistryUrl: ""
     # -- Witness did:key (Ed25519 multikey in method id). Sets pod env PUBLISHER_WITNESS_ID.
     publisherWitnessId: ""
+    # -- Hostname only for issuer did:web IDs (issuers.yaml alias → did:web:{host}:{alias}).
+    # Not a URL. When empty, hostname is taken from DID_WEB_SERVER_URL.
+    publisherDomain: ""
 
   image:
     # -- Backend image repository

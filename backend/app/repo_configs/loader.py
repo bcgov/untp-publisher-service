@@ -1,4 +1,4 @@
-"""Load issuer publication configs from ``configs/publications/`` (one issuer per file)."""
+"""Load issuer publication configs from ``configs/issuers.yaml`` and per-credential assets."""
 
 from __future__ import annotations
 
@@ -10,23 +10,59 @@ from typing import Any
 import yaml
 from fastapi import HTTPException
 
-from config import basedir, config_root, repo_root
+from config import basedir, config_root, repo_root, settings
 
 
-def publications_dir() -> Path:
-    return config_root() / "publications"
+def issuers_file() -> Path:
+    return config_root() / "issuers.yaml"
 
 
-def templates_dir() -> Path:
-    return config_root() / "templates"
+def credentials_dir() -> Path:
+    """``configs/credentials/{type}/{version}/`` asset trees."""
+    return config_root() / "credentials"
 
 
-def samples_dir() -> Path:
-    return config_root() / "samples"
+def issuer_did_from_alias(alias: str) -> str:
+    """
+    Build ``did:web:{domain}:{namespace}:{alias}`` from an ``issuers.yaml`` id.
+
+    ``alias`` is the yaml ``id`` (e.g. ``mines-act:chief-permitting-officer``).
+    Domain comes from ``PUBLISHER_DOMAIN`` (hostname only), or the host of ``DID_WEB_SERVER_URL``.
+    Full DIDs are returned unchanged.
+    """
+    value = (alias or "").strip()
+    if not value:
+        raise HTTPException(status_code=500, detail="Issuer id/alias must not be empty")
+    if value.startswith("did:"):
+        return value
+    try:
+        domain = settings.publisher_domain()
+    except ValueError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    if not domain:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Cannot build issuer DID: set PUBLISHER_DOMAIN to a hostname "
+                "(or DID_WEB_SERVER_URL with a hostname)"
+            ),
+        )
+    return f"did:web:{domain}:{value.lstrip(':')}"
 
 
-def oca_dir() -> Path:
-    return config_root() / "oca"
+def _expand_issuer(instance: dict[str, Any]) -> dict[str, Any]:
+    """Normalize issuer fields: yaml ``id`` becomes ``alias``; ``id`` is the full DID."""
+    raw_id = (instance.get("id") or "").strip()
+    if not raw_id:
+        return {}
+    issuer = {key: value for key, value in instance.items() if key != "credentials"}
+    if raw_id.startswith("did:"):
+        issuer["id"] = raw_id
+        issuer.setdefault("alias", raw_id)
+    else:
+        issuer["alias"] = raw_id
+        issuer["id"] = issuer_did_from_alias(raw_id)
+    return issuer
 
 
 def _load_yaml_file(path: Path) -> dict[str, Any]:
@@ -39,23 +75,56 @@ def _load_yaml_file(path: Path) -> dict[str, Any]:
     return data
 
 
+def _normalize_instance(instance: dict[str, Any]) -> dict[str, Any]:
+    """Map an ``instances[]`` entry to ``{issuer, credentials}``."""
+    credentials = instance.get("credentials") or []
+    if not isinstance(credentials, list):
+        raise HTTPException(
+            status_code=500,
+            detail="issuers.yaml instance credentials must be a list",
+        )
+    issuer = _expand_issuer(instance)
+    if not issuer:
+        raise HTTPException(
+            status_code=500,
+            detail="issuers.yaml instance is missing id",
+        )
+    return {"issuer": issuer, "credentials": credentials}
+
+
 @lru_cache(maxsize=1)
 def _publication_index() -> dict[str, Any]:
     by_type: dict[str, dict[str, Any]] = {}
     by_issuer_id: dict[str, dict[str, Any]] = {}
 
-    if not publications_dir().is_dir():
-        return {"by_type": by_type, "by_issuer_id": by_issuer_id}
+    path = issuers_file()
+    if not path.is_file():
+        return {"by_type": by_type, "by_issuer_id": by_issuer_id, "path": path}
 
-    for path in sorted(publications_dir().glob("*.yaml")):
-        doc = _load_yaml_file(path)
-        issuer = doc.get("issuer") or {}
+    doc = _load_yaml_file(path)
+    instances = doc.get("instances")
+    if instances is None:
+        raise HTTPException(
+            status_code=500,
+            detail="issuers.yaml must define an instances list",
+        )
+    if not isinstance(instances, list):
+        raise HTTPException(
+            status_code=500,
+            detail="issuers.yaml instances must be a list",
+        )
+
+    for instance in instances:
+        if not isinstance(instance, dict):
+            continue
+        config = _normalize_instance(instance)
+        issuer = config["issuer"]
         issuer_id = (issuer.get("id") or "").strip()
         if not issuer_id:
             continue
-        by_issuer_id[issuer_id] = {"path": path, "config": doc}
+        by_issuer_id[issuer_id] = {"path": path, "config": config}
 
-        for credential in doc.get("credentials") or []:
+        for credential in config["credentials"]:
             if not isinstance(credential, dict):
                 continue
             cred_type = (credential.get("type") or "").strip()
@@ -63,11 +132,33 @@ def _publication_index() -> dict[str, Any]:
                 continue
             by_type[cred_type] = {
                 "path": path,
-                "config": doc,
+                "config": config,
                 "credential": credential,
             }
 
-    return {"by_type": by_type, "by_issuer_id": by_issuer_id}
+    return {"by_type": by_type, "by_issuer_id": by_issuer_id, "path": path}
+
+
+def list_issuer_instances() -> list[dict[str, Any]]:
+    """Issuer entries from ``configs/issuers.yaml`` (``instances[]``, credentials omitted)."""
+    path = issuers_file()
+    if not path.is_file():
+        return []
+    doc = _load_yaml_file(path)
+    instances = doc.get("instances") or []
+    if not isinstance(instances, list):
+        raise HTTPException(
+            status_code=500,
+            detail="issuers.yaml instances must be a list",
+        )
+    issuers: list[dict[str, Any]] = []
+    for instance in instances:
+        if not isinstance(instance, dict):
+            continue
+        issuer = _expand_issuer(instance)
+        if issuer:
+            issuers.append(issuer)
+    return issuers
 
 
 def _credential_entry(credential_type: str) -> dict[str, Any]:
@@ -121,40 +212,56 @@ def _credential_version(credential: dict[str, Any]) -> str:
     return (credential.get("version") or "v1.0").strip()
 
 
-def _template_path_for_type(credential_type: str, credential: dict[str, Any]) -> Path:
-    template_ref = credential.get("template")
-    if isinstance(template_ref, str) and template_ref.strip():
-        return resolve_config_path(template_ref.strip())
-    version = _credential_version(credential)
-    versioned = templates_dir() / f"{credential_type}.{version}.yaml"
-    if versioned.is_file():
-        return versioned
-    return templates_dir() / f"{credential_type}.yaml"
-
-
 def credential_version_for_type(credential_type: str) -> str:
     return _credential_version(_credential_entry(credential_type)["credential"])
 
 
-def sample_set_dir(credential_type: str) -> Path:
-    """``configs/samples/{type}.{version}/`` — inferred from publication config."""
+def credential_set_dir(credential_type: str) -> Path:
+    """``configs/credentials/{type}/{version}/`` — inferred from publication config."""
     version = credential_version_for_type(credential_type)
-    return samples_dir() / f"{credential_type}.{version}"
+    return credentials_dir() / credential_type / version
+
+
+# Backward-compatible alias.
+sample_set_dir = credential_set_dir
+
+
+def _asset_path(credential_type: str, filename: str) -> Path:
+    return credential_set_dir(credential_type) / filename
+
+
+def _template_path_for_type(credential_type: str, credential: dict[str, Any]) -> Path:
+    template_ref = credential.get("template")
+    if isinstance(template_ref, str) and template_ref.strip():
+        return resolve_config_path(template_ref.strip())
+    return credential_set_dir(credential_type) / "template.yaml"
 
 
 def sample_publication_payload_path(credential_type: str) -> Path:
-    return sample_set_dir(credential_type) / "publication-payload.json"
+    return _asset_path(credential_type, "payload.json")
 
 
 def sample_issued_credential_path(credential_type: str) -> Path:
-    return sample_set_dir(credential_type) / "issued-credential.json"
+    return _asset_path(credential_type, "sample.json")
+
+
+def oca_bundle_path(credential_type: str) -> Path:
+    """``configs/credentials/{type}/{version}/oca.json`` — inferred from publication config."""
+    explicit = _credential_entry(credential_type)["credential"].get("assets", {}).get("ocaBundle")
+    if isinstance(explicit, str) and explicit.strip():
+        return resolve_repo_path(explicit.strip())
+    return _asset_path(credential_type, "oca.json")
 
 
 def _load_json_file(path: Path, *, label: str) -> dict[str, Any]:
     if not path.is_file():
+        try:
+            relative = path.relative_to(config_root())
+        except ValueError:
+            relative = path
         raise HTTPException(
             status_code=404,
-            detail=f"No {label} at {path.relative_to(config_root())}",
+            detail=f"No {label} at {relative}",
         )
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
@@ -190,15 +297,6 @@ def load_sample_issued_credential_optional(credential_type: str | None) -> dict[
     return _load_json_file(path, label="issued credential sample")
 
 
-def oca_bundle_path(credential_type: str) -> Path:
-    """``configs/oca/{type}.{version}.json`` — inferred from publication config."""
-    version = credential_version_for_type(credential_type)
-    explicit = _credential_entry(credential_type)["credential"].get("assets", {}).get("ocaBundle")
-    if isinstance(explicit, str) and explicit.strip():
-        return resolve_repo_path(explicit.strip())
-    return oca_dir() / f"{credential_type}.{version}.json"
-
-
 def load_oca_bundle(credential_type: str) -> dict[str, Any]:
     path = oca_bundle_path(credential_type)
     if not path.is_file():
@@ -230,11 +328,15 @@ def load_credential_template_source(credential_type: str) -> str:
         )
     path = _template_path_for_type(credential_type, credential)
     if not path.is_file():
+        try:
+            relative = path.relative_to(config_root())
+        except ValueError:
+            relative = path
         raise HTTPException(
             status_code=500,
             detail=(
                 f"No credential template for type {credential_type!r} "
-                f"(expected {path.relative_to(config_root())})"
+                f"(expected {relative})"
             ),
         )
     return path.read_text(encoding="utf-8")
@@ -274,7 +376,7 @@ def list_publication_config_types() -> list[str]:
 
 
 def resolve_config_path(relative_path: str) -> Path:
-    """Resolve a path relative to ``config_root()`` (e.g. ``templates/…``)."""
+    """Resolve a path relative to ``config_root()`` (e.g. ``credentials/…``)."""
     path = config_root() / relative_path
     if not path.is_file():
         raise HTTPException(

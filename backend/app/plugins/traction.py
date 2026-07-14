@@ -3,7 +3,6 @@ import requests
 from fastapi import HTTPException  # used by ensure_publisher_witness
 from app.utils import verkey_to_multikey, timestamp
 from app.plugins.mongodb import MongoClient
-import httpx
 from app.models.mongodb import IssuerRecord
 
 
@@ -51,46 +50,156 @@ class TractionController:
         return payload[response_key]
 
     async def provision(self):
+        """Idempotent startup provisioning from ``configs/issuers.yaml``."""
         self.authorize()
-        settings.LOGGER.info("Fetching issuer registry.")
-        issuers = httpx.get(settings.ISSUER_REGISTRY_URL).json()["issuers"]
-        settings.LOGGER.info(f"Found {len(issuers)} entries in registry.")
+        from app.repo_configs import list_issuer_instances
+        from app.services.status_lists import ensure_issuer_status_lists
+
+        issuers = list_issuer_instances()
+        settings.LOGGER.info("Provisioning %s issuer(s) from issuers.yaml.", len(issuers))
         mongo = MongoClient()
         mongo.provision()
+
         for issuer in issuers:
-            settings.LOGGER.info(issuer["name"])
+            issuer_id = (issuer.get("id") or "").strip()
+            name = issuer.get("name") or issuer_id
+            expected_vm = (issuer.get("verificationMethod") or "").strip()
+            settings.LOGGER.info("Provisioning issuer %s (%s)", name, issuer_id)
+            if not issuer_id:
+                settings.LOGGER.warning("Skipping issuer with empty id.")
+                continue
 
-            settings.LOGGER.info("Resolving DID document.")
-            did_document = self.resolve(issuer.get("id"))
-            if not did_document:
-                settings.LOGGER.info("Could not resolve DID document.")
+            await self._provision_issuer_did_and_key(
+                mongo=mongo,
+                issuer_id=issuer_id,
+                name=name,
+                expected_vm=expected_vm,
+            )
+            await ensure_issuer_status_lists(issuer_id, mongo=mongo)
 
-            settings.LOGGER.info("Looking up traction wallet.")
-            authorized_key = self.get_multikey(issuer.get("id"))
-            if not authorized_key:
-                settings.LOGGER.info("No wallet key found.")
+    async def _provision_issuer_did_and_key(
+        self,
+        *,
+        mongo: MongoClient,
+        issuer_id: str,
+        name: str,
+        expected_vm: str,
+    ) -> None:
+        """DID/key checks; operations skipped for now when a check fails."""
+        if not expected_vm:
+            settings.LOGGER.warning(
+                "Issuer %s has no verificationMethod; skip DID/key checks.",
+                issuer_id,
+            )
+            return
 
-            settings.LOGGER.info("Looking up local issuer record.")
-            issuer_record = mongo.find_one("IssuerRecord", {"id": issuer["id"]})
-            if not issuer_record:
-                settings.LOGGER.info("No local record found.")
+        did_document = self.resolve(issuer_id, required=False)
+        if not did_document:
+            settings.LOGGER.info(
+                "Skip: DID %s does not resolve (would register/create DID).",
+                issuer_id,
+            )
+            return
 
-            if did_document and authorized_key and issuer_record:
-                if issuer_record["authorized_key"] != authorized_key:
-                    settings.LOGGER.info("Authorized key mismatch.")
-                else:
-                    settings.LOGGER.info("All records check OK!")
-                    
-            elif did_document and authorized_key and not issuer_record:
-                issuer_record = IssuerRecord(
-                    id=issuer.get("id"),
-                    name=issuer.get("name"),
-                    authorized_key=authorized_key,
-                ).model_dump()
-                mongo.insert("IssuerRecord", issuer_record)
-                settings.LOGGER.info("Local issuer record created.")
-            else:
-                settings.LOGGER.info("Admin action required.")
+        if not self._did_document_has_multikey(did_document, expected_vm):
+            settings.LOGGER.info(
+                "Skip: verificationMethod %s not on DID document for %s "
+                "(would publish/update DID document).",
+                expected_vm,
+                issuer_id,
+            )
+            return
+
+        if not self.has_local_multikey(issuer_id, expected_vm):
+            settings.LOGGER.info(
+                "Skip: Traction tenant has no local key %s for %s "
+                "(would import/bind key).",
+                expected_vm,
+                issuer_id,
+            )
+            return
+
+        settings.LOGGER.info(
+            "Issuer %s checks OK (DID resolves, VM present, key local).",
+            issuer_id,
+        )
+        issuer_record = mongo.find_one("IssuerRecord", {"id": issuer_id})
+        if not issuer_record:
+            mongo.insert(
+                "IssuerRecord",
+                IssuerRecord(
+                    id=issuer_id,
+                    name=name,
+                    authorized_key=expected_vm,
+                ).model_dump(),
+            )
+            settings.LOGGER.info("Local issuer record created for %s.", issuer_id)
+        elif issuer_record.get("authorized_key") != expected_vm:
+            settings.LOGGER.warning(
+                "Issuer %s local authorized_key mismatch "
+                "(record=%s, config=%s); leave unchanged.",
+                issuer_id,
+                issuer_record.get("authorized_key"),
+                expected_vm,
+            )
+
+    def resolve(self, did, *, required: bool = True):
+        r = requests.get(
+            f"{self.endpoint}/resolver/resolve/{did}",
+            headers=self.headers,
+        )
+        if not r.ok:
+            if not required:
+                settings.LOGGER.warning(
+                    "Could not resolve DID %s (%s): %s",
+                    did,
+                    r.status_code,
+                    r.text,
+                )
+                return None
+            raise self._traction_error(r, "did_document")
+        return self._try_response(r, "did_document")
+
+    @staticmethod
+    def _did_document_has_multikey(did_document: dict, multikey: str) -> bool:
+        """True if ``multikey`` appears on any verificationMethod (id or publicKeyMultibase)."""
+        if not multikey:
+            return False
+        for method in did_document.get("verificationMethod") or []:
+            if not isinstance(method, dict):
+                continue
+            pk = (method.get("publicKeyMultibase") or "").strip()
+            method_id = (method.get("id") or "").strip()
+            if pk == multikey:
+                return True
+            if method_id.endswith(f"#{multikey}") or multikey in method_id:
+                return True
+        return False
+
+    def get_multikey(self, did, *, required: bool = True):
+        r = requests.get(f"{self.endpoint}/wallet/did?did={did}", headers=self.headers)
+        if not r.ok:
+            if not required:
+                settings.LOGGER.warning(
+                    "Could not look up wallet DID %s (%s): %s",
+                    did,
+                    r.status_code,
+                    r.text,
+                )
+                return None
+            raise self._traction_error(r, "wallet_did")
+        did_info = self._try_response(r, "results")
+        if not did_info:
+            return None
+        return verkey_to_multikey(did_info[0]["verkey"])
+
+    def has_local_multikey(self, issuer_did: str, multikey: str) -> bool:
+        """True if the tenant wallet holds ``multikey`` for the issuer DID or as did:key."""
+        for did in (issuer_did, f"did:key:{multikey}"):
+            found = self.get_multikey(did, required=False)
+            if found and found == multikey:
+                return True
+        return False
 
     def authorize(self):
         r = requests.post(
@@ -101,14 +210,6 @@ class TractionController:
         if not token:
             raise HTTPException(status_code=502, detail="Traction did not return a tenant token")
         self.headers = {"Authorization": f"Bearer {token}"}
-
-    def resolve(self, did):
-        r = requests.get(
-            f"{self.endpoint}/resolver/resolve/{did}",
-            headers=self.headers,
-        )
-        did_document = self._try_response(r, "did_document")
-        return did_document
 
     @staticmethod
     def _multikey_from_did_key(did: str) -> str:

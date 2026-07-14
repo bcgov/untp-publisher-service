@@ -52,6 +52,11 @@ class CredentialRecord(BaseModel):
 
 class StatusListRecord(BaseModel):
     id: str = Field()
+    issuer: str = Field(None, description="Issuer DID that owns this status list.")
+    purpose: str = Field(
+        None,
+        description="Bitstring status purpose: revocation, suspension, or refresh.",
+    )
     type: str = Field(None)
     version: str = Field(None)
     active: bool = Field(None)

@@ -30,7 +30,7 @@ Build an unsigned Mines Act credential from the sample publication payload:
 ```bash
 curl -sS -X POST http://localhost:8000/test-suite/build-credential \
   -H 'Content-Type: application/json' \
-  -d @../configs/samples/BCMinesActPermitCredential.v1.1/publication-payload.json \
+  -d @../configs/credentials/BCMinesActPermitCredential/v1.1/payload.json \
   | jq .
 ```
 
@@ -66,3 +66,4 @@ The image published to GitHub Container Registry is **`ghcr.io/bcgov/untp-publis
   - **`MONGO_AUTH_SOURCE`** — optional for split mode (e.g. `admin` on Railway/managed MongoDB)
   - If the URI has no database path, set **`MONGO_DB`** to the database name.
 - **`PUBLISHER_WITNESS_ID`** — Witness `did:key` for DID WebVH endorsement (e.g. `did:key:z6Mk…`). The Ed25519 multikey is derived at runtime as **`PUBLISHER_WITNESS_MULTIKEY`** for Traction proof options.
+- **`PUBLISHER_DOMAIN`** — Hostname only for issuer DIDs from `configs/issuers.yaml` aliases (e.g. `registry.digitaltrust.gov.bc.ca`, not a URL). Alias `mines-act:chief-permitting-officer` becomes `did:web:{PUBLISHER_DOMAIN}:mines-act:chief-permitting-officer`. When unset, the hostname is taken from **`DID_WEB_SERVER_URL`**.

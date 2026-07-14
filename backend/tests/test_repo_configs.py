@@ -1,6 +1,7 @@
 """Tests for issuer publication config loader."""
 
 from app.repo_configs.loader import (
+    credential_set_dir,
     load_credential_template,
     load_credential_template_source,
     load_oca_bundle,
@@ -9,8 +10,8 @@ from app.repo_configs.loader import (
     load_sample_issued_credential_optional,
     load_sample_publication_payload,
     oca_bundle_path,
+    sample_issued_credential_path,
     sample_publication_payload_path,
-    sample_set_dir,
 )
 
 
@@ -36,17 +37,46 @@ def test_credential_version_for_type():
     assert credential_version_for_type("BCMinesActPermitCredential") == "v1.1"
 
 
-def test_load_publication_config_by_issuer():
+def test_load_publication_config_by_issuer(monkeypatch):
+    from app.repo_configs import loader as repo_loader
+
+    monkeypatch.setattr(repo_loader.settings, "PUBLISHER_DOMAIN", "registry.digitaltrust.gov.bc.ca")
+    repo_loader._publication_index.cache_clear()
     config = load_publication_config_by_issuer(
         "did:web:registry.digitaltrust.gov.bc.ca:mines-act:chief-permitting-officer"
     )
     assert len(config["credentials"]) == 1
     assert config["credentials"][0]["type"] == "BCMinesActPermitCredential"
+    assert config["issuer"]["alias"] == "mines-act:chief-permitting-officer"
+    assert (
+        config["issuer"]["id"]
+        == "did:web:registry.digitaltrust.gov.bc.ca:mines-act:chief-permitting-officer"
+    )
+    repo_loader._publication_index.cache_clear()
 
 
-def test_inferred_sample_paths():
-    assert sample_set_dir("BCMinesActPermitCredential").name == "BCMinesActPermitCredential.v1.1"
-    assert sample_publication_payload_path("BCMinesActPermitCredential").name == "publication-payload.json"
+def test_issuer_did_from_alias(monkeypatch):
+    from app.repo_configs.loader import issuer_did_from_alias
+    from app.repo_configs import loader as repo_loader
+
+    monkeypatch.setattr(repo_loader.settings, "PUBLISHER_DOMAIN", "registry.example.ca")
+    assert (
+        issuer_did_from_alias("mines-act:chief-permitting-officer")
+        == "did:web:registry.example.ca:mines-act:chief-permitting-officer"
+    )
+    assert (
+        issuer_did_from_alias("did:web:other.example:ns:alias")
+        == "did:web:other.example:ns:alias"
+    )
+
+
+def test_inferred_credential_paths():
+    assert credential_set_dir("BCMinesActPermitCredential").as_posix().endswith(
+        "credentials/BCMinesActPermitCredential/v1.1"
+    )
+    assert sample_publication_payload_path("BCMinesActPermitCredential").name == "payload.json"
+    assert sample_issued_credential_path("BCMinesActPermitCredential").name == "sample.json"
+    assert oca_bundle_path("BCMinesActPermitCredential").name == "oca.json"
 
 
 def test_load_sample_publication_payload():
@@ -61,11 +91,6 @@ def test_load_sample_issued_credential():
     assessment = issued["credentialSubject"]["conformityAssessment"][0]
     assert assessment["assessedFacility"]
     assert assessment["assessedProduct"]
-
-
-def test_inferred_oca_bundle_path():
-    path = oca_bundle_path("BCMinesActPermitCredential")
-    assert path.name == "BCMinesActPermitCredential.v1.1.json"
 
 
 def test_load_oca_bundle():
