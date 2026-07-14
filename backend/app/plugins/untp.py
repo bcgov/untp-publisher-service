@@ -9,11 +9,6 @@ class DigitalConformityCredential:
         self.context = DEFAULT_DCC_CONTEXT_URL
 
     def get_legal_act_info(self, legal_act_url):
-        from app.plugins.bclaws import get_act_metadata
-
-        if "/civix/document/id/" in legal_act_url:
-            document_id = legal_act_url.rstrip("/").split("/")[-1]
-            return get_act_metadata(document_id)
         legal_act_info = Soup(legal_act_url).legal_act_info()
         return {
             "id": legal_act_info["id"],

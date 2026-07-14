@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -11,7 +10,6 @@ from fastapi import HTTPException
 
 from app.presets.loader import get_preset
 from app.repo_configs.loader import load_credential_template_source_optional
-from app.services.legal_act import legal_act_for_issuer
 from app.services.publication_templates import (
     apply_configured_template_fields,
     publication_template_context,
@@ -113,8 +111,6 @@ def build_dcc_from_publication(
 
     preset = get_preset(type_record["template_ref"])
     cardinality_id = str(options["cardinalityId"])
-    entity_id = str(options["entityId"])
-    entity_name = entity.get("name") or entity_id
     permit_uri = f"{preset['registry_permit_base']}/{cardinality_id}"
     permit_issue_at = credential_input.get("validFrom")
     assessment_date = _assessment_date(permit_issue_at)
@@ -128,12 +124,6 @@ def build_dcc_from_publication(
         credential["validUntil"] = credential_input["validUntil"]
 
     subject = credential["credentialSubject"]
-    facility_names: list[str] = []
-    additional = options.get("additionalData") or {}
-    for facility in additional.get("assessedFacility") or []:
-        if isinstance(facility, dict) and facility.get("name"):
-            facility_names.append(str(facility["name"]))
-    facility_hint = facility_names[0] if facility_names else "registered site"
     text_context = publication_template_context(
         credential=credential_input,
         options=options,
@@ -151,48 +141,12 @@ def build_dcc_from_publication(
             context=text_context,
         )
     else:
-        legal_act = legal_act_for_issuer(issuer)
-        subject["id"] = permit_uri
-        subject["name"] = f"Mines Act Permit {cardinality_id} — {entity_name}"
-        subject["description"] = (
-            f"Mines Act permit issued to {entity_name} for {facility_hint} "
-            f"(permit {cardinality_id}). One conformity assessment represents this permit."
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"No credential template for type {type_record.get('type')!r}; "
+                "add configs/credentials/{type}/{version}/template.yaml"
+            ),
         )
-        subject["issuedToParty"] = {
-            "type": ["Party"],
-            "id": entity["id"],
-            "name": entity_name,
-            "registeredId": entity_id,
-            "idScheme": {
-                "type": ["IdentifierScheme"],
-                "id": "https://www.bcregistry.gov.bc.ca/",
-                "name": "BC Registry",
-            },
-        }
-
-    assessment = subject["conformityAssessment"][0]
-    if not template_source:
-        assessment["id"] = permit_uri
-        assessment["registeredId"] = cardinality_id
-        assessment["name"] = f"Mines Act Permit {cardinality_id} — {facility_hint}"
-        assessment["description"] = (
-            f"This conformity assessment is the Mines Act permit. Permit {cardinality_id} "
-            f"authorizes operations at {facility_hint} for the stated product scope under "
-            f"{legal_act['name']}."
-        )
-        assessment["assessmentDate"] = assessment_date
-        assessment["assessedOrganisation"] = {
-            "type": ["Party"],
-            "id": entity["id"],
-            "name": entity_name,
-            "registeredId": entity_id,
-            "idScheme": {
-                "type": ["IdentifierScheme"],
-                "id": "https://www.bcregistry.gov.bc.ca/",
-                "name": "BC Registry",
-            },
-        }
-        assessment["assessedFacility"] = []
-        assessment["assessedProduct"] = []
 
     return credential

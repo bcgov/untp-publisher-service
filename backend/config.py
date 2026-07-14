@@ -63,11 +63,6 @@ class Settings(BaseSettings):
     #: Base URL for read-only OrgBook entity lookup (``/api/v4/search``); not used for OrgBook VC APIs.
     ORGBOOK_URL: str = Field(default="http://localhost")
 
-    #: BC Laws / CiviX API base (Open Legislation).
-    BCLAWS_API_URL: str = Field(default="https://www.bclaws.gov.bc.ca")
-    #: BC Government Directory search endpoint for role/title lookup.
-    GTDS_URL: str = Field(default="https://www.dir.gov.bc.ca/gtds.cgi")
-
     DID_WEB_SERVER_URL: str = Field(default="http://localhost")
     #: Hostname only for issuer ``did:web`` IDs from ``issuers.yaml`` aliases
     #: (e.g. ``registry.digitaltrust.gov.bc.ca`` — not a URL).

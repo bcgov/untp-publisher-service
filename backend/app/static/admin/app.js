@@ -15,10 +15,6 @@ const state = {
 
 let issuerWizardStep = 1;
 let templateWizardStep = 1;
-let scopeSearchTimer = null;
-let scopeSearchRequestId = 0;
-let roleSearchTimer = null;
-let roleSearchRequestId = 0;
 let issuerDescriptionLastPrefill = "";
 
 /** UNTP 0.7.0 DCC mines-act preset (publication contract + templateRef). */
@@ -421,54 +417,6 @@ function issuerRowForDisplay(row) {
     scope,
     scid,
   };
-}
-
-function scopeFromIssuerDid(issuerDid) {
-  const id = String(issuerDid || "");
-  const parts = id.split(":");
-  return parts[4] || "";
-}
-
-function bestActMatchFromScope(acts, scope) {
-  const list = Array.isArray(acts) ? acts : [];
-  if (!list.length) return null;
-  const term = String(scope || "").trim().toLowerCase();
-  if (!term) return list[0];
-  const exact =
-    list.find((act) => String(act?.name || "").trim().toLowerCase() === term) ||
-    list.find((act) => String(act?.title || "").trim().toLowerCase() === term);
-  if (exact) return exact;
-  const starts =
-    list.find((act) => String(act?.name || "").toLowerCase().startsWith(term)) ||
-    list.find((act) => String(act?.title || "").toLowerCase().startsWith(term));
-  if (starts) return starts;
-  return list[0];
-}
-
-async function deriveLegalActForIssuerScope(scope, fallbackUrl = "") {
-  const term = String(scope || "").trim();
-  if (!term) return { legalActUrl: fallbackUrl, matched: false, legalAct: null };
-  try {
-    const response = await apiFetch(
-      `/bclaws/acts?q=${encodeURIComponent(term)}&limit=20&offset=0`
-    );
-    const match = bestActMatchFromScope(response?.acts || [], term);
-    const legalActUrl = match?.id || fallbackUrl;
-    return {
-      legalActUrl,
-      matched: Boolean(match),
-      legalAct: match
-        ? { id: match.id, name: match.name || match.title }
-        : null,
-    };
-  } catch {
-    return { legalActUrl: fallbackUrl, matched: false, legalAct: null };
-  }
-}
-
-async function deriveLegalActForIssuerRecord(issuerRow, fallbackUrl = "") {
-  const scope = issuerRow?.scope || scopeFromIssuerDid(issuerRow?.id);
-  return deriveLegalActForIssuerScope(scope, fallbackUrl);
 }
 
 function deriveContextUrl(type, version) {
@@ -1110,8 +1058,6 @@ function openCreateIssuer() {
   document.getElementById("issuer-result-card").classList.add("d-none");
   document.getElementById("issuer-submit").disabled = false;
   document.getElementById("issuer-submit").textContent = "Register issuer";
-  clearScopeAutocomplete();
-  document.getElementById("issuer-scope-legal-act-url").value = "";
   issuerWizardStep = 1;
   syncIssuerWizard();
   document.getElementById("issuer-wizard-modal").classList.remove("d-none");
@@ -1135,7 +1081,7 @@ async function openCreateTemplate() {
     "https://bcgov.github.io/digital-trust-toolkit/docs/governance/pilots/bc-petroleum-and-natural-gas-title";
 
   const issuerSelect = document.getElementById("template-issuer");
-  const legalActDisplay = document.getElementById("template-legal-act-display");
+  const scopeDisplay = document.getElementById("template-issuer-scope-display");
   issuerSelect.innerHTML = '<option value="">Loading issuers...</option>';
   const issuerData = await apiFetch("/admin/api/collections/IssuerRecord?skip=0&limit=200");
   templateIssuerRows = issuerData.items || [];
@@ -1149,44 +1095,23 @@ async function openCreateTemplate() {
     .join("");
   issuerSelect.innerHTML = opts || '<option value="">No issuers found</option>';
 
-  const applyIssuerScopeLegalAct = async () => {
+  const applyIssuerScopeDisplay = () => {
     const selectedIssuer = issuerSelect.value;
     if (!selectedIssuer) {
-      if (legalActDisplay) legalActDisplay.textContent = "Select an issuer first.";
+      if (scopeDisplay) scopeDisplay.textContent = "Select an issuer first.";
       return;
     }
     const row = templateIssuerRows.find((item) => item.id === selectedIssuer);
-    if (legalActDisplay) {
-      legalActDisplay.textContent = row?.scope
-        ? `Resolving legal act for scope: ${row.scope}…`
-        : "Issuer has no scope — re-register with a BC Laws act.";
-    }
-    try {
-      const resolved = await apiFetch(
-        `/admin/api/issuers/${encodeURIComponent(selectedIssuer)}/legal-act`
-      );
-      if (legalActDisplay) {
-        legalActDisplay.textContent = resolved?.name
-          ? `${resolved.name} (${resolved.id})`
-          : resolved?.id || "Could not resolve legal act.";
-      }
-    } catch (err) {
-      const fallback = await deriveLegalActForIssuerRecord(row);
-      if (legalActDisplay) {
-        legalActDisplay.textContent = fallback.legalAct?.name
-          ? `${fallback.legalAct.name} (${fallback.legalActUrl})`
-          : err.message || "Could not resolve legal act from issuer scope.";
-      }
+    if (scopeDisplay) {
+      scopeDisplay.textContent = row?.scope
+        ? `Issuer scope: ${row.scope}`
+        : "Issuer has no scope — set a scope when registering.";
     }
   };
 
-  issuerSelect.onchange = () => {
-    applyIssuerScopeLegalAct().catch(() => {
-      if (legalActDisplay) legalActDisplay.textContent = "Could not resolve legal act.";
-    });
-  };
+  issuerSelect.onchange = applyIssuerScopeDisplay;
   if (issuerSelect.value) {
-    await applyIssuerScopeLegalAct();
+    applyIssuerScopeDisplay();
   }
 
   templateWizardStep = 1;
@@ -1248,7 +1173,7 @@ function templateWizardNext() {
     if (!row?.scope) {
       showModalAlert(
         "template-wizard-alert",
-        "Selected issuer has no scope. Re-register the issuer with a BC Laws act."
+        "Selected issuer has no scope. Re-register the issuer with a scope."
       );
       return;
     }
@@ -1330,20 +1255,6 @@ function issuerWizardNext() {
   syncIssuerWizard();
 }
 
-function clearScopeAutocomplete() {
-  const results = document.getElementById("issuer-scope-results");
-  if (!results) return;
-  results.innerHTML = "";
-  results.classList.add("d-none");
-}
-
-function clearNameAutocomplete() {
-  const results = document.getElementById("issuer-name-results");
-  if (!results) return;
-  results.innerHTML = "";
-  results.classList.add("d-none");
-}
-
 function buildIssuerDescriptionPrefill() {
   const form = document.getElementById("issuer-create-form");
   if (!form) return "";
@@ -1364,130 +1275,6 @@ function updateIssuerDescriptionPrefill() {
   if (!current || current === issuerDescriptionLastPrefill) {
     descriptionInput.value = candidate;
     issuerDescriptionLastPrefill = candidate;
-  }
-}
-
-function selectScopeAct(act) {
-  const scopeInput = document.getElementById("issuer-scope");
-  const legalActInput = document.getElementById("issuer-scope-legal-act-url");
-  scopeInput.value = act?.name || act?.title || "";
-  if (legalActInput) legalActInput.value = act?.id || "";
-  updateIssuerDescriptionPrefill();
-  clearScopeAutocomplete();
-}
-
-function renderScopeAutocomplete(acts) {
-  const results = document.getElementById("issuer-scope-results");
-  if (!results) return;
-  if (!acts.length) {
-    results.innerHTML =
-      '<button type="button" class="issuer-scope-item" disabled>No matching acts found</button>';
-    results.classList.remove("d-none");
-    return;
-  }
-  results.innerHTML = acts
-    .map(
-      (act, index) => `
-      <button
-        type="button"
-        class="issuer-scope-item"
-        data-index="${index}"
-        title="${escapeHtml(String(act.title || act.name || ""))}"
-      >
-        <span class="issuer-scope-item-name">${escapeHtml(String(act.name || act.title || ""))}</span>
-        <span class="issuer-scope-item-meta">${escapeHtml(String(act.status || "Active"))}</span>
-      </button>`
-    )
-    .join("");
-  results.classList.remove("d-none");
-  results.querySelectorAll(".issuer-scope-item").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const idx = Number(btn.dataset.index);
-      if (Number.isInteger(idx) && acts[idx]) selectScopeAct(acts[idx]);
-    });
-  });
-}
-
-function selectNameRole(role) {
-  const nameInput = document.getElementById("issuer-name");
-  if (!nameInput) return;
-  // Use role title as issuer display name, falling back safely.
-  nameInput.value = role?.title || role?.name || "";
-  updateIssuerDescriptionPrefill();
-  clearNameAutocomplete();
-}
-
-function renderNameAutocomplete(roles) {
-  const results = document.getElementById("issuer-name-results");
-  if (!results) return;
-  if (!roles.length) {
-    results.innerHTML =
-      '<button type="button" class="issuer-scope-item" disabled>No matching roles found</button>';
-    results.classList.remove("d-none");
-    return;
-  }
-  results.innerHTML = roles
-    .map(
-      (role, index) => `
-      <button
-        type="button"
-        class="issuer-scope-item"
-        data-index="${index}"
-        title="${escapeHtml(String(role.title || ""))}"
-      >
-        <span class="issuer-scope-item-name">${escapeHtml(String(role.title || role.name || ""))}</span>
-        <span class="issuer-scope-item-meta">${escapeHtml(
-          [role.organizationalUnit, role.orgCode].filter(Boolean).join(" • ") || "BC Directory"
-        )}</span>
-      </button>`
-    )
-    .join("");
-  results.classList.remove("d-none");
-  results.querySelectorAll(".issuer-scope-item").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const idx = Number(btn.dataset.index);
-      if (Number.isInteger(idx) && roles[idx]) selectNameRole(roles[idx]);
-    });
-  });
-}
-
-async function searchScopeActs(query) {
-  const trimmed = query.trim();
-  if (trimmed.length < 2) {
-    clearScopeAutocomplete();
-    return;
-  }
-  scopeSearchRequestId += 1;
-  const requestId = scopeSearchRequestId;
-  try {
-    const response = await apiFetch(
-      `/bclaws/acts?q=${encodeURIComponent(trimmed)}&limit=12&offset=0`
-    );
-    if (requestId !== scopeSearchRequestId) return;
-    renderScopeAutocomplete(response?.acts || []);
-  } catch {
-    if (requestId !== scopeSearchRequestId) return;
-    clearScopeAutocomplete();
-  }
-}
-
-async function searchNameRoles(query) {
-  const trimmed = query.trim();
-  if (trimmed.length < 2) {
-    clearNameAutocomplete();
-    return;
-  }
-  roleSearchRequestId += 1;
-  const requestId = roleSearchRequestId;
-  try {
-    const response = await apiFetch(
-      `/bclaws/roles?q=${encodeURIComponent(trimmed)}&limit=12`
-    );
-    if (requestId !== roleSearchRequestId) return;
-    renderNameAutocomplete(response?.roles || []);
-  } catch {
-    if (requestId !== roleSearchRequestId) return;
-    clearNameAutocomplete();
   }
 }
 
@@ -1938,38 +1725,12 @@ document.getElementById("record-preview-open-page")?.addEventListener("click", (
 
 const issuerScopeInput = document.getElementById("issuer-scope");
 issuerScopeInput?.addEventListener("input", () => {
-  const hidden = document.getElementById("issuer-scope-legal-act-url");
-  if (hidden) hidden.value = "";
   updateIssuerDescriptionPrefill();
-  if (scopeSearchTimer) window.clearTimeout(scopeSearchTimer);
-  scopeSearchTimer = window.setTimeout(() => {
-    searchScopeActs(issuerScopeInput.value).catch(() => clearScopeAutocomplete());
-  }, 280);
-});
-issuerScopeInput?.addEventListener("focus", () => {
-  if (issuerScopeInput.value.trim().length >= 2) {
-    searchScopeActs(issuerScopeInput.value).catch(() => clearScopeAutocomplete());
-  }
-});
-issuerScopeInput?.addEventListener("blur", () => {
-  window.setTimeout(() => clearScopeAutocomplete(), 150);
 });
 
 const issuerNameInput = document.getElementById("issuer-name");
 issuerNameInput?.addEventListener("input", () => {
   updateIssuerDescriptionPrefill();
-  if (roleSearchTimer) window.clearTimeout(roleSearchTimer);
-  roleSearchTimer = window.setTimeout(() => {
-    searchNameRoles(issuerNameInput.value).catch(() => clearNameAutocomplete());
-  }, 280);
-});
-issuerNameInput?.addEventListener("focus", () => {
-  if (issuerNameInput.value.trim().length >= 2) {
-    searchNameRoles(issuerNameInput.value).catch(() => clearNameAutocomplete());
-  }
-});
-issuerNameInput?.addEventListener("blur", () => {
-  window.setTimeout(() => clearNameAutocomplete(), 150);
 });
 
 bindSidebarNav();

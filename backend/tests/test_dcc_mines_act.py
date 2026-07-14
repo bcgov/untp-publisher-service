@@ -13,6 +13,9 @@ from app.services import dcc_builder
 
 TEMPLATE_REF = "untp_v0_7_0_dcc_mines_act_permit"
 CREDENTIAL_TYPE = "BCMinesActPermitCredential"
+MINES_ACT_URL = (
+    "https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/96293_01"
+)
 
 
 @pytest.fixture
@@ -45,25 +48,7 @@ def type_record():
     }
 
 
-@pytest.fixture
-def legal_act():
-    return {
-        "id": "https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/96293_01",
-        "name": "Mines Act",
-        "scope": "Mines Act",
-    }
-
-
-@pytest.fixture
-def mock_legal_act(monkeypatch, legal_act):
-    """Patch legal_act at each import site (Python binds imports locally)."""
-    fake = lambda _issuer: legal_act
-    monkeypatch.setattr("app.presets.loader.legal_act_for_issuer", fake)
-    monkeypatch.setattr("app.services.dcc_builder.legal_act_for_issuer", fake)
-    return legal_act
-
-
-def test_build_template_from_preset(issuer, legal_act):
+def test_build_template_from_preset(issuer):
     template = build_template_from_preset(
         template_ref=TEMPLATE_REF,
         issuer=issuer,
@@ -71,22 +56,7 @@ def test_build_template_from_preset(issuer, legal_act):
     assert "DigitalConformityCredential" in template["type"]
     assert "BCMinesActPermitCredential" not in template["type"]
     assert template["issuer"]["id"] == issuer["id"]
-    assert (
-        template["credentialSubject"]["referenceScheme"]["id"] == legal_act["id"]
-    )
-
-
-def test_build_template_from_preset_skips_bclaws_when_skeleton_has_reference_scheme(
-    monkeypatch, issuer
-):
-    def fail_legal_act(_issuer):
-        raise AssertionError("legal_act_for_issuer should not be called")
-
-    monkeypatch.setattr(
-        "app.presets.loader.legal_act_for_issuer",
-        fail_legal_act,
-    )
-    build_template_from_preset(template_ref=TEMPLATE_REF, issuer=issuer)
+    assert template["credentialSubject"]["referenceScheme"]["id"] == MINES_ACT_URL
 
 
 def test_validate_publication_rejects_cardinality_mismatch(publication_payload, type_record):
@@ -101,33 +71,8 @@ def test_validate_publication_rejects_cardinality_mismatch(publication_payload, 
     assert "must match" in str(exc.value.detail)
 
 
-def test_build_dcc_from_publication_skips_bclaws_with_repo_template(
-    mock_legal_act, publication_payload, type_record, issuer, monkeypatch
-):
-    def fail_legal_act(_issuer):
-        raise AssertionError("legal_act_for_issuer should not be called")
-
-    monkeypatch.setattr(
-        "app.services.dcc_builder.legal_act_for_issuer",
-        fail_legal_act,
-    )
-    template = build_template_from_preset(template_ref=TEMPLATE_REF, issuer=issuer)
-    type_record["template"] = template
-    dcc_builder.build_dcc_from_publication(
-        template=template,
-        credential_input=publication_payload["credential"],
-        options=publication_payload["options"],
-        type_record=type_record,
-        issuer=issuer,
-        entity={
-            "id": "https://dev.orgbook.gov.bc.ca/entity/A0034771/type/registration.registries.ca",
-            "name": "EXAMPLE MINING CO",
-        },
-    )
-
-
 def test_build_dcc_from_publication(
-    mock_legal_act, publication_payload, type_record, issuer, legal_act, monkeypatch
+    publication_payload, type_record, issuer, monkeypatch
 ):
     published_at = datetime(2026, 6, 2, 15, 30, 0, tzinfo=timezone.utc)
 

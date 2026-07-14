@@ -159,21 +159,14 @@
           <form id="issuer-create-form" class="row g-3">
             <div class="col-12 issuer-wizard-step" data-step="1">
               <label class="form-label required" for="issuer-scope">Scope</label>
-              <input type="text" class="form-control" id="issuer-scope" name="scope" required placeholder="Start typing a BC legal act..." autocomplete="off" />
-              <input type="hidden" id="issuer-scope-legal-act-url" />
-              <div id="issuer-scope-results" class="issuer-scope-results d-none"></div>
+              <input type="text" class="form-control" id="issuer-scope" name="scope" required placeholder="e.g. Mines Act" autocomplete="off" />
               <div class="form-hint mb-3">
-                Search
-                <a href="https://www.bclaws.gov.bc.ca/" target="_blank" rel="noopener noreferrer">BC Laws</a>
-                acts; selected act name is used as scope.
+                Legal act or program name used as issuer scope (free text).
               </div>
               <label class="form-label required" for="issuer-name">Name</label>
-              <input type="text" class="form-control" id="issuer-name" name="name" required placeholder="Director of Petroleum Lands" autocomplete="off" />
-              <div id="issuer-name-results" class="issuer-scope-results d-none"></div>
+              <input type="text" class="form-control" id="issuer-name" name="name" required placeholder="Chief Permitting Officer" autocomplete="off" />
               <div class="form-hint">
-                Search the
-                <a href="https://www.dir.gov.bc.ca/gtds.cgi" target="_blank" rel="noopener noreferrer">BC Government Directory</a>
-                for role titles. Display name; used in the DID path identifier.
+                Display name; used in the DID path identifier.
               </div>
             </div>
 
@@ -251,9 +244,9 @@
 
             <div class="col-12 template-wizard-step d-none" data-step="2">
               <p class="text-secondary small mb-2">
-                Legal act is resolved from the selected issuer&apos;s scope (BC Laws) at registration time.
+                Issuer scope (reference scheme / legal act live in credential templates under <code>configs/credentials/</code>).
               </p>
-              <p class="mb-3 font-monospace small" id="template-legal-act-display">Select an issuer in step 1.</p>
+              <p class="mb-3 font-monospace small" id="template-issuer-scope-display">Select an issuer in step 1.</p>
               <div id="template-governance-block">
                 <label class="form-label required mt-3" for="template-governance">Governance URL</label>
                 <input type="url" class="form-control" id="template-governance" name="governance" value="https://bcgov.github.io/digital-trust-toolkit/docs/governance/pilots/bc-petroleum-and-natural-gas-title" required />

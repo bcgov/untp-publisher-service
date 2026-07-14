@@ -40,7 +40,6 @@ def build_app(cfg: Settings) -> FastAPI:
             admin_data,
             admin_ui,
             authentication,
-            bclaws,
             credentials,
             related_resources,
             registrations,
@@ -49,7 +48,6 @@ def build_app(cfg: Settings) -> FastAPI:
         api_router.include_router(authentication.router)
         api_router.include_router(registrations.router)
         api_router.include_router(credentials.router)
-        api_router.include_router(bclaws.router)
         api_router.include_router(related_resources.router)
         api_router.include_router(admin_data.router)
         api_router.include_router(admin_ui.router)

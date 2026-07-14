@@ -27,7 +27,6 @@ from app.repo_configs.loader import (
     load_publication_config_optional,
 )
 from app.services.dcc_builder import publisher_origin
-from app.services.legal_act import legal_act_for_issuer
 import uuid
 import random
 import json
@@ -85,9 +84,7 @@ async def register_credential_type(request_body: CredentialRegistration):
         )
 
     related = credential_registration.setdefault("relatedResources", {})
-    if not related.get("legalAct"):
-        legal_act = legal_act_for_issuer(issuer)
-        related["legalAct"] = legal_act["id"]
+    # legalAct / governance come from the request or credential template assets — not BC Laws lookup.
 
     origin = publisher_origin()
 

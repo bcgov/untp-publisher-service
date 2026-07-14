@@ -13,7 +13,6 @@ from app.repo_configs.loader import (
     load_sample_issued_credential_optional,
     load_sample_publication_payload,
 )
-from app.services.legal_act import legal_act_for_issuer
 
 PRESET_REGISTRY: dict[str, dict[str, Any]] = {
     "untp_v0_7_0_dcc_mines_act_permit": {
@@ -95,27 +94,6 @@ def load_publication_example(template_ref: str) -> dict[str, Any]:
     return load_sample_publication_payload(_domain_type_for_ref(template_ref))
 
 
-def _apply_legal_act_to_skeleton(skeleton: dict[str, Any], legal_act: dict[str, Any]) -> None:
-    subject = skeleton.setdefault("credentialSubject", {})
-    subject["referenceScheme"] = {
-        "type": ["ConformityScheme"],
-        "id": legal_act["id"],
-        "name": legal_act["name"],
-    }
-    assessments = subject.get("conformityAssessment") or []
-    if not assessments:
-        return
-    assessment = assessments[0]
-    assessment.setdefault("assessmentCriteria", [{}])
-    if assessment["assessmentCriteria"]:
-        criterion = assessment["assessmentCriteria"][0]
-        criterion["id"] = legal_act["id"]
-        criterion["name"] = legal_act["name"]
-    assessment["referenceRegulation"] = [
-        {"id": legal_act["id"], "name": legal_act["name"]}
-    ]
-
-
 def build_template_from_preset(
     *,
     template_ref: str,
@@ -173,8 +151,13 @@ def build_template_from_preset(
             assessment.pop(key, None)
 
     if not (subject.get("referenceScheme") or {}).get("id"):
-        legal_act = legal_act_for_issuer(issuer)
-        _apply_legal_act_to_skeleton(skeleton, legal_act)
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Preset sample for {preset['domain_type']!r} is missing "
+                "credentialSubject.referenceScheme; set it in configs/credentials/"
+            ),
+        )
     return skeleton
 
 

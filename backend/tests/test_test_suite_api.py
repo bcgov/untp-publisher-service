@@ -16,19 +16,6 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "untp_samples" / "v0.7
 CREDENTIAL_TYPE = "BCMinesActPermitCredential"
 
 
-@pytest.fixture
-def mock_legal_act(monkeypatch):
-    legal_act = {
-        "id": "https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/96293_01",
-        "name": "Mines Act",
-        "scope": "Mines Act",
-    }
-    fake = lambda _issuer: legal_act
-    monkeypatch.setattr("app.presets.loader.legal_act_for_issuer", fake)
-    monkeypatch.setattr("app.services.dcc_builder.legal_act_for_issuer", fake)
-    return legal_act
-
-
 def test_default_app_openapi_excludes_test_suite() -> None:
     from app import app as full_app
 
@@ -85,7 +72,7 @@ def test_test_suite_build_credential_openapi_has_example() -> None:
     assert example["options"]["cardinalityId"] == "Q-20"
 
 
-def test_test_suite_build_credential_from_sample_payload(mock_legal_act) -> None:
+def test_test_suite_build_credential_from_sample_payload() -> None:
     payload = load_sample_publication_payload(CREDENTIAL_TYPE)
     payload["organization"] = {
         "id": "https://dev.orgbook.gov.bc.ca/entity/A0034771/type/registration.registries.ca",
@@ -104,9 +91,7 @@ def test_test_suite_build_credential_from_sample_payload(mock_legal_act) -> None
     assert len(assessment["assessedFacility"]) == 1
 
 
-def test_test_suite_build_credential_rejects_invalid_output(
-    mock_legal_act, monkeypatch
-) -> None:
+def test_test_suite_build_credential_rejects_invalid_output(monkeypatch) -> None:
     from app.services import test_suite_build
     from app.validators.untp import UntpValidationError
 
