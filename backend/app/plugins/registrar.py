@@ -15,6 +15,7 @@ from app.utils import multikey_to_jwk
 from base58 import b58encode
 from canonicaljson import encode_canonical_json
 import hashlib
+from witness import did_key_verification_method
 
 
 class PublisherRegistrarError(Exception):
@@ -24,7 +25,7 @@ class PublisherRegistrarError(Exception):
 class PublisherRegistrar:
     def __init__(self):
         self.did_web_server = settings.WEBVH_SERVER_URL.rstrip("/")
-        self.publisher_multikey = settings.PUBLISHER_WITNESS_MULTIKEY
+        self.publisher_witness_id = settings.PUBLISHER_WITNESS_ID
 
     def _raise_registry_error(self, response: requests.Response, message: str) -> None:
         detail = response.text
@@ -140,8 +141,8 @@ class PublisherRegistrar:
 
         # Endorse DID document
         publisher_proof_options = r.json()["proofOptions"].copy()
-        publisher_proof_options["verificationMethod"] = (
-            f"did:key:{self.publisher_multikey}#{self.publisher_multikey}"
+        publisher_proof_options["verificationMethod"] = did_key_verification_method(
+            self.publisher_witness_id
         )
         endorsed_did_document = traction.add_di_proof(
             document=signed_did_document, 

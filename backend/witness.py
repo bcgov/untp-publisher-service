@@ -25,3 +25,9 @@ def did_key_to_multikey(did_key: str) -> str:
             "did:key must encode an Ed25519 multikey (0xed01 prefix, 32-byte public key)"
         )
     return method_id
+
+
+def did_key_verification_method(did_key: str) -> str:
+    """``did:key:{multikey}#{multikey}`` verificationMethod for an Ed25519 ``did:key``."""
+    multikey = did_key_to_multikey(did_key)
+    return f"did:key:{multikey}#{multikey}"

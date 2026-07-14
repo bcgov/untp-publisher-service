@@ -3,6 +3,7 @@ import requests
 from fastapi import HTTPException
 from app.utils import verkey_to_multikey, timestamp
 from app.plugins.mongodb import MongoClient
+from witness import did_key_verification_method
 
 
 class TractionControllerError(Exception):
@@ -12,7 +13,7 @@ class TractionControllerError(Exception):
 class TractionController:
     def __init__(self):
         self.default_kid = "key-01"
-        self.publisher_multikey = settings.PUBLISHER_WITNESS_MULTIKEY
+        self.publisher_witness_id = settings.PUBLISHER_WITNESS_ID
         self.endpoint = settings.TRACTION_API_URL
         self.tenant_id = settings.TRACTION_TENANT_ID
         self.api_key = settings.TRACTION_API_KEY
@@ -277,7 +278,7 @@ class TractionController:
         if did.startswith("did:web:"):
             verification_method = f"{did}#{self.default_kid}-multikey"
         elif did.startswith("did:key:"):
-            verification_method = f"{did}#{settings.PUBLISHER_WITNESS_MULTIKEY}"
+            verification_method = did_key_verification_method(did)
         else:
             verification_method = f"{did}#{self.default_kid}-jwk"
         r = requests.post(
@@ -320,7 +321,7 @@ class TractionController:
         if did.startswith('did:web:'):
             verification_method = f"{did}#{self.default_kid}-multikey"
         elif did.startswith('did:key:'):
-            verification_method = f"{did}#{settings.PUBLISHER_WITNESS_MULTIKEY}"
+            verification_method = did_key_verification_method(did)
         proof_options = {
             "type": "DataIntegrityProof",
             "cryptosuite": "eddsa-jcs-2022",
@@ -336,7 +337,7 @@ class TractionController:
         if did.startswith('did:web:'):
             verification_method = f"{did}#{self.default_kid}-multikey"
         elif did.startswith('did:key:'):
-            verification_method = f"{did}#{settings.PUBLISHER_WITNESS_MULTIKEY}"
+            verification_method = did_key_verification_method(did)
         presentation = {
             '@context': [
                 'https://www.w3.org/ns/credentials/v2'
@@ -365,8 +366,8 @@ class TractionController:
         return self._try_response(r, "securedDocument")
 
     def endorse(self, document, options):
-        options["verificationMethod"] = (
-            f"did:key:{self.publisher_multikey}#{self.publisher_multikey}"
+        options["verificationMethod"] = did_key_verification_method(
+            self.publisher_witness_id
         )
         r = requests.post(
             f"{self.endpoint}/vc/di/add-proof",
