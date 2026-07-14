@@ -26,7 +26,8 @@ def test_load_credential_template_from_publication_config():
     assert "{{ permitNumber }}" in source
     template = load_credential_template("BCMinesActPermitCredential")
     assert template["name"] == "Mines Act Permit"
-    assert template["version"] == "v1.1"
+    assert "DigitalConformityCredential" in template["type"]
+    assert load_publication_config("BCMinesActPermitCredential")["credential"]["version"] == "v1.1"
 
 
 def test_credential_version_for_type():
