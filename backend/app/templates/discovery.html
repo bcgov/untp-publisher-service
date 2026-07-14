@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Discovery — {{ project_title }}</title>
+    <link rel="stylesheet" href="/static/css/bc-sans.css" />
+    <link rel="stylesheet" href="/static/css/publisher.css" />
+    <style>
+      :root {
+        --primary: {{ primary_color }};
+        --secondary: {{ secondary_color }};
+        --heading: #1a5a96;
+        --ink: #2d2d2d;
+        --muted: #5f6368;
+        --surface: #f7f8fa;
+        --on-primary: #ffffff;
+        --font: "BC Sans", "Noto Sans", Verdana, Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        font-family: var(--font);
+        color: var(--ink);
+        background: var(--surface);
+      }
+
+      .wrap {
+        flex: 1;
+        max-width: 56rem;
+        margin: 0 auto;
+        width: 100%;
+        padding: clamp(1.5rem, 5vw, 3rem) clamp(1.25rem, 5vw, 2.5rem)
+          3rem;
+      }
+
+      .top {
+        margin-bottom: 2rem;
+      }
+
+      .eyebrow {
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 0.35rem;
+      }
+
+      h1 {
+        font-size: clamp(1.75rem, 4vw, 2.35rem);
+        font-weight: 700;
+        color: var(--heading);
+        line-height: 1.15;
+        display: inline-block;
+        border-bottom: 2px solid var(--secondary);
+        padding-bottom: 0.15rem;
+      }
+
+      .back {
+        display: block;
+        margin-top: 0.85rem;
+        color: var(--heading);
+        font-weight: 700;
+        font-size: 0.9rem;
+        text-decoration: none;
+      }
+
+      .back:hover {
+        text-decoration: underline;
+      }
+
+      h2 {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--heading);
+        margin: 2rem 0 0.85rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 1px solid #dee2e6;
+      }
+
+      .issuer {
+        margin-bottom: 1.75rem;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        padding: 1rem 1.15rem;
+      }
+
+      .issuer h3 {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--heading);
+        margin-bottom: 0.35rem;
+      }
+
+      .issuer .meta,
+      .muted {
+        color: var(--muted);
+        font-size: 0.95rem;
+        line-height: 1.5;
+      }
+
+      .did {
+        font-family: ui-monospace, "Cascadia Code", monospace;
+        font-size: 0.8rem;
+        word-break: break-all;
+        color: var(--muted);
+        margin: 0.35rem 0 0.75rem;
+      }
+
+      .cred-list,
+      .pub-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
+
+      .cred-list li,
+      .pub-list li {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.5rem 1rem;
+        padding: 0.65rem 0;
+        border-bottom: 1px solid #e9ecef;
+      }
+
+      .cred-list .label {
+        font-weight: 700;
+      }
+
+      .cred-list .version {
+        font-weight: 400;
+        color: var(--muted);
+        margin-left: 0.35rem;
+      }
+
+      .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 0.85rem;
+      }
+
+      .links a,
+      .chip {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--heading);
+        text-decoration: none;
+        border-bottom: 1px solid var(--secondary);
+        padding-bottom: 0.05rem;
+      }
+
+      .links a:hover,
+      .chip:hover {
+        color: var(--primary);
+      }
+
+      .chip {
+        display: inline-block;
+        margin: 0 0.35rem 0.5rem 0;
+        border: 1px solid color-mix(in srgb, var(--secondary) 70%, transparent);
+        border-bottom-width: 1px;
+        padding: 0.25rem 0.55rem;
+        border-radius: 0.2rem;
+      }
+
+      .chip.active {
+        background: var(--primary);
+        color: var(--on-primary);
+        border-color: var(--primary);
+      }
+
+      .pub-list .id {
+        font-family: ui-monospace, "Cascadia Code", monospace;
+        font-size: 0.8rem;
+        word-break: break-all;
+      }
+
+      .flags {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
+      .empty {
+        color: var(--muted);
+        font-size: 0.95rem;
+        margin-top: 0.5rem;
+      }
+    </style>
+  </head>
+  <body class="pub-chrome">
+    <div class="pub-topbar">
+      <a class="pub-topbar-brand" href="/">{{ project_title }}</a>
+      <nav class="pub-topbar-links" aria-label="Site">
+        <a href="/discovery">Discovery</a>
+        <a href="/docs">API docs</a>
+        {% if partner_url %}
+        <a
+          class="partner"
+          href="{{ partner_url }}"
+          target="_blank"
+          rel="noopener noreferrer"
+          >{{ partner_label }}</a
+        >
+        {% endif %}
+      </nav>
+    </div>
+    <div class="pub-gold-rule" aria-hidden="true"></div>
+
+    <div class="wrap">
+      <header class="top">
+        <div class="top-text">
+          <p class="eyebrow">{{ project_title }}</p>
+          <h1>Discovery</h1>
+          <a class="back" href="/">← Home</a>
+        </div>
+      </header>
+
+      <section aria-labelledby="issuers-heading">
+        <h2 id="issuers-heading">Issuer instances</h2>
+        {% if issuers %}
+        {% for issuer in issuers %}
+        <article class="issuer">
+          <h3>{{ issuer.name or issuer.id }}</h3>
+          {% if issuer.description %}
+          <p class="meta">{{ issuer.description }}</p>
+          {% endif %}
+          <p class="did">{{ issuer.id }}</p>
+          {% if issuer.credentials %}
+          <ul class="cred-list">
+            {% for cred in issuer.credentials %}
+            <li>
+              <span class="label">
+                {{ cred.type }}
+                {% if cred.version %}
+                <span class="version">{{ cred.version }}</span>
+                {% endif %}
+              </span>
+              <span class="links">
+                <a href="/templates/{{ cred.type }}/{{ cred.version }}">Template</a>
+                <a href="/templates/{{ cred.type }}/{{ cred.version }}/oca.json"
+                  >OCA</a
+                >
+                {% if cred.has_sample %}
+                <a href="/discovery/samples/{{ cred.type }}">Sample</a>
+                {% endif %}
+                <a href="/discovery?type={{ cred.type }}">Published</a>
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="empty">No credential types configured for this issuer.</p>
+          {% endif %}
+        </article>
+        {% endfor %}
+        {% else %}
+        <p class="empty">No issuer instances found in configuration.</p>
+        {% endif %}
+      </section>
+
+      <section aria-labelledby="published-heading">
+        <h2 id="published-heading">Published credentials</h2>
+        {% if credential_types %}
+        <p class="muted" style="margin-bottom: 0.75rem">
+          Filter by type:
+          <a
+            class="chip{% if not selected_type %} active{% endif %}"
+            href="/discovery"
+            >All</a
+          >
+          {% for ct in credential_types %}
+          <a
+            class="chip{% if selected_type == ct.type %} active{% endif %}"
+            href="/discovery?type={{ ct.type }}"
+            >{{ ct.type }}</a
+          >
+          {% endfor %}
+        </p>
+        {% endif %}
+        {% if published %}
+        <ul class="pub-list">
+          {% for cred in published %}
+          <li>
+            <div>
+              <a class="id" href="/credentials/{{ cred.id }}">{{ cred.id }}</a>
+              <div class="muted">
+                {{ cred.type }} · entity {{ cred.entity_id }} ·
+                {{ cred.cardinality_id }}
+              </div>
+            </div>
+            <div class="flags">
+              {% if cred.revocation %}revoked{% elif cred.suspension %}suspended{% else %}active{% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="empty">
+          {% if selected_type %}
+          No published credentials for {{ selected_type }}.
+          {% else %}
+          No published credentials yet.
+          {% endif %}
+        </p>
+        {% endif %}
+      </section>
+    </div>
+    {% if partner_url %}
+    <footer class="pub-footer">
+      Partner site:
+      <a href="{{ partner_url }}" target="_blank" rel="noopener noreferrer"
+        >{{ partner_label }}</a
+      >
+    </footer>
+    {% endif %}
+  </body>
+</html>

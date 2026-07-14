@@ -21,6 +21,13 @@ Helm chart for the [UNTP Publisher](https://github.com/bcgov/untp-publisher-serv
 | backend.environment.publisherWitnessId | string | `""` | Witness `did:key` (sets `PUBLISHER_WITNESS_ID`; multikey derived at runtime) |
 | backend.environment.projectTitle | string | `"UNTP Publisher"` | Brand / OpenAPI title (`PROJECT_TITLE`) |
 | backend.environment.projectVersion | string | `"v0"` | Version string (`PROJECT_VERSION`) |
+| backend.environment.landingTagline | string | *(short UNTP publish blurb)* | Landing page tagline (`LANDING_TAGLINE`) |
+| backend.environment.landingDescription | string | `""` | Optional landing description (`LANDING_DESCRIPTION`) |
+| backend.environment.landingLogoUrl | string | `"/static/logo.jpg"` | Landing logo URL (`LANDING_LOGO_URL`) |
+| backend.environment.landingPrimaryColor | string | `"#003366"` | Landing primary accent (`LANDING_PRIMARY_COLOR`, BC navy) |
+| backend.environment.landingSecondaryColor | string | `"#FCBA19"` | Landing secondary accent (`LANDING_SECONDARY_COLOR`, B.C. `theme.primaryGold`) |
+| backend.environment.landingPartnerUrl | string | `"https://mines.nrs.gov.bc.ca/"` | Partner site URL (`LANDING_PARTNER_URL`) |
+| backend.environment.landingPartnerLabel | string | `"BC Mine Information"` | Partner link label (`LANDING_PARTNER_LABEL`) |
 | backend.traction.apiUrl | string | `""` | Traction tenant proxy base URL (sets `TRACTION_API_URL`) |
 | backend.traction.existingSecret | string | `""` | Pre-created Traction Secret. When empty, Helm manages `{fullname}-traction`. When set, Helm does not create the Secret. |
 | backend.traction.secretKeys.apiKey | string | `"traction_api_key"` | Secret key for the Traction API key |

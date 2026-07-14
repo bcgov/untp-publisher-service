@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ project_title }}</title>
+    <link rel="stylesheet" href="/static/css/bc-sans.css" />
+    <link rel="stylesheet" href="/static/css/publisher.css" />
+    <style>
+      :root {
+        --primary: {{ primary_color }};
+        --secondary: {{ secondary_color }};
+        --heading: #1a5a96;
+        --primary-soft: color-mix(in srgb, var(--primary) 12%, white);
+        --ink: #2d2d2d;
+        --muted: #5f6368;
+        --surface: #f7f8fa;
+        --on-primary: #ffffff;
+        --font: "BC Sans", "Noto Sans", Verdana, Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+      }
+
+      body {
+        font-family: var(--font);
+        color: var(--ink);
+        background: var(--surface);
+      }
+
+      .page {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .hero-band {
+        background:
+          linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--primary) 92%, black) 0%,
+            #244278 55%,
+            #1a5a96 100%
+          );
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .hero-band::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(
+            80% 60% at 90% 10%,
+            color-mix(in srgb, var(--secondary) 22%, transparent),
+            transparent 55%
+          );
+        pointer-events: none;
+      }
+
+      .hero {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: clamp(2.75rem, 8vw, 5rem) clamp(1.25rem, 5vw, 4rem)
+          clamp(3rem, 9vw, 5.5rem);
+        max-width: 56rem;
+      }
+
+      .logo {
+        width: clamp(11rem, 42vw, 16rem);
+        height: auto;
+        margin-bottom: 1.5rem;
+        filter: brightness(0) invert(1);
+        animation: rise 0.7s ease-out both;
+      }
+
+      .brand {
+        font-family: var(--font);
+        font-weight: 700;
+        font-size: clamp(2.1rem, 5.5vw, 3.1rem);
+        line-height: 1.12;
+        letter-spacing: -0.02em;
+        color: #fff;
+        white-space: nowrap;
+        animation: rise 0.75s ease-out 0.08s both;
+      }
+
+      .version {
+        display: inline-block;
+        margin-top: 0.65rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--secondary);
+        animation: rise 0.75s ease-out 0.12s both;
+      }
+
+      .tagline {
+        margin-top: 1.15rem;
+        font-size: clamp(1.05rem, 2.4vw, 1.2rem);
+        line-height: 1.55;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 32rem;
+        white-space: nowrap;
+        animation: rise 0.8s ease-out 0.16s both;
+      }
+
+      .description {
+        margin-top: 0.75rem;
+        font-size: 1rem;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.82);
+        max-width: 32rem;
+        animation: rise 0.8s ease-out 0.2s both;
+      }
+
+      .cta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem 1rem;
+        margin-top: 2rem;
+        animation: rise 0.85s ease-out 0.24s both;
+      }
+
+      .cta a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.7rem 1.35rem;
+        font-size: 0.9rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        text-decoration: none;
+        border-radius: 0.25rem;
+        transition:
+          background-color 0.2s ease,
+          color 0.2s ease,
+          border-color 0.2s ease,
+          transform 0.2s ease;
+      }
+
+      .cta a:hover {
+        transform: translateY(-1px);
+      }
+
+      .cta a.primary {
+        background: var(--secondary);
+        color: var(--primary);
+        border: 2px solid var(--secondary);
+      }
+
+      .cta a.primary:hover {
+        background: color-mix(in srgb, var(--secondary) 88%, black);
+        border-color: color-mix(in srgb, var(--secondary) 88%, black);
+      }
+
+      .cta a.secondary {
+        background: transparent;
+        color: #fff;
+        border: 2px solid rgba(255, 255, 255, 0.85);
+      }
+
+      .cta a.secondary:hover {
+        border-color: var(--secondary);
+        color: var(--secondary);
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(0.85rem);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (max-width: 30rem) {
+        .brand,
+        .tagline {
+          white-space: normal;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .logo,
+        .brand,
+        .version,
+        .tagline,
+        .description,
+        .cta {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body class="pub-chrome">
+    <div class="page">
+      <div class="pub-topbar">
+        <a class="pub-topbar-brand" href="/">{{ project_title }}</a>
+        <nav class="pub-topbar-links" aria-label="Site">
+          <a href="/discovery">Discovery</a>
+          <a href="/docs">API docs</a>
+          {% if partner_url %}
+          <a
+            class="partner"
+            href="{{ partner_url }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            >{{ partner_label }}</a
+          >
+          {% endif %}
+        </nav>
+      </div>
+      <div class="pub-gold-rule" aria-hidden="true"></div>
+
+      <div class="hero-band">
+        <header class="hero">
+          <img
+            class="logo"
+            src="{{ logo_url }}"
+            alt="{{ project_title }} logo"
+          />
+          <h1 class="brand">{{ project_title }}</h1>
+          {% if project_version %}
+          <span class="version">{{ project_version }}</span>
+          {% endif %}
+          <p class="tagline">{{ tagline }}</p>
+          {% if description %}
+          <p class="description">{{ description }}</p>
+          {% endif %}
+          <nav class="cta" aria-label="Primary">
+            <a class="primary" href="/discovery">Discovery</a>
+            <a class="secondary" href="/docs">API docs</a>
+            <a class="secondary" href="/server/status">Status</a>
+          </nav>
+        </header>
+      </div>
+
+      {% if partner_url %}
+      <footer class="pub-footer">
+        Partner site:
+        <a href="{{ partner_url }}" target="_blank" rel="noopener noreferrer"
+          >{{ partner_label }}</a
+        >
+      </footer>
+      {% endif %}
+    </div>
+  </body>
+</html>

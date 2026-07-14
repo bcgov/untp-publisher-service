@@ -61,6 +61,15 @@ The image published to GitHub Container Registry is **`ghcr.io/bcgov/untp-publis
 ## Configuration notes
 
 - **`PUBLISHER_DOMAIN`** — Public publisher host/origin used in credential IDs and related resource URLs (e.g. `http://localhost:8000` or `publisher.example.com`).
+- **Landing / branding** (used by `GET /`; OpenAPI title uses `PROJECT_TITLE`):
+  - **`PROJECT_TITLE`** — Brand name (default `UNTP Publisher`)
+  - **`PROJECT_VERSION`** — Shown on the landing page and OpenAPI
+  - **`LANDING_TAGLINE`** — One sentence under the title
+  - **`LANDING_DESCRIPTION`** — Optional longer line (omitted when empty)
+  - **`LANDING_LOGO_URL`** — Logo URL (default `/static/logo.jpg`)
+  - **`LANDING_PRIMARY_COLOR`** — Primary accent (default `#003366`, BC navy / Mine Information header)
+  - **`LANDING_SECONDARY_COLOR`** — Secondary accent (default `#FCBA19`, gold)
+  - **`LANDING_PARTNER_URL`** / **`LANDING_PARTNER_LABEL`** — Partner chrome link (default [BC Mine Information](https://mines.nrs.gov.bc.ca/))
 - **MongoDB** — either a full URI or separate fields:
   - **`MONGO_URI`** — connection string (overrides host/port/user/password); database selection always uses **`MONGO_DB`**
   - or **`MONGO_HOST`**, **`MONGO_PORT`**, **`MONGO_USER`**, **`MONGO_PASSWORD`**, **`MONGO_DB`**

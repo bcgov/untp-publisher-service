@@ -53,10 +53,24 @@ backend:
     # -- WebVH / DID web server base URL. Sets pod env WEBVH_SERVER_URL.
     # Hostname is used for issuer did:web IDs from issuers.yaml aliases.
     webvhServerUrl: ""
-    # -- OpenAPI / brand title. Sets PROJECT_TITLE.
+    # -- Landing / OpenAPI brand title. Sets PROJECT_TITLE.
     projectTitle: "UNTP Publisher"
     # -- App version string. Sets PROJECT_VERSION.
     projectVersion: "v0"
+    # -- Landing page tagline. Sets LANDING_TAGLINE.
+    landingTagline: "Publish UNTP-aligned verifiable credentials through BC Traction."
+    # -- Optional landing description (empty omits). Sets LANDING_DESCRIPTION.
+    landingDescription: ""
+    # -- Landing logo URL. Sets LANDING_LOGO_URL.
+    landingLogoUrl: "/static/logo.jpg"
+    # -- Landing primary accent (B.C. theme.primaryBlue). Sets LANDING_PRIMARY_COLOR.
+    landingPrimaryColor: "#003366"
+    # -- Landing secondary accent (B.C. theme.primaryGold). Sets LANDING_SECONDARY_COLOR.
+    landingSecondaryColor: "#FCBA19"
+    # -- Partner site URL (BC Mine Information). Sets LANDING_PARTNER_URL.
+    landingPartnerUrl: "https://mines.nrs.gov.bc.ca/"
+    # -- Partner link label. Sets LANDING_PARTNER_LABEL.
+    landingPartnerLabel: "BC Mine Information"
 
   image:
     # -- Backend image repository

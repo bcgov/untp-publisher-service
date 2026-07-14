@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img" aria-label="Facility location map">
+  <rect width="320" height="200" fill="#e8f0e8"/>
+  <path d="M0 155 C60 130 100 170 160 145 C220 120 260 160 320 140 V200 H0Z" fill="#b8d4b8"/>
+  <path d="M0 120 C50 100 110 130 170 105 C230 80 270 110 320 95 V155 C260 160 220 120 160 145 C100 170 60 130 0 155Z" fill="#8fbc8f" opacity="0.55"/>
+  <path d="M40 80 L90 40 L140 70 L200 30 L280 65" fill="none" stroke="#6b8f71" stroke-width="2"/>
+  <circle cx="168" cy="98" r="28" fill="#fff" stroke="#013366" stroke-width="2" opacity="0.95"/>
+  <path d="M168 74 C155 74 146 86 146 98 C146 112 168 132 168 132 C168 132 190 112 190 98 C190 86 181 74 168 74Z" fill="#fcba19" stroke="#013366" stroke-width="2"/>
+  <circle cx="168" cy="98" r="6" fill="#013366"/>
+  <line x1="40" y1="40" x2="280" y2="40" stroke="#d8dce0" stroke-dasharray="4 4"/>
+  <line x1="40" y1="80" x2="280" y2="80" stroke="#d8dce0" stroke-dasharray="4 4"/>
+  <text x="160" y="186" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#5f6368">Location - Open Location Code (Plus Code)</text>
+</svg>

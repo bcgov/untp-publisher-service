@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img" aria-label="Construction aggregate product">
+  <rect width="320" height="200" fill="#f4f6f8"/>
+  <ellipse cx="160" cy="148" rx="108" ry="22" fill="#d8dce0"/>
+  <circle cx="98" cy="118" r="18" fill="#9aa3ad"/>
+  <circle cx="132" cy="102" r="22" fill="#7f8a96"/>
+  <circle cx="176" cy="110" r="20" fill="#8a949e"/>
+  <circle cx="214" cy="96" r="24" fill="#6f7a86"/>
+  <circle cx="248" cy="118" r="16" fill="#9aa3ad"/>
+  <circle cx="118" cy="132" r="14" fill="#b0b8c0"/>
+  <circle cx="188" cy="128" r="17" fill="#a3acb6"/>
+  <rect x="24" y="24" width="88" height="28" rx="4" fill="#013366"/>
+  <text x="68" y="43" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#fff" font-weight="700">AGGREGATE</text>
+  <text x="160" y="186" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#5f6368">Assessed product scope</text>
+</svg>

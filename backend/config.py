@@ -45,6 +45,23 @@ class Settings(BaseSettings):
     PROJECT_TITLE: str = "UNTP Publisher"
     PROJECT_VERSION: str = "v0"
 
+    #: Landing page branding (``GET /`` when not in test-suite mode).
+    LANDING_TAGLINE: str = Field(
+        default="Publish UNTP-aligned verifiable credentials through BC Traction.",
+    )
+    LANDING_DESCRIPTION: str = Field(
+        default="",
+        description="Optional longer landing copy; omitted when empty.",
+    )
+    LANDING_LOGO_URL: str = Field(default="/static/logo.jpg")
+    #: B.C. Design System theme.primaryBlue
+    LANDING_PRIMARY_COLOR: str = Field(default="#003366")
+    #: B.C. Design System theme.primaryGold / Mine Information gold
+    LANDING_SECONDARY_COLOR: str = Field(default="#FCBA19")
+    #: Partner site (BC Mine Information). Shown in chrome; empty hides the link.
+    LANDING_PARTNER_URL: str = Field(default="https://mines.nrs.gov.bc.ca/")
+    LANDING_PARTNER_LABEL: str = Field(default="BC Mine Information")
+
     #: When ``True``, the app exposes only ``/server/status`` and ``/test-suite/*`` (no auth,
     #: credentials, or publisher API). Use for validator CI / isolated test deployments.
     TEST_SUITE: bool = Field(default=False)

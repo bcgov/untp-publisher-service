@@ -1,0 +1,101 @@
+/* Shared chrome aligned with BC Mine Information (mines.nrs.gov.bc.ca)
+   while keeping a lighter, modern digital feel. */
+
+:root {
+  --mines-navy: #003366;
+  --mines-heading: #1a5a96;
+  --mines-card: #38598a;
+  --mines-deep: #244278;
+  --mines-link: #5091cd;
+  --mines-gold: #fcba19;
+  --mines-gold-dark: #e9a603;
+  --mines-ink: #2d2d2d;
+  --mines-muted: #5f6368;
+  --mines-paper: #ffffff;
+  --mines-wash: #f7f8fa;
+  --font: "BC Sans", "Noto Sans", Verdana, Arial, sans-serif;
+}
+
+.pub-chrome {
+  font-family: var(--font);
+  color: var(--mines-ink);
+}
+
+.pub-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  padding: 0.65rem clamp(1.25rem, 5vw, 2.5rem);
+  background: var(--mines-navy);
+  color: #fff;
+}
+
+.pub-topbar a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.pub-topbar a:hover {
+  color: var(--mines-gold);
+  text-decoration: underline;
+}
+
+.pub-topbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  letter-spacing: 0.02em;
+}
+
+.pub-topbar-brand img {
+  height: 2rem;
+  width: auto;
+  display: block;
+}
+
+.pub-topbar-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pub-topbar-links .partner {
+  color: var(--mines-gold);
+}
+
+.pub-gold-rule {
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--mines-gold) 0%,
+    #f9c462 50%,
+    var(--mines-gold) 100%
+  );
+}
+
+.pub-footer {
+  margin-top: auto;
+  padding: 1.25rem clamp(1.25rem, 5vw, 2.5rem);
+  background: color-mix(in srgb, var(--mines-navy) 92%, black);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.85rem;
+}
+
+.pub-footer a {
+  color: var(--mines-gold);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.pub-footer a:hover {
+  text-decoration: underline;
+}

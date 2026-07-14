@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img" aria-label="Mines Act reference scheme">
+  <rect width="320" height="200" fill="#faf6ef"/>
+  <rect x="72" y="24" width="176" height="140" rx="4" fill="#fff" stroke="#8b6914" stroke-width="2"/>
+  <rect x="88" y="40" width="144" height="12" fill="#013366" opacity="0.15"/>
+  <text x="160" y="72" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#013366" font-weight="700">Mines Act</text>
+  <text x="160" y="92" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#5f6368">British Columbia</text>
+  <line x1="104" y1="104" x2="216" y2="104" stroke="#d8dce0"/>
+  <rect x="104" y="116" width="112" height="6" fill="#e4e9ef"/>
+  <rect x="104" y="130" width="96" height="6" fill="#e4e9ef"/>
+  <rect x="104" y="144" width="104" height="6" fill="#e4e9ef"/>
+  <path d="M56 168 H264" stroke="#fcba19" stroke-width="4"/>
+  <text x="160" y="186" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#5f6368">Reference scheme - BC Laws</text>
+</svg>

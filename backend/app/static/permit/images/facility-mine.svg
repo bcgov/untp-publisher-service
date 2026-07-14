@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img" aria-label="Assessed mine facility">
+  <rect width="320" height="200" fill="#eef4fa"/>
+  <path d="M0 140 Q80 110 160 125 T320 118 V200 H0Z" fill="#c5d5e8"/>
+  <path d="M20 145 L90 70 L130 105 L170 55 L230 95 L300 80 L300 200 H20Z" fill="#8fa8c4"/>
+  <path d="M90 70 L110 95 L70 95Z" fill="#5f7f9e"/>
+  <path d="M170 55 L195 90 L145 90Z" fill="#5f7f9e"/>
+  <rect x="118" y="118" width="84" height="42" fill="#fff" stroke="#013366" stroke-width="2"/>
+  <path d="M118 118 L160 92 L202 118Z" fill="#013366" opacity="0.9"/>
+  <rect x="136" y="132" width="16" height="20" fill="#fcba19"/>
+  <rect x="168" y="132" width="16" height="20" fill="#fcba19"/>
+  <circle cx="248" cy="52" r="16" fill="#fcba19" stroke="#013366" stroke-width="2"/>
+  <path d="M240 58 L248 44 L256 58 L252 58 L252 64 L244 64 L244 58 Z" fill="#013366"/>
+  <text x="160" y="186" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#5f6368">Assessed facility - BC Mines NRS</text>
+</svg>

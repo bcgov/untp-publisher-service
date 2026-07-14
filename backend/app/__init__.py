@@ -72,11 +72,15 @@ def build_app(cfg: Settings) -> FastAPI:
             contexts,
             credentials,
             issuers,
+            landing,
+            permit_preview,
             status_lists,
             templates,
         )
 
         # OpenAPI section order follows OPENAPI_TAGS.
+        api_router.include_router(landing.router)
+        api_router.include_router(permit_preview.router)
         api_router.include_router(authentication.router)
         api_router.include_router(issuers.router)
         api_router.include_router(credentials.router)

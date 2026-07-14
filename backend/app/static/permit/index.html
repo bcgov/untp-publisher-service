@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sample — Mines Act Permit</title>
+    <link rel="icon" href="/static/permit/images/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/css/bc-sans.css" />
+    <link rel="stylesheet" href="/static/css/publisher.css" />
+    <link href="/static/permit/styles.css" rel="stylesheet" />
+  </head>
+  <body class="pub-chrome" data-oca-url="">
+    <div class="page-shell">
+      <div class="pub-topbar">
+        <a class="pub-topbar-brand" href="/">BC Mines Publisher</a>
+        <nav class="pub-topbar-links" aria-label="Site">
+          <a href="/discovery">Discovery</a>
+          <a href="/docs">API docs</a>
+          <a
+            class="partner"
+            href="https://mines.nrs.gov.bc.ca/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >BC Mine Information</a
+          >
+        </nav>
+      </div>
+      <div class="pub-gold-rule" aria-hidden="true"></div>
+      <header class="toolbar d-print-none">
+        <div class="toolbar-inner">
+          <div class="toolbar-nav">
+            <a class="toolbar-back" href="/discovery">← Discovery</a>
+            <span class="toolbar-sep" aria-hidden="true">/</span>
+            <span class="toolbar-title">Sample</span>
+            <a class="toolbar-home" href="/">Home</a>
+          </div>
+          <div class="toolbar-actions">
+            <label class="sample-picker">
+              <span class="visually-hidden">Sample assessment</span>
+              <select id="sample-select" aria-label="Sample conformity assessment">
+                <option value="kootenay">Kootenay West (Q-20) — built live</option>
+                <option value="issued">Basin Coal Mine (C-217) — issued sample</option>
+              </select>
+            </label>
+            <div class="lang-toggle" role="group" aria-label="OCA language">
+              <button
+                type="button"
+                class="lang-btn is-active"
+                data-oca-lang="en"
+                aria-pressed="true"
+                title="English OCA labels"
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                class="lang-btn"
+                data-oca-lang="fr"
+                aria-pressed="false"
+                title="Étiquettes OCA en français"
+              >
+                FR
+              </button>
+            </div>
+            <div class="view-tabs" role="tablist" aria-label="Preview mode">
+              <button
+                type="button"
+                class="view-tab is-active"
+                role="tab"
+                id="tab-record"
+                aria-selected="true"
+                aria-controls="panel-record"
+                data-view="record"
+              >
+                Record
+              </button>
+              <button
+                type="button"
+                class="view-tab"
+                role="tab"
+                id="tab-technical"
+                aria-selected="false"
+                aria-controls="panel-technical"
+                data-view="technical"
+              >
+                Technical
+              </button>
+            </div>
+            <button type="button" class="btn btn-secondary" id="btn-copy-json">Copy JSON</button>
+            <button type="button" class="btn btn-secondary" id="btn-print">Print</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="preview-stage" id="preview-stage">
+        <p class="loading" id="loading">Loading conformity assessment…</p>
+
+        <div class="preview-panels d-none" id="preview-panels">
+          <!-- ── Record view ─────────────────────────────────────────── -->
+          <div class="view-panel is-active" id="panel-record" role="tabpanel" aria-labelledby="tab-record">
+            <article class="permit-document" id="permit-document" aria-label="Mines Act conformity assessment permit">
+              <div class="permit-gold-bar" aria-hidden="true"></div>
+
+              <div class="validity-ribbon" id="validity-ribbon">
+                <div class="validity-ribbon-item">
+                  <span class="validity-label" data-oca="/validFrom">Valid from</span>
+                  <span class="validity-value" id="field-valid-from">—</span>
+                </div>
+                <div class="validity-ribbon-item">
+                  <span
+                    class="validity-label"
+                    data-oca="/credentialSubject/conformityAssessment/0/assessmentDate"
+                    >Assessment date</span
+                  >
+                  <span class="validity-value" id="field-validity-assessment-date">—</span>
+                </div>
+                <div class="validity-ribbon-item">
+                  <span class="validity-label">UNTP profile</span>
+                  <span class="validity-value">0.7.0 · DigitalConformityCredential</span>
+                </div>
+                <div class="validity-ribbon-item validity-ribbon-status">
+                  <span
+                    class="permit-status"
+                    id="field-conformance"
+                    data-oca="/credentialSubject/conformityAssessment/0/conformance"
+                    data-oca-tip-only
+                    >Conforms</span
+                  >
+                </div>
+              </div>
+
+              <header class="permit-header">
+                <div class="permit-header-brand">
+                  <img
+                    class="permit-mark"
+                    src="/static/permit/images/bcgov-mark.svg"
+                    alt="British Columbia"
+                    width="72"
+                    height="64"
+                  />
+                  <div class="permit-header-text">
+                    <p class="permit-government">British Columbia</p>
+                    <p class="permit-ministry">Digital Conformity Credential</p>
+                    <p class="permit-credential-type" id="field-credential-types">
+                      UNTP 0.7.0
+                    </p>
+                  </div>
+                </div>
+                <div class="permit-seal" aria-hidden="true">
+                  <div class="permit-seal-ring">
+                    <span class="permit-seal-top">Authority</span>
+                    <span class="permit-seal-main">CA</span>
+                    <span class="permit-seal-bottom">Assessment</span>
+                  </div>
+                </div>
+              </header>
+
+              <div class="permit-title-block">
+                <p class="permit-statute" id="field-scheme">Mines Act (British Columbia)</p>
+                <h1 class="permit-title">Conformity Assessment</h1>
+                <p class="permit-subtitle" id="field-subject-description">
+                  One assessment represents this Mines Act permit
+                </p>
+              </div>
+
+              <section class="relationship-flow" aria-label="Credential relationship chain">
+                <div class="flow-node flow-node-issuer">
+                  <span class="flow-node-label">Issuer</span>
+                  <span class="flow-node-value" id="flow-issuer">—</span>
+                </div>
+                <span class="flow-arrow" aria-hidden="true">→</span>
+                <div class="flow-node">
+                  <span class="flow-node-label">Attestation</span>
+                  <span class="flow-node-value" id="flow-attestation">ConformityAttestation</span>
+                </div>
+                <span class="flow-arrow" aria-hidden="true">→</span>
+                <div class="flow-node flow-node-primary">
+                  <span class="flow-node-label">Assessment</span>
+                  <span class="flow-node-value" id="flow-assessment-id">—</span>
+                </div>
+                <span class="flow-arrow" aria-hidden="true">→</span>
+                <div class="flow-node-group">
+                  <div class="flow-node flow-node-small">
+                    <span class="flow-node-label">Organisation</span>
+                    <span class="flow-node-value" id="flow-org">—</span>
+                  </div>
+                  <div class="flow-node flow-node-small">
+                    <span class="flow-node-label">Facility</span>
+                    <span class="flow-node-value" id="flow-facility">—</span>
+                  </div>
+                  <div class="flow-node flow-node-small">
+                    <span class="flow-node-label">Product(s)</span>
+                    <span class="flow-node-value" id="flow-products">—</span>
+                  </div>
+                </div>
+              </section>
+
+              <section class="assessment-hero" aria-labelledby="assessment-name">
+                <div class="assessment-hero-head">
+                  <div>
+                    <p
+                      class="assessment-hero-label"
+                      data-oca="/credentialSubject/conformityAssessment/0/name"
+                    >
+                      Assessment title
+                    </p>
+                    <h2 class="assessment-hero-name" id="field-assessment-name">—</h2>
+                  </div>
+                </div>
+                <p
+                  class="assessment-hero-lead"
+                  id="field-assessment-description"
+                  data-oca="/credentialSubject/conformityAssessment/0/description"
+                  data-oca-tip-only
+                ></p>
+                <div class="assessment-hero-ids">
+                  <div class="assessment-id-chip">
+                    <span
+                      class="assessment-id-label"
+                      data-oca="/credentialSubject/conformityAssessment/0/registeredId"
+                      >Permit number</span
+                    >
+                    <span class="assessment-id-value" id="field-registered-id">—</span>
+                  </div>
+                  <div class="assessment-id-chip">
+                    <span
+                      class="assessment-id-label"
+                      data-oca="/credentialSubject/conformityAssessment/0/assessmentDate"
+                      >Assessment date</span
+                    >
+                    <span class="assessment-id-value" id="field-assessment-date">—</span>
+                  </div>
+                  <div class="assessment-id-chip">
+                    <span
+                      class="assessment-id-label"
+                      data-oca="/credentialSubject/conformityAssessment/0/idScheme/name"
+                      >Permit register</span
+                    >
+                    <span class="assessment-id-value" id="field-id-scheme">—</span>
+                  </div>
+                  <div class="assessment-id-chip">
+                    <span
+                      class="assessment-id-label"
+                      data-oca="/credentialSubject/conformityAssessment/0/idScheme/id"
+                      >Permit register URI</span
+                    >
+                    <span class="assessment-id-value" id="field-register-scheme">—</span>
+                  </div>
+                </div>
+              </section>
+
+              <section class="quick-stats" aria-label="Assessment summary">
+                <div class="stat-card">
+                  <span
+                    class="stat-label"
+                    data-oca="/credentialSubject/issuedToParty/name"
+                    >Holder name</span
+                  >
+                  <span class="stat-value" id="stat-party">—</span>
+                </div>
+                <div class="stat-card">
+                  <span
+                    class="stat-label"
+                    data-oca="/credentialSubject/conformityAssessment/0/assessedFacility/0/facility/name"
+                    >Facility name</span
+                  >
+                  <span class="stat-value" id="stat-facility">—</span>
+                </div>
+                <div class="stat-card">
+                  <span
+                    class="stat-label"
+                    data-oca="/credentialSubject/conformityAssessment/0/assessedProduct/0/product/name"
+                    >Product name</span
+                  >
+                  <span class="stat-value" id="stat-products">—</span>
+                </div>
+                <div class="stat-card">
+                  <span
+                    class="stat-label"
+                    data-oca="/credentialSubject/referenceProfile/name"
+                    >Governance profile</span
+                  >
+                  <span class="stat-value" id="stat-profile">—</span>
+                </div>
+              </section>
+
+              <section class="visual-record section-gap" aria-labelledby="visual-record-heading">
+                <div class="section-head">
+                  <h2 class="permit-section-heading" id="visual-record-heading">Visual record</h2>
+                  <p class="section-lead">
+                    Illustrations derived from credential fields. Select
+                    <strong>About this image</strong> on any figure for context.
+                  </p>
+                </div>
+                <div class="figure-gallery" id="figure-gallery"></div>
+              </section>
+
+              <section class="permit-body">
+                <div class="attestation-panel">
+                  <h2 class="permit-section-heading">Attestation envelope</h2>
+                  <dl class="meta-grid">
+                    <div class="meta-item">
+                      <dt data-oca="/credentialSubject/assessmentLevel">Assessment level</dt>
+                      <dd id="field-assessment-level">—</dd>
+                    </div>
+                    <div class="meta-item">
+                      <dt data-oca="/credentialSubject/assessorLevel">Assessor level</dt>
+                      <dd id="field-assessor-level">—</dd>
+                    </div>
+                    <div class="meta-item">
+                      <dt data-oca="/credentialSubject/attestationType">Attestation type</dt>
+                      <dd id="field-attestation-type">—</dd>
+                    </div>
+                    <div class="meta-item">
+                      <dt
+                        data-oca="/credentialSubject/conformityAssessment/0/conformityTopic/name"
+                      >
+                        Assessment conformity topic
+                      </dt>
+                      <dd id="field-conformity-topic">—</dd>
+                    </div>
+                    <div class="meta-item">
+                      <dt data-oca="/credentialSubject/issuedToParty/name">Holder name</dt>
+                      <dd>
+                        <span id="field-party-name">—</span>
+                        <span class="meta-sub" id="field-party-id"></span>
+                      </dd>
+                    </div>
+                    <div class="meta-item">
+                      <dt data-oca="/issuer/name">Issuer name</dt>
+                      <dd>
+                        <span id="field-issuer">—</span>
+                        <span class="meta-sub" id="field-issuer-did"></span>
+                      </dd>
+                    </div>
+                    <div class="meta-item meta-item-wide">
+                      <dt data-oca="/credentialSubject/referenceProfile/name">
+                        Governance profile
+                      </dt>
+                      <dd>
+                        <a class="meta-link" id="field-profile-link" href="#" target="_blank" rel="noopener"></a>
+                      </dd>
+                    </div>
+                    <div class="meta-item meta-item-wide">
+                      <dt data-oca="/credentialSubject/referenceScheme/name">Legal scheme</dt>
+                      <dd>
+                        <a class="meta-link" id="field-scheme-link" href="#" target="_blank" rel="noopener"></a>
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <h2 class="permit-section-heading section-gap">Scope of assessment</h2>
+                <p class="section-lead scope-lead">
+                  Organisation, facility, location, and product scope with labelled illustrations.
+                </p>
+                <div class="scope-grid scope-grid-figures" id="scope-figures"></div>
+                <div class="scope-grid scope-grid-details">
+                  <div class="scope-card">
+                    <h3
+                      class="scope-card-title"
+                      data-oca="/credentialSubject/conformityAssessment/0/assessedOrganisation/name"
+                    >
+                      Organisation name
+                    </h3>
+                    <p class="scope-card-value" id="field-org-name">—</p>
+                    <p class="scope-card-meta" id="field-org-id"></p>
+                    <a class="scope-card-link" id="field-org-uri" href="#" target="_blank" rel="noopener"></a>
+                  </div>
+
+                  <div class="scope-card">
+                    <h3
+                      class="scope-card-title"
+                      data-oca="/credentialSubject/conformityAssessment/0/assessedFacility/0/facility/name"
+                    >
+                      Facility name
+                    </h3>
+                    <p class="scope-card-value" id="field-facility-name">—</p>
+                    <p class="scope-card-meta" id="field-facility-id"></p>
+                    <p class="scope-card-meta" id="field-facility-location"></p>
+                    <span
+                      class="verify-badge verified"
+                      id="field-facility-verified"
+                      data-oca="/credentialSubject/conformityAssessment/0/assessedFacility/0/idVerifiedByCAB"
+                      data-oca-tip-only
+                      >Facility ID verified</span
+                    >
+                    <a class="scope-card-link" id="field-facility-uri" href="#" target="_blank" rel="noopener"></a>
+                  </div>
+
+                  <div class="scope-card scope-card-wide">
+                    <h3
+                      class="scope-card-title"
+                      data-oca="/credentialSubject/conformityAssessment/0/assessedProduct/0/product/name"
+                    >
+                      Product name
+                    </h3>
+                    <ul class="permit-product-list" id="field-products"></ul>
+                  </div>
+                </div>
+
+                <div class="criteria-panel">
+                  <h2 class="permit-section-heading">Assessment criteria &amp; outcome</h2>
+                  <div class="criteria-grid">
+                    <div class="criteria-block">
+                      <h3
+                        class="criteria-label"
+                        data-oca="/credentialSubject/conformityAssessment/0/referenceRegulation/0/name"
+                      >
+                        Regulation name
+                      </h3>
+                      <div class="criteria-regulation-list" id="field-regulation-list">
+                        <p class="criteria-value" id="field-regulation">—</p>
+                        <a class="criteria-link" id="field-regulation-link" href="#" target="_blank" rel="noopener"></a>
+                      </div>
+                    </div>
+                    <div class="criteria-block">
+                      <h3
+                        class="criteria-label"
+                        data-oca="/credentialSubject/conformityAssessment/0/assessmentCriteria/0/name"
+                      >
+                        Criterion name
+                      </h3>
+                      <p class="criteria-value" id="field-criteria">—</p>
+                      <a class="criteria-link" id="field-criteria-link" href="#" target="_blank" rel="noopener"></a>
+                    </div>
+                    <div class="criteria-block">
+                      <h3
+                        class="criteria-label"
+                        data-oca="/credentialSubject/conformityAssessment/0/assessedPerformance/0/metric/name"
+                      >
+                        Metric name
+                      </h3>
+                      <p class="criteria-value" id="field-metric">—</p>
+                      <p class="criteria-measure" id="field-measure"></p>
+                      <a class="criteria-link" id="field-metric-link" href="#" target="_blank" rel="noopener"></a>
+                    </div>
+                    <div class="criteria-block" id="evidence-block">
+                      <h3
+                        class="criteria-label"
+                        data-oca="/credentialSubject/conformityAssessment/0/evidence/0/linkName"
+                      >
+                        Evidence name
+                      </h3>
+                      <div class="criteria-evidence-list" id="field-evidence-list">
+                        <p class="criteria-value" id="field-evidence">—</p>
+                        <a class="criteria-link" id="field-evidence-link" href="#" target="_blank" rel="noopener"></a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="proof-panel d-none" id="proof-panel">
+                  <h2 class="permit-section-heading">Cryptographic verification</h2>
+                  <dl class="proof-grid">
+                    <div class="meta-item">
+                      <dt>Proof type</dt>
+                      <dd id="field-proof-type">—</dd>
+                    </div>
+                    <div class="meta-item">
+                      <dt>Cryptosuite</dt>
+                      <dd id="field-proof-cryptosuite">—</dd>
+                    </div>
+                    <div class="meta-item">
+                      <dt>Proof purpose</dt>
+                      <dd id="field-proof-purpose">—</dd>
+                    </div>
+                    <div class="meta-item meta-item-wide">
+                      <dt>Verification method</dt>
+                      <dd class="mono-wrap" id="field-proof-vm">—</dd>
+                    </div>
+                    <div class="meta-item meta-item-wide">
+                      <dt>Proof value</dt>
+                      <dd class="mono-wrap proof-value" id="field-proof-value">—</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div class="links-panel">
+                  <h2 class="permit-section-heading">Linked identifiers &amp; registries</h2>
+                  <div class="links-table-wrap">
+                    <table class="links-table" id="links-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Role</th>
+                          <th scope="col">Label</th>
+                          <th scope="col">URI / identifier</th>
+                        </tr>
+                      </thead>
+                      <tbody id="links-table-body"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </section>
+
+              <footer class="permit-footer">
+                <div class="permit-footer-grid">
+                  <div>
+                    <p class="permit-footer-label">Assessment URI</p>
+                    <a class="permit-footer-link" id="field-assessment-uri" href="#" target="_blank" rel="noopener"></a>
+                  </div>
+                  <div>
+                    <p class="permit-footer-label">Attestation subject URI</p>
+                    <a class="permit-footer-link" id="field-subject-uri" href="#" target="_blank" rel="noopener"></a>
+                  </div>
+                  <div>
+                    <p class="permit-footer-label">Credential identifier</p>
+                    <p class="permit-footer-mono" id="field-credential-id"></p>
+                  </div>
+                  <div>
+                    <p class="permit-footer-label">@context</p>
+                    <ul class="context-list" id="field-context-list"></ul>
+                  </div>
+                </div>
+                <p class="permit-disclaimer">
+                  This conformity assessment is the Mines Act permit. The visual record above is derived
+                  from UNTP Digital Conformity Credential data and does not replace the authoritative
+                  entry in the BC Mines Act Permit Register.
+                </p>
+              </footer>
+
+              <div class="permit-watermark" aria-hidden="true">CONFORMITY</div>
+            </article>
+          </div>
+
+          <!-- ── Technical view ──────────────────────────────────────── -->
+          <div class="view-panel" id="panel-technical" role="tabpanel" aria-labelledby="tab-technical" hidden>
+            <div class="technical-stack">
+              <section class="technical-card">
+                <div class="technical-card-head">
+                  <h2>Built credential (unsigned)</h2>
+                  <span class="technical-badge" id="technical-signed-badge">Unsigned</span>
+                </div>
+                <p class="technical-lead">
+                  Full UNTP 0.7.0 <code>DigitalConformityCredential</code> as rendered from the publication
+                  pipeline. Kootenay West (Q-20) is built live; Basin Coal (C-217) loads the issued sample.
+                </p>
+                <pre class="json-view" id="json-credential" tabindex="0"></pre>
+              </section>
+
+              <section class="technical-card">
+                <div class="technical-card-head">
+                  <h2>Publication payload</h2>
+                </div>
+                <p class="technical-lead">
+                  Input contract for the publisher: <code>template</code>, <code>version</code>,
+                  and <code>data</code> (permit, permittee, mine, commodities). Entity and
+                  cardinality are resolved via issuers.yaml pointers.
+                </p>
+                <pre class="json-view" id="json-publication" tabindex="0"></pre>
+              </section>
+
+              <section class="technical-card">
+                <div class="technical-card-head">
+                  <h2>UNTP field map</h2>
+                </div>
+                <div class="field-map-wrap">
+                  <table class="field-map-table" id="field-map-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">UI label</th>
+                        <th scope="col">JSON path</th>
+                        <th scope="col">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody id="field-map-body"></tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div class="toast d-none" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="/static/permit/app.js" type="module"></script>
+  </body>
+</html>
