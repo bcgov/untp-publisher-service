@@ -6,9 +6,9 @@ Skips @context and JSON-LD type arrays; walks scalars and array indices as in th
 
 Usage (from backend/):
   uv run python scripts/instance_to_oca_manifest.py \\
-    --instance app/examples/untp_v0_7_0_dcc_battery_instance.json \\
-    --output app/examples/untp_v0_7_0_dcc_battery_oca_manifest.json \\
-    --capture-base-id rba-vap-battery-conformity-demo
+    --instance ../configs/credentials/BCMinesActPermitCredential/v1.1/sample.json \\
+    --output /path/to/manifest.json \\
+    --capture-base-id bc-mines-act-permit-v1.1
 """
 
 from __future__ import annotations

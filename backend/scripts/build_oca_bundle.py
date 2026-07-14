@@ -6,8 +6,8 @@ Manifest: captureBaseId, attributes {pointer: type}, flagged_attributes, optiona
 
 Usage (from backend/):
   uv run python scripts/build_oca_bundle.py \\
-    --manifest app/examples/untp_v0_7_0_dcc_battery_oca_manifest.json \\
-    --output app/examples/untp_v0_7_0_dcc_battery_oca_bundle.json
+    --manifest /path/to/manifest.json \\
+    --output ../configs/credentials/BCMinesActPermitCredential/v1.1/oca.json
 """
 
 from __future__ import annotations

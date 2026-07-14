@@ -1,18 +1,19 @@
-"""Load bundled DCC presets from ``app/examples`` and materialize registration templates."""
+"""Load DCC presets and materialize registration templates from ``configs/credentials``."""
 
 from __future__ import annotations
 
 import copy
-import json
 import re
-from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException
 
+from app.repo_configs.loader import (
+    load_oca_bundle as load_config_oca_bundle,
+    load_sample_issued_credential_optional,
+    load_sample_publication_payload,
+)
 from app.services.legal_act import legal_act_for_issuer
-
-EXAMPLES_DIR = Path(__file__).resolve().parents[1] / "examples"
 
 PRESET_REGISTRY: dict[str, dict[str, Any]] = {
     "untp_v0_7_0_dcc_mines_act_permit": {
@@ -60,19 +61,23 @@ def get_preset(template_ref: str) -> dict[str, Any]:
     return meta
 
 
-def _example_path(template_ref: str, suffix: str) -> Path:
-    path = EXAMPLES_DIR / f"{template_ref}_{suffix}"
-    if not path.is_file():
-        raise HTTPException(
-            status_code=500,
-            detail=f"Preset asset missing: {path.name}",
-        )
-    return path
+def _domain_type_for_ref(template_ref: str) -> str:
+    return get_preset(template_ref)["domain_type"]
 
 
 def load_instance_skeleton(template_ref: str) -> dict[str, Any]:
-    path = _example_path(template_ref, "instance.json")
-    skeleton = json.loads(path.read_text(encoding="utf-8"))
+    """VC skeleton from ``configs/credentials/{type}/{version}/sample.json``."""
+    credential_type = _domain_type_for_ref(template_ref)
+    skeleton = load_sample_issued_credential_optional(credential_type)
+    if not skeleton:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Preset sample missing for {credential_type!r} "
+                "(expected configs/credentials/.../sample.json)"
+            ),
+        )
+    skeleton = copy.deepcopy(skeleton)
     skeleton.pop("proof", None)
     skeleton.pop("id", None)
     skeleton.pop("validFrom", None)
@@ -81,13 +86,13 @@ def load_instance_skeleton(template_ref: str) -> dict[str, Any]:
 
 
 def load_oca_bundle(template_ref: str) -> dict[str, Any]:
-    path = _example_path(template_ref, "oca_bundle.json")
-    return json.loads(path.read_text(encoding="utf-8"))
+    """OCA bundle from ``configs/credentials/{type}/{version}/oca.json``."""
+    return load_config_oca_bundle(_domain_type_for_ref(template_ref))
 
 
 def load_publication_example(template_ref: str) -> dict[str, Any]:
-    path = _example_path(template_ref, "publication_payload.example.json")
-    return json.loads(path.read_text(encoding="utf-8"))
+    """Publication payload from ``configs/credentials/{type}/{version}/payload.json``."""
+    return load_sample_publication_payload(_domain_type_for_ref(template_ref))
 
 
 def _apply_legal_act_to_skeleton(skeleton: dict[str, Any], legal_act: dict[str, Any]) -> None:
