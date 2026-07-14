@@ -24,6 +24,7 @@ def template_stub_context() -> dict[str, Any]:
         "options": {
             "cardinalityId": "STUB",
             "entityId": "STUB",
+            "entityName": "Stub Organization",
             "additionalData": {
                 "assessedFacility": [{
                     "name": "Stub Site",
@@ -34,7 +35,7 @@ def template_stub_context() -> dict[str, Any]:
             },
         },
         "organization": {
-            "id": "https://example.org/stub",
+            "id": "https://www.bcregistry.gov.bc.ca/business/STUB",
             "name": "Stub Organization",
             "registeredId": "STUB",
         },
@@ -68,11 +69,13 @@ def publication_template_context(
     options: dict[str, Any],
     organization: dict[str, Any],
 ) -> dict[str, Any]:
-    """Jinja context mirrors the publication request body plus resolved OrgBook organization."""
+    """Jinja context mirrors the publication request body plus holder organization."""
     org = dict(organization)
     entity_id = options.get("entityId")
     if entity_id is not None:
         org["registeredId"] = str(entity_id)
+    if options.get("entityName") and not org.get("name"):
+        org["name"] = str(options["entityName"])
     return {
         "credential": credential,
         "options": options,

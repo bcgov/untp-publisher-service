@@ -55,22 +55,16 @@ class Settings(BaseSettings):
     )
     LOGGER: Logger = Field(default_factory=lambda: logging.getLogger(__name__))
 
-    DOMAIN: str = Field(default="http://localhost")
+    PUBLISHER_DOMAIN: str = Field(default="http://localhost")
     TRACTION_API_URL: str = Field(default="http://localhost")
     TRACTION_API_KEY: str = Field(default="dev-local")
     TRACTION_TENANT_ID: str = Field(default="dev-local")
 
-    #: Base URL for read-only OrgBook entity lookup (``/api/v4/search``); not used for OrgBook VC APIs.
-    ORGBOOK_URL: str = Field(default="http://localhost")
-
-    DID_WEB_SERVER_URL: str = Field(default="http://localhost")
-    #: Hostname only for issuer ``did:web`` IDs from ``issuers.yaml`` aliases
-    #: (e.g. ``registry.digitaltrust.gov.bc.ca`` — not a URL).
-    #: Alias ``mines-act:chief-permitting-officer`` →
-    #: ``did:web:registry.digitaltrust.gov.bc.ca:mines-act:chief-permitting-officer``.
-    #: When empty, the hostname is taken from ``DID_WEB_SERVER_URL``.
-    PUBLISHER_DOMAIN: str = Field(default="")
-    #: Witness ``did:key`` (method id must be an Ed25519 multikey). Used for DID WebVH endorsement.
+    #: WebVH / DID web server base URL (e.g. ``https://sandbox.bcvh.vonx.io``).
+    #: Issuer DIDs from ``issuers.yaml`` use this URL's hostname:
+    #: ``did:web:{host}:{alias}``.
+    WEBVH_SERVER_URL: str = Field(default="http://localhost")
+    #: Witness ``did:key`` (method id must be an Ed25519 multikey).
     PUBLISHER_WITNESS_ID: str = Field(default="")
 
     @computed_field
@@ -81,16 +75,8 @@ class Settings(BaseSettings):
         return did_key_to_multikey(self.PUBLISHER_WITNESS_ID)
 
     def publisher_domain(self) -> str:
-        """Effective publisher hostname (``PUBLISHER_DOMAIN``, else host of ``DID_WEB_SERVER_URL``)."""
-        domain = (self.PUBLISHER_DOMAIN or "").strip()
-        if domain:
-            if "://" in domain or "/" in domain:
-                raise ValueError(
-                    "PUBLISHER_DOMAIN must be a hostname only "
-                    "(e.g. registry.digitaltrust.gov.bc.ca), not a URL"
-                )
-            return domain.rstrip(".")
-        raw = (self.DID_WEB_SERVER_URL or "").strip()
+        """Hostname for issuer ``did:web`` IDs (from ``WEBVH_SERVER_URL``)."""
+        raw = (self.WEBVH_SERVER_URL or "").strip()
         if not raw:
             return ""
         if "://" not in raw:
@@ -119,11 +105,6 @@ class Settings(BaseSettings):
     #: Root directory for ``configs/`` (``issuers.yaml``, ``credentials/{type}/{version}/``).
     #: Defaults to ``<repo>/configs``. In container images use ``/config``.
     CONFIG_ROOT: str = Field(default="")
-
-    @computed_field
-    @property
-    def ORGBOOK_API_URL(self) -> str:
-        return f"{self.ORGBOOK_URL}/api/v4"
 
     @model_validator(mode="after")
     def _validate_mongo_settings(self) -> Settings:

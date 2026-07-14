@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.models.mongodb import IssuerRecord
+from app.models.mongodb import IssuerInstanceRecord
 from app.plugins.mongodb import MongoClient
 from config import settings
 
@@ -21,7 +21,7 @@ def scope_from_issuer_config(issuer: dict[str, Any]) -> str | None:
 
 
 def ensure_issuer_record(issuer: dict[str, Any], *, mongo: MongoClient | None = None) -> dict[str, Any]:
-    """Create or refresh local ``IssuerRecord`` from a yaml issuer entry.
+    """Create or refresh local ``IssuerInstanceRecord`` from a yaml issuer entry.
 
     Does not require Traction / DID resolution. ``authorized_key`` is set when
     ``verificationMethod`` is present on the config; DID/key checks may update it later.
@@ -35,15 +35,15 @@ def ensure_issuer_record(issuer: dict[str, Any], *, mongo: MongoClient | None = 
     scope = scope_from_issuer_config(issuer)
     configured_key = (issuer.get("verificationMethod") or "").strip() or None
 
-    existing = mongo.find_one("IssuerRecord", {"id": issuer_id})
+    existing = mongo.find_one("IssuerInstanceRecord", {"id": issuer_id})
     if not existing:
-        record = IssuerRecord(
+        record = IssuerInstanceRecord(
             id=issuer_id,
             name=name,
             scope=scope,
             authorized_key=configured_key,
         ).model_dump()
-        mongo.insert("IssuerRecord", record)
+        mongo.insert("IssuerInstanceRecord", record)
         settings.LOGGER.info("Local issuer record created for %s.", issuer_id)
         return record
 
@@ -69,7 +69,7 @@ def ensure_issuer_record(issuer: dict[str, Any], *, mongo: MongoClient | None = 
         refreshed = {**existing, **updates}
         # Drop Mongo projection artifacts if any leaked in.
         refreshed.pop("_id", None)
-        mongo.replace("IssuerRecord", {"id": issuer_id}, refreshed)
+        mongo.replace("IssuerInstanceRecord", {"id": issuer_id}, refreshed)
         settings.LOGGER.info(
             "Local issuer record updated for %s (%s).",
             issuer_id,

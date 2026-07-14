@@ -52,6 +52,7 @@ class TractionController:
         """Idempotent startup provisioning from ``configs/issuers.yaml``."""
         self.authorize()
         from app.repo_configs import list_issuer_instances
+        from app.services.credential_type_provision import ensure_credential_type
         from app.services.issuer_provision import ensure_issuer_record
         from app.services.status_lists import ensure_issuer_status_lists
 
@@ -77,6 +78,15 @@ class TractionController:
             )
             await ensure_issuer_status_lists(issuer_id, mongo=mongo)
 
+            for credential in issuer.get("credentials") or []:
+                if not isinstance(credential, dict):
+                    continue
+                ensure_credential_type(
+                    issuer=issuer,
+                    credential=credential,
+                    mongo=mongo,
+                )
+
     async def _check_issuer_did_and_key(
         self,
         *,
@@ -84,7 +94,7 @@ class TractionController:
         issuer_id: str,
         expected_vm: str,
     ) -> None:
-        """Optional DID/key checks after the local IssuerRecord exists.
+        """Optional DID/key checks after the local IssuerInstanceRecord exists.
 
         Operations are logged as Skip when a check fails (no auto-create yet).
         """
@@ -125,11 +135,11 @@ class TractionController:
             "Issuer %s checks OK (DID resolves, VM present, key local).",
             issuer_id,
         )
-        issuer_record = mongo.find_one("IssuerRecord", {"id": issuer_id})
+        issuer_record = mongo.find_one("IssuerInstanceRecord", {"id": issuer_id})
         if issuer_record and issuer_record.get("authorized_key") != expected_vm:
             refreshed = {**issuer_record, "authorized_key": expected_vm}
             refreshed.pop("_id", None)
-            mongo.replace("IssuerRecord", {"id": issuer_id}, refreshed)
+            mongo.replace("IssuerInstanceRecord", {"id": issuer_id}, refreshed)
             settings.LOGGER.info(
                 "Updated authorized_key on local issuer record for %s.",
                 issuer_id,
@@ -259,8 +269,17 @@ class TractionController:
         return self._try_response(r, "kid")
 
     def sign_vc_jwt(self, document):
-        did = document.get('issuer') if isinstance(document.get('issuer'), str) else document.get('issuer').get('id')
-        verification_method = f"{did}#{self.default_kid}-jwk"
+        did = (
+            document.get("issuer")
+            if isinstance(document.get("issuer"), str)
+            else document.get("issuer").get("id")
+        )
+        if did.startswith("did:web:"):
+            verification_method = f"{did}#{self.default_kid}-multikey"
+        elif did.startswith("did:key:"):
+            verification_method = f"{did}#{settings.PUBLISHER_WITNESS_MULTIKEY}"
+        else:
+            verification_method = f"{did}#{self.default_kid}-jwk"
         r = requests.post(
             f"{self.endpoint}/wallet/jwt/sign",
             headers=self.headers,
@@ -271,7 +290,29 @@ class TractionController:
                 "payload": document,
             },
         )
-        return r.json()
+        if not r.ok:
+            raise self._traction_error(r, "jwt/sign")
+        try:
+            payload = r.json()
+        except ValueError as err:
+            raise HTTPException(status_code=502, detail="Traction returned non-JSON") from err
+        # Traction may return the compact JWT as a JSON string.
+        if isinstance(payload, str):
+            return payload
+        if isinstance(payload, dict):
+            for key in ("jwt", "token", "signed", "vc+jwt"):
+                if key in payload and isinstance(payload[key], str):
+                    return payload[key]
+        raise HTTPException(status_code=502, detail="Traction jwt/sign missing JWT string")
+
+    @staticmethod
+    def as_enveloped_vc(vc_jwt: str) -> dict:
+        """Wrap a compact vc+jwt as a VCDM 2.0 EnvelopedVerifiableCredential."""
+        return {
+            "@context": ["https://www.w3.org/ns/credentials/v2"],
+            "id": f"data:application/vc+jwt,{vc_jwt}",
+            "type": ["EnvelopedVerifiableCredential"],
+        }
 
     def issue_vc(self, credential):
         settings.LOGGER.info("Issuing Credential")

@@ -19,7 +19,7 @@ from config import settings
 
 
 def publisher_origin() -> str:
-    domain = (settings.DOMAIN or "").strip()
+    domain = (settings.PUBLISHER_DOMAIN or "").strip()
     if domain.startswith("http://") or domain.startswith("https://"):
         return domain.rstrip("/")
     return f"https://{domain}"

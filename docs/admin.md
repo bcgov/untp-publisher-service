@@ -1,30 +1,26 @@
 # Administrative role
 
-## MongoDB browser (ops)
+Publisher admins work from **repo configs** and a few API-key / client-auth endpoints — there is no separate Mongo admin UI.
 
-When the full publisher API is enabled (`TEST_SUITE=false`), a read-only admin UI and JSON API expose MongoDB collections:
+## What admins do
+
+1. Declare issuers and `credentials[]` in `configs/issuers.yaml`, with assets under `configs/credentials/{type}/{version}/`.
+2. Deploy so startup provisioning creates local `IssuerInstanceRecord`, status lists, and `CredentialTemplateRecord` rows.
+3. Issue a client secret with `POST /auth/secret` (`X-API-Key`).
+4. Confirm configuration via the public ops APIs (also `X-API-Key` where noted):
 
 | URL | Auth | Purpose |
 |-----|------|---------|
-| `/admin` | None (HTML only) | Collection browser — set `X-API-Key` in the page (same as `TRACTION_API_KEY`) |
-| `GET /admin/api/collections` | `X-API-Key` | List collections and record counts |
-| `GET /admin/api/collections/{name}` | `X-API-Key` | Paginated list (`skip`, `limit`, optional `q` search) |
-| `GET /admin/api/collections/{name}/records/{id}` | `X-API-Key` | Full record (sensitive fields redacted/truncated in list view) |
+| `GET /issuers` | `X-API-Key` | Issuer instances from yaml (+ whether provisioned locally) |
+| `GET /templates/{type}/{version}` | None | Provisioned VC template |
+| `GET /templates/{type}/{version}/oca.json` | None | OCA bundle |
+| `GET /status-lists/{id}` | None | Status list credential |
+| `POST /auth/secret` | `X-API-Key` | Generate issuer client secret |
+| `POST /auth/token` | Client secret | Exchange for publish JWT |
 
-**Issuers** and **status lists** are provisioned at startup from `configs/issuers.yaml`. Use `/admin` to verify those records after boot.
+Mongo inspection, when needed, is done with normal DB tools (Compass, `mongosh`), not the publisher API.
 
-Collections: `IssuerRecord`, `CredentialTypeRecord`, `CredentialRecord`, `StatusListRecord`, `CredentialPickupRecord`.
-
----
-
-A publisher software admin has 3 key functions:
-- Ensure issuers are declared in `configs/issuers.yaml` (and DIDs exist where required)
-- Register credential types (API)
-- Generate/provide secrets to issuers
-
-## Issuer provisioning (configs)
-
-Issuers are declared in repo config:
+## Issuer and credential type provisioning (configs)
 
 ```yaml
 instances:
@@ -36,32 +32,12 @@ instances:
         version: v1.1
 ```
 
-On startup the publisher creates/updates local `IssuerRecord` rows and three status lists per issuer. Full DID = `did:web:{PUBLISHER_DOMAIN}:{id}`.
+On startup the publisher creates/updates:
 
-Optional interactive registration via `POST /registrations/issuers` remains for non-config flows; it is not driven from the admin UI.
+- local `IssuerInstanceRecord` rows
+- three status lists per issuer
+- `CredentialTemplateRecord` for each `credentials[]` entry (template/OCA from `configs/credentials/{type}/{version}/`)
 
-## Credential Type Registration
-The credential type registration is the most complex and critical component: it defines how issuers issue Verifiable Credentials through this publisher. OrgBook is used only for **entity lookup** during publication; credential type definitions and issued VCs are **not** pushed to OrgBook for indexing.
+Full DID = `did:web:{WEBVH_SERVER_URL hostname}:{id}`.
 
-This will also begin with a gh issue, describing the credential to be issued, the data points contained in the credential and other associated metadata. 
-```
-POST
-https://publisher.example.com/registrations/credentials
-{
-    "type": "BCExampleDocumentCredential",
-    "version": "1.0",
-    "issuer": "did:web:example.gov.bc.ca",
-    "mappings": {
-        "entityId": "documentOwner",
-        "cardinalityId": "documentNumber"
-    },
-    "subjectType": "ExampleDocument",
-    "subjectPaths": {
-        "documentOwner": "$.credentialSubject.documentOwner",
-        "documentNumber": "$.credentialSubject.documentNumber",
-    },
-    "relatedResources": {
-        "context": "https://bcgov.github.io/digital-trust-toolkit/contexts/ExampleDocument/v1.jsonld"
-    }
-}
-```
+Issuers then authenticate with a client secret (`POST /auth/secret` / `POST /auth/token`) and publish via the credentials APIs.

@@ -74,17 +74,14 @@ def test_test_suite_build_credential_openapi_has_example() -> None:
 
 def test_test_suite_build_credential_from_sample_payload() -> None:
     payload = load_sample_publication_payload(CREDENTIAL_TYPE)
-    payload["organization"] = {
-        "id": "https://dev.orgbook.gov.bc.ca/entity/A0034771/type/registration.registries.ca",
-        "name": "EXAMPLE MINING CO",
-    }
 
-    application = build_app(Settings(TEST_SUITE=True, DOMAIN="http://localhost:8000"))
+    application = build_app(Settings(TEST_SUITE=True, PUBLISHER_DOMAIN="http://localhost:8000"))
     r = TestClient(application).post("/test-suite/build-credential", json=payload)
     assert r.status_code == 200, r.text
     credential = r.json()["credential"]
     assert "proof" not in credential
     assert credential["credentialSubject"]["issuedToParty"]["registeredId"] == "A0034771"
+    assert credential["credentialSubject"]["issuedToParty"]["name"] == "EXAMPLE MINING CO"
     assessment = credential["credentialSubject"]["conformityAssessment"][0]
     assert assessment["registeredId"] == "Q-20"
     assert assessment["assessmentDate"] == "1999-04-19"
@@ -101,12 +98,8 @@ def test_test_suite_build_credential_rejects_invalid_output(monkeypatch) -> None
     monkeypatch.setattr(test_suite_build, "validate_untp_document", fail_validation)
 
     payload = load_sample_publication_payload(CREDENTIAL_TYPE)
-    payload["organization"] = {
-        "id": "https://dev.orgbook.gov.bc.ca/entity/A0034771/type/registration.registries.ca",
-        "name": "EXAMPLE MINING CO",
-    }
 
-    application = build_app(Settings(TEST_SUITE=True, DOMAIN="http://localhost:8000"))
+    application = build_app(Settings(TEST_SUITE=True, PUBLISHER_DOMAIN="http://localhost:8000"))
     r = TestClient(application).post("/test-suite/build-credential", json=payload)
     assert r.status_code == 400
     assert "UNTP validation failed" in r.json()["detail"]

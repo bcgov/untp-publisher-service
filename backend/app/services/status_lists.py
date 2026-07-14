@@ -42,7 +42,7 @@ async def ensure_issuer_status_lists(issuer_id: str, *, mongo: MongoClient | Non
             continue
 
         status_list_id = str(uuid.uuid4())
-        endpoint = f"{origin}/credentials/status/{status_list_id}"
+        endpoint = f"{origin}/status-lists/{status_list_id}"
         indexes = list(range(STATUS_LIST_LENGTH))
         random.shuffle(indexes)
 

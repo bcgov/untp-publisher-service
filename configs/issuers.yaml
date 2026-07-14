@@ -1,5 +1,5 @@
 # Issuer registry.
-# id: namespace:alias — full DID is did:web:{PUBLISHER_DOMAIN}:{id}
+# id: namespace:alias — full DID is did:web:{WEBVH_SERVER_URL hostname}:{id}
 # Optional verificationMethod: Ed25519 multikey on the DID document / Traction wallet.
 # Per-credential assets: configs/credentials/{type}/{version}/
 #   template.yaml  — Jinja VC template

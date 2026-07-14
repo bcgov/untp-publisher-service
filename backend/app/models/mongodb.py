@@ -7,7 +7,7 @@ class BaseModel(BaseModel):
         return super().model_dump(by_alias=True, exclude_none=True, **kwargs)
 
 
-class IssuerRecord(BaseModel):
+class IssuerInstanceRecord(BaseModel):
     id: str = Field()
     name: str = Field()
     scope: str = Field(
@@ -21,7 +21,7 @@ class IssuerRecord(BaseModel):
     )
 
 
-class CredentialTypeRecord(BaseModel):
+class CredentialTemplateRecord(BaseModel):
     type: str = Field()
     version: str = Field()
     issuer: str = Field()

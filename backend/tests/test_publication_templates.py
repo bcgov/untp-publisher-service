@@ -16,6 +16,7 @@ PAYLOAD = {
     },
     "options": {
         "entityId": "A0034771",
+        "entityName": "EXAMPLE MINING CO",
         "cardinalityId": "Q-20",
         "additionalData": {
             "assessedFacility": [{"name": "Kootenay West", "registeredId": "0500956"}],
@@ -24,7 +25,7 @@ PAYLOAD = {
     },
 }
 ORGANIZATION = {
-    "id": "https://dev.orgbook.gov.bc.ca/entity/A0034771/type/registration.registries.ca",
+    "id": "https://www.bcregistry.gov.bc.ca/business/A0034771",
     "name": "EXAMPLE MINING CO",
 }
 

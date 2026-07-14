@@ -27,8 +27,7 @@ def issuer_did_from_alias(alias: str) -> str:
     Build ``did:web:{domain}:{namespace}:{alias}`` from an ``issuers.yaml`` id.
 
     ``alias`` is the yaml ``id`` (e.g. ``mines-act:chief-permitting-officer``).
-    Domain comes from ``PUBLISHER_DOMAIN`` (hostname only), or the host of ``DID_WEB_SERVER_URL``.
-    Full DIDs are returned unchanged.
+    Domain is the hostname of ``WEBVH_SERVER_URL``. Full DIDs are returned unchanged.
     """
     value = (alias or "").strip()
     if not value:
@@ -43,8 +42,8 @@ def issuer_did_from_alias(alias: str) -> str:
         raise HTTPException(
             status_code=500,
             detail=(
-                "Cannot build issuer DID: set PUBLISHER_DOMAIN to a hostname "
-                "(or DID_WEB_SERVER_URL with a hostname)"
+                "Cannot build issuer DID: set WEBVH_SERVER_URL "
+                "(hostname is taken from that URL)"
             ),
         )
     return f"did:web:{domain}:{value.lstrip(':')}"
@@ -140,7 +139,11 @@ def _publication_index() -> dict[str, Any]:
 
 
 def list_issuer_instances() -> list[dict[str, Any]]:
-    """Issuer entries from ``configs/issuers.yaml`` (``instances[]``, credentials omitted)."""
+    """Issuer instances from ``configs/issuers.yaml`` (``instances[]``).
+
+    Each item is the expanded issuer dict (full DID in ``id``, original yaml id in
+    ``alias``) plus retained ``credentials[]`` entries from the yaml instance.
+    """
     path = issuers_file()
     if not path.is_file():
         return []
@@ -155,9 +158,10 @@ def list_issuer_instances() -> list[dict[str, Any]]:
     for instance in instances:
         if not isinstance(instance, dict):
             continue
-        issuer = _expand_issuer(instance)
-        if issuer:
-            issuers.append(issuer)
+        config = _normalize_instance(instance)
+        issuer = dict(config["issuer"])
+        issuer["credentials"] = list(config["credentials"])
+        issuers.append(issuer)
     return issuers
 
 

@@ -4,7 +4,7 @@ import requests
 from app.models.credential import Credential
 from app.models.did_document import DidDocument, VerificationMethod
 from app.plugins import MongoClient, TractionController
-from app.plugins.orgbook import OrgbookClient
+from app.services.entity import entity_from_options
 from app.plugins.untp import DigitalConformityCredential
 from app.services.dcc_builder import build_dcc_from_publication, publisher_origin
 from app.validators.untp import UntpValidationError, validate_untp_document
@@ -23,7 +23,7 @@ class PublisherRegistrarError(Exception):
 
 class PublisherRegistrar:
     def __init__(self):
-        self.did_web_server = settings.DID_WEB_SERVER_URL.rstrip("/")
+        self.did_web_server = settings.WEBVH_SERVER_URL.rstrip("/")
         self.publisher_multikey = settings.PUBLISHER_WITNESS_MULTIKEY
 
     def _raise_registry_error(self, response: requests.Response, message: str) -> None:
@@ -243,7 +243,7 @@ class PublisherRegistrar:
     async def template_credential(self, credential_registration):
         mongo = MongoClient()
         issuer = mongo.find_one(
-            "IssuerRecord", {"id": credential_registration["issuer"]}
+            "IssuerInstanceRecord", {"id": credential_registration["issuer"]}
         )
         if not issuer:
             raise HTTPException(status_code=404, detail="Issuer not registered.")
@@ -272,7 +272,7 @@ class PublisherRegistrar:
                 )
 
         credential_template["@context"].append(
-            f"https://{settings.DOMAIN}/contexts/{credential_type}/{credential_version}"
+            f"https://{settings.PUBLISHER_DOMAIN}/contexts/{credential_type}/{credential_version}"
         )
         credential_template["type"].append(credential_type)
         credential_template["credentialSubject"]["type"].append(
@@ -287,7 +287,7 @@ class PublisherRegistrar:
         mongo = MongoClient()
         credential_type = credential_input.get("type")
         credential_registration = mongo.find_one(
-            "CredentialTypeRecord", {"type": credential_type}
+            "CredentialTemplateRecord", {"type": credential_type}
         )
         if not credential_registration:
             raise HTTPException(status_code=404, detail="Unregistered credential type.")
@@ -297,10 +297,10 @@ class PublisherRegistrar:
         origin = publisher_origin()
 
         if credential_registration.get("template_ref"):
-            issuer = mongo.find_one("IssuerRecord", {"id": credential_registration["issuer"]})
+            issuer = mongo.find_one("IssuerInstanceRecord", {"id": credential_registration["issuer"]})
             if not issuer:
                 raise HTTPException(status_code=404, detail="Issuer not registered.")
-            entity = OrgbookClient().fetch_buisness_info(entity_id)
+            entity = entity_from_options(options)
             try:
                 credential = build_dcc_from_publication(
                     template=credential_template,
@@ -337,18 +337,41 @@ class PublisherRegistrar:
             }
         ]
 
-        status_list_id = credential_registration["status_lists"][-1]
-        status_list_record = mongo.find_one("StatusListRecord", {"id": status_list_id})
-        credential["credentialStatus"] = [
-            {
-                "type": "BitstringStatusListEntry",
-                "statusPurpose": purpose,
-                "statusListIndex": str(status_list_record["indexes"].pop()),
-                "statusListCredential": status_list_record["endpoint"],
-            }
-            for purpose in ["revocation", "suspension", "refresh"]
-        ]
-        mongo.replace("StatusListRecord", {"id": status_list_id}, status_list_record)
+        issuer_id = credential_registration.get("issuer")
+        status_entries = []
+        for purpose in ["revocation", "suspension", "refresh"]:
+            status_list_record = None
+            if issuer_id:
+                status_list_record = mongo.find_one(
+                    "StatusListRecord",
+                    {"issuer": issuer_id, "purpose": purpose, "active": True},
+                )
+            if not status_list_record:
+                # Legacy CredentialTemplateRecord with a single combined list id.
+                for list_id in reversed(credential_registration.get("status_lists") or []):
+                    candidate = mongo.find_one("StatusListRecord", {"id": list_id})
+                    if candidate:
+                        status_list_record = candidate
+                        break
+            if not status_list_record:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"No status list for purpose {purpose!r}",
+                )
+            status_entries.append(
+                {
+                    "type": "BitstringStatusListEntry",
+                    "statusPurpose": purpose,
+                    "statusListIndex": str(status_list_record["indexes"].pop()),
+                    "statusListCredential": status_list_record["endpoint"],
+                }
+            )
+            mongo.replace(
+                "StatusListRecord",
+                {"id": status_list_record["id"]},
+                status_list_record,
+            )
+        credential["credentialStatus"] = status_entries
 
         credential = Credential(
             context=credential_template.get("@context"),
@@ -392,11 +415,11 @@ class PublisherRegistrar:
                 credential_registration.get("additional_type")
                 == "DigitalConformityCredential"
             ):
-                entity = OrgbookClient().fetch_buisness_info(entity_id)
+                entity = entity_from_options(options)
                 credential["credentialSubject"]["issuedToParty"] |= {
                     "id": entity["id"],
                     "name": entity["name"],
-                    "registeredId": entity_id,
+                    "registeredId": entity["registeredId"],
                 }
 
                 if credential_registration.get("additional_paths"):

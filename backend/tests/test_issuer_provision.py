@@ -1,4 +1,4 @@
-"""Tests for configs-driven local IssuerRecord provisioning."""
+"""Tests for configs-driven local IssuerInstanceRecord provisioning."""
 
 from __future__ import annotations
 
@@ -10,16 +10,16 @@ class _FakeMongo:
         self.records: dict[str, dict] = {}
 
     def find_one(self, collection, query):
-        assert collection == "IssuerRecord"
+        assert collection == "IssuerInstanceRecord"
         record = self.records.get(query.get("id"))
         return dict(record) if record else None
 
     def insert(self, collection, item):
-        assert collection == "IssuerRecord"
+        assert collection == "IssuerInstanceRecord"
         self.records[item["id"]] = dict(item)
 
     def replace(self, collection, query, new_item):
-        assert collection == "IssuerRecord"
+        assert collection == "IssuerInstanceRecord"
         self.records[query["id"]] = dict(new_item)
 
 

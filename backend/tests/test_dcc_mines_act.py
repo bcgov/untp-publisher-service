@@ -84,8 +84,9 @@ def test_build_dcc_from_publication(
     monkeypatch.setattr(dcc_builder, "datetime", FixedDateTime)
 
     entity = {
-        "id": "https://dev.orgbook.gov.bc.ca/entity/A0034771/type/registration.registries.ca",
+        "id": "https://www.bcregistry.gov.bc.ca/business/A0034771",
         "name": "EXAMPLE MINING CO",
+        "registeredId": "A0034771",
     }
     template = build_template_from_preset(template_ref=TEMPLATE_REF, issuer=issuer)
     type_record["template"] = template

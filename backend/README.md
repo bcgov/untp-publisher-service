@@ -18,11 +18,11 @@ uv run uvicorn app:app --reload --host 0.0.0.0 --port 8000
 
 ## Test suite mode (`TEST_SUITE`)
 
-Set **`TEST_SUITE=true`** in the environment to run a **minimal** app: **`GET /server/status`**, **`POST /test-suite/validate`**, and **`POST /test-suite/build-credential`**. The publisher API (auth, registrations, credentials, static) is **not** registered. Use this for isolated UNTP validation and credential templating in CI or local harnesses.
+Set **`TEST_SUITE=true`** in the environment to run a **minimal** app: **`GET /server/status`**, **`POST /test-suite/validate`**, and **`POST /test-suite/build-credential`**. The publisher API (auth, credentials, templates, static) is **not** registered. Use this for isolated UNTP validation and credential templating in CI or local harnesses.
 
 ```bash
 cd backend
-TEST_SUITE=true DOMAIN=http://localhost:8000 uv run uvicorn app:app --reload --host 0.0.0.0 --port 8000
+TEST_SUITE=true PUBLISHER_DOMAIN=http://localhost:8000 uv run uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Build an unsigned Mines Act credential from the sample publication payload:
@@ -34,7 +34,7 @@ curl -sS -X POST http://localhost:8000/test-suite/build-credential \
   | jq .
 ```
 
-Optional top-level **`organization`** (`id`, `name`) avoids OrgBook lookup. When omitted, OrgBook is tried; if lookup fails, a stub organization is used.
+Include **`options.entityId`** and **`options.entityName`** on the publication payload (holder registered id and legal name).
 
 - **`POST /test-suite/validate`** — JSON body is the UNTP document; optional query **`kind`** (`dcc_credential` or `dcc_attestation`) skips automatic `type` detection.
 - **`POST /test-suite/build-credential`** — JSON body is a publication payload (`credential`, `options`); returns **`credential`** (unsigned, no `proof`) after UNTP validation (400 when invalid).
@@ -59,11 +59,11 @@ The image published to GitHub Container Registry is **`ghcr.io/bcgov/untp-publis
 
 ## Configuration notes
 
-- **`ORGBOOK_URL`** — Base URL for OrgBook **read-only** lookups (`/api/v4/search`). Not used for OrgBook VC issuance.
+- **`PUBLISHER_DOMAIN`** — Public publisher host/origin used in credential IDs and related resource URLs (e.g. `http://localhost:8000` or `publisher.example.com`).
 - **MongoDB** — either a full URI or separate fields:
   - **`MONGO_URI`** — e.g. `mongodb://user:pass@host:55128/untp-publisher` (overrides host/port/user/password)
   - or **`MONGO_HOST`**, **`MONGO_PORT`**, **`MONGO_USER`**, **`MONGO_PASSWORD`**, **`MONGO_DB`**
   - **`MONGO_AUTH_SOURCE`** — optional for split mode (e.g. `admin` on Railway/managed MongoDB)
   - If the URI has no database path, set **`MONGO_DB`** to the database name.
-- **`PUBLISHER_WITNESS_ID`** — Witness `did:key` for DID WebVH endorsement (e.g. `did:key:z6Mk…`). The Ed25519 multikey is derived at runtime as **`PUBLISHER_WITNESS_MULTIKEY`** for Traction proof options.
-- **`PUBLISHER_DOMAIN`** — Hostname only for issuer DIDs from `configs/issuers.yaml` aliases (e.g. `registry.digitaltrust.gov.bc.ca`, not a URL). Alias `mines-act:chief-permitting-officer` becomes `did:web:{PUBLISHER_DOMAIN}:mines-act:chief-permitting-officer`. When unset, the hostname is taken from **`DID_WEB_SERVER_URL`**.
+- **`WEBVH_SERVER_URL`** — WebVH / DID web server base URL (e.g. `https://sandbox.bcvh.vonx.io`). Issuer DIDs from `configs/issuers.yaml` use this URL's hostname: alias `mines-act:chief-permitting-officer` becomes `did:web:{host}:mines-act:chief-permitting-officer`.
+- **`PUBLISHER_WITNESS_ID`** — Witness `did:key` for Traction proof options (e.g. `did:key:z6Mk…`). The Ed25519 multikey is derived at runtime as **`PUBLISHER_WITNESS_MULTIKEY`**.

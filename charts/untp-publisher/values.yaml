@@ -21,7 +21,7 @@ networkPolicy:
 
 # -- @default -- See sub-values
 backend:
-  # -- Backend hostname used for the Ingress rule and DOMAIN env var
+  # -- Backend hostname used for the Ingress rule and PUBLISHER_DOMAIN env var
   host: ""
 
   # -- Minimal app: only /server/status and POST /test-suite/validate (no publisher API).
@@ -48,15 +48,13 @@ backend:
       apiKey: traction_api_key
 
   environment:
-    # -- Base URL for read-only entity lookup (OrgBook v4 search). Sets pod env ORGBOOK_URL.
-    orgbookUrl: ""
     # -- Issuer registry URL. Sets pod env ISSUER_REGISTRY_URL.
     issuerRegistryUrl: ""
     # -- Witness did:key (Ed25519 multikey in method id). Sets pod env PUBLISHER_WITNESS_ID.
     publisherWitnessId: ""
-    # -- Hostname only for issuer did:web IDs (issuers.yaml alias → did:web:{host}:{alias}).
-    # Not a URL. When empty, hostname is taken from DID_WEB_SERVER_URL.
-    publisherDomain: ""
+    # -- WebVH / DID web server base URL. Sets pod env WEBVH_SERVER_URL.
+    # Hostname is used for issuer did:web IDs from issuers.yaml aliases.
+    webvhServerUrl: ""
 
   image:
     # -- Backend image repository

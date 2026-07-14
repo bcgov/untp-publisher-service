@@ -40,7 +40,11 @@ def test_credential_version_for_type():
 def test_load_publication_config_by_issuer(monkeypatch):
     from app.repo_configs import loader as repo_loader
 
-    monkeypatch.setattr(repo_loader.settings, "PUBLISHER_DOMAIN", "registry.digitaltrust.gov.bc.ca")
+    monkeypatch.setattr(
+        repo_loader.settings,
+        "WEBVH_SERVER_URL",
+        "https://registry.digitaltrust.gov.bc.ca",
+    )
     repo_loader._publication_index.cache_clear()
     config = load_publication_config_by_issuer(
         "did:web:registry.digitaltrust.gov.bc.ca:mines-act:chief-permitting-officer"
@@ -59,7 +63,11 @@ def test_issuer_did_from_alias(monkeypatch):
     from app.repo_configs.loader import issuer_did_from_alias
     from app.repo_configs import loader as repo_loader
 
-    monkeypatch.setattr(repo_loader.settings, "PUBLISHER_DOMAIN", "registry.example.ca")
+    monkeypatch.setattr(
+        repo_loader.settings,
+        "WEBVH_SERVER_URL",
+        "https://registry.example.ca",
+    )
     assert (
         issuer_did_from_alias("mines-act:chief-permitting-officer")
         == "did:web:registry.example.ca:mines-act:chief-permitting-officer"

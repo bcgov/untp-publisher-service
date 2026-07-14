@@ -50,14 +50,14 @@ class MongoClient:
         self.db = self.client[_resolve_database_name()]
 
     def provision(self):
-        self.db["IssuerRecord"].create_index([("id")], unique=True)
+        self.db["IssuerInstanceRecord"].create_index([("id")], unique=True)
         self.db["CredentialRecord"].create_index([("id")], unique=True)
         self.db["StatusListRecord"].create_index([("id")], unique=True)
         self.db["StatusListRecord"].create_index(
             [("issuer", pymongo.ASCENDING), ("purpose", pymongo.ASCENDING), ("active", pymongo.ASCENDING)],
             name="issuer_purpose_active",
         )
-        self.db["CredentialTypeRecord"].create_index([("version")], unique=True)
+        self.db["CredentialTemplateRecord"].create_index([("version")], unique=True)
         self.db["CredentialPickupRecord"].create_index([("id")], unique=True)
 
     def insert(self, collection, item):

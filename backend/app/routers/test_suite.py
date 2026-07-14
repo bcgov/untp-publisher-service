@@ -55,18 +55,14 @@ async def post_build_credential(
     """
     Build an unsigned credential from a publication payload (``credential`` + ``options``).
 
-    Optional top-level ``organization`` (``id``, ``name``) skips OrgBook lookup. When omitted,
-    OrgBook is tried and a stub organization is used if lookup fails.
+    ``options.entityId`` and ``options.entityName`` identify the permit holder
+    (no external entity registry lookup).
 
     The assembled credential is validated (JSON Schema, JSON-LD, Pydantic) before return;
     invalid output yields HTTP 400.
     """
-    organization = (
-        body.organization.model_dump(exclude_none=True) if body.organization else None
-    )
     credential = build_unsigned_credential_from_publication(
         credential_input=body.credential,
         options=body.options,
-        organization=organization,
     )
     return {"credential": credential}

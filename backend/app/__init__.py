@@ -5,13 +5,40 @@ from fastapi.staticfiles import StaticFiles
 
 from config import Settings, settings
 
+OPENAPI_TAGS = [
+    {
+        "name": "Auth",
+        "description": "Client secret issuance and token exchange for publish APIs.",
+    },
+    {
+        "name": "Issuers",
+        "description": "Configured issuer instances from ``configs/issuers.yaml``.",
+    },
+    {
+        "name": "Credentials",
+        "description": "Publish, fetch, and refresh credentials.",
+    },
+    {
+        "name": "Templates",
+        "description": "Credential templates and OCA bundles by type and version.",
+    },
+    {
+        "name": "Status-Lists",
+        "description": "Bitstring status list credentials (revocation, suspension, refresh).",
+    },
+]
+
 
 def build_app(cfg: Settings) -> FastAPI:
     title = cfg.PROJECT_TITLE
     if cfg.TEST_SUITE:
         title = f"{title} (test suite)"
 
-    app = FastAPI(title=title, version=cfg.PROJECT_VERSION)
+    app = FastAPI(
+        title=title,
+        version=cfg.PROJECT_VERSION,
+        openapi_tags=OPENAPI_TAGS if not cfg.TEST_SUITE else None,
+    )
 
     if not cfg.TEST_SUITE:
         app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -37,20 +64,19 @@ def build_app(cfg: Settings) -> FastAPI:
         api_router.include_router(test_suite.router)
     else:
         from app.routers import (
-            admin_data,
-            admin_ui,
             authentication,
             credentials,
-            related_resources,
-            registrations,
+            issuers,
+            status_lists,
+            templates,
         )
 
+        # OpenAPI section order follows OPENAPI_TAGS.
         api_router.include_router(authentication.router)
-        api_router.include_router(registrations.router)
+        api_router.include_router(issuers.router)
         api_router.include_router(credentials.router)
-        api_router.include_router(related_resources.router)
-        api_router.include_router(admin_data.router)
-        api_router.include_router(admin_ui.router)
+        api_router.include_router(templates.router)
+        api_router.include_router(status_lists.router)
 
     app.include_router(api_router)
     return app

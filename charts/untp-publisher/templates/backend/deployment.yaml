@@ -39,21 +39,16 @@ spec:
             - name: TEST_SUITE
               value: {{ .Values.backend.testSuite | quote }}
             # PUBLISHER INFO
-            - name: DOMAIN
+            - name: PUBLISHER_DOMAIN
               value: {{ .Values.backend.host }}
-            # Read-only entity lookup (OrgBook v4 search); app reads ORGBOOK_URL from config.
-            - name: ORGBOOK_URL
-              value: {{ .Values.backend.environment.orgbookUrl }}
             - name: PUBLISHER_WITNESS_ID
               value: {{ .Values.backend.environment.publisherWitnessId | quote }}
             - name: ISSUER_REGISTRY_URL
               value: {{ .Values.backend.environment.issuerRegistryUrl }}
 
-            # DID WebVH
-            - name: DID_WEB_SERVER_URL
-              value: {{ .Values.backend.didwebvh.serverUrl }}
-            - name: PUBLISHER_MULTIKEY
-              value: {{ .Values.backend.didwebvh.witnessPublicKeyMultibase }}
+            # WEBVH SERVER
+            - name: WEBVH_SERVER_URL
+              value: {{ .Values.backend.environment.webvhServerUrl | quote }}
 
             # TRACTION
             - name: TRACTION_API_URL
@@ -68,9 +63,6 @@ spec:
                 secretKeyRef:
                   name: {{ include "backend.tractionSecretName" . }}
                   key: {{ .Values.backend.traction.secretKeys.tenantId }}
-
-            - name: PUBLISHER_DOMAIN
-              value: {{ .Values.backend.environment.publisherDomain | quote }}
 
             # MONGODB
             - name: MONGO_HOST

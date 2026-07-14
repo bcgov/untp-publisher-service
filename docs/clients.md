@@ -1,23 +1,12 @@
 # Publishing credentials
-Instructions for lines of business to obtain Verifiable Credentials from the publisher. OrgBook may be used to **resolve entities** (e.g. by `entityId`) when publishing; issued credentials are **not** forwarded to OrgBook for search.
+Instructions for lines of business to obtain Verifiable Credentials from the publisher. Include the holder’s `entityId` and `entityName` on each publication request.
 
 ## Integration
-### Issuer registration
-1. Open a issue on the [digital trust toolkit](https://github.com/bcgov/digital-trust-toolkit)
-    Include the name, scope and description of the issuing entity.
-    ```
-    Subject: [Issuer registration] Example Issuer
-
-    Name: Example Issuer
-    Scope: Pilots
-    Description: An example issuer used for pilots.
-    ```
-2. An admin will carry the registration and open a PR to close the issue, with the registration information.
-3. Once the PR is merged, a secret key will be provided to you.
-
-### Credential Type registration
-1. Open a issue on the [digital trust toolkit](https://github.com/bcgov/digital-trust-toolkit)
-    *An admin will register the credential type.*
+### Issuer and credential type setup
+1. Open an issue on the [digital trust toolkit](https://github.com/bcgov/digital-trust-toolkit)
+    Include the name, scope and description of the issuing entity (and credential types to publish).
+2. An admin adds the issuer (and `credentials[]`) to `configs/issuers.yaml` and merges related credential assets under `configs/credentials/`. Startup provisioning creates local issuer, status list, and credential type records.
+3. Once deployed, a secret key will be provided to you (`POST /auth/secret`).
 
 ### Credential publication
 #### By api
@@ -29,7 +18,7 @@ Instructions for lines of business to obtain Verifiable Credentials from the pub
     }
     ```
 2. Send a publication request
-    *Publication requests will depend on the credential type registration.*
+    *Publication requests will depend on the provisioned credential type.*
     ```json
     {
         "credential": {
@@ -40,6 +29,7 @@ Instructions for lines of business to obtain Verifiable Credentials from the pub
         },
         "options": {
             "entityId": "",
+            "entityName": "Example Mining Co.",
             "credentialId": "",
             "cardinalityId": ""
         }
@@ -142,6 +132,7 @@ A list of assessed products
     },
     "options": {
         "entityId": "",
+        "entityName": "Example Mining Co.",
         "cardinalityId": "62715",
         "additionalData": {
             "wells": [
@@ -225,6 +216,7 @@ A list of assessed products
     },
     "options": {
         "entityId": "",
+        "entityName": "Example Mining Co.",
         "cardinalityId": "62715",
         "additionalData": {
             "assessedProduct": [

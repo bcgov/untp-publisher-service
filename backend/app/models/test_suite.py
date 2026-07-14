@@ -14,6 +14,7 @@ MINES_ACT_BUILD_EXAMPLE: dict[str, Any] = {
     },
     "options": {
         "entityId": "A0034771",
+        "entityName": "EXAMPLE MINING CO",
         "cardinalityId": "Q-20",
         "additionalData": {
             "assessedFacility": [
@@ -35,19 +36,7 @@ MINES_ACT_BUILD_EXAMPLE: dict[str, Any] = {
         },
         "credentialId": "ab2bac74-4bff-4686-a54f-e850d8408de8",
     },
-    "organization": {
-        "id": "https://dev.orgbook.gov.bc.ca/entity/A0034771/type/registration.registries.ca",
-        "name": "EXAMPLE MINING CO",
-    },
 }
-
-
-class TestSuiteOrganization(BaseModel):
-    id: str | None = Field(
-        None,
-        description="OrgBook entity URI; auto-generated from entityId when omitted.",
-    )
-    name: str | None = Field(None, description="Legal name of the permit holder.")
 
 
 class TestSuiteBuildRequest(BaseModel):
@@ -61,9 +50,8 @@ class TestSuiteBuildRequest(BaseModel):
         description="Publication credential input (`type`, `validFrom`, `credentialSubject`, …).",
     )
     options: dict[str, Any] = Field(
-        description="Publication options (`entityId`, `cardinalityId`, `additionalData`, …).",
-    )
-    organization: TestSuiteOrganization | None = Field(
-        None,
-        description="Optional OrgBook override; skips live OrgBook lookup when provided.",
+        description=(
+            "Publication options (`entityId`, `entityName`, `cardinalityId`, "
+            "`additionalData`, …)."
+        ),
     )
