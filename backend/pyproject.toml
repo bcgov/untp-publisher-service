@@ -34,7 +34,6 @@ dependencies = [
     "jsonschema>=4.23.0,<5",
     "rdflib>=7.0.0,<8",
     "requests>=2.32.0,<3",
-    "did-webvh>=1.0.0",
 ]
 
 [build-system]

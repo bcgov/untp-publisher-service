@@ -15,10 +15,8 @@ from app.admin_collections import (
     collection_public_meta,
     get_collection_meta,
 )
-from app.models.registrations import IssuerRegistration
 from app.plugins import MongoClient
 from app.security import check_api_key_header
-from app.services.issuer_registration import register_issuer as register_issuer_service
 
 router = APIRouter(
     prefix="/admin/api",
@@ -49,8 +47,7 @@ def _build_query(meta: dict[str, Any], q: str | None) -> dict[str, Any]:
     if not q or not q.strip():
         return {}
     term = q.strip()
-    id_field = meta["id_field"]
-    columns = meta.get("list_columns", [id_field])
+    columns = meta.get("list_columns", [meta["id_field"]])
     or_clauses: list[dict[str, Any]] = []
     for col in columns:
         or_clauses.append({col: {"$regex": re.escape(term), "$options": "i"}})
@@ -60,13 +57,6 @@ def _build_query(meta: dict[str, Any], q: str | None) -> dict[str, Any]:
 @router.get("/workflow")
 async def get_admin_workflow():
     return JSONResponse(content={"workflow": ADMIN_WORKFLOW})
-
-
-@router.post("/issuers")
-async def admin_register_issuer(request_body: IssuerRegistration):
-    """Register a new issuer (same as POST /registrations/issuers, with structured response)."""
-    result = await register_issuer_service(request_body.model_dump())
-    return JSONResponse(status_code=201, content=result)
 
 
 @router.get("/collections")

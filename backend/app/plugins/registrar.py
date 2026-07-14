@@ -2,10 +2,10 @@ from config import settings
 from fastapi import HTTPException
 import requests
 from app.models.credential import Credential
+from app.models.did_document import DidDocument, VerificationMethod
 from app.plugins import MongoClient, TractionController
 from app.plugins.orgbook import OrgbookClient
 from app.plugins.untp import DigitalConformityCredential
-from app.plugins import webvh as webvh_log
 from app.services.dcc_builder import build_dcc_from_publication, publisher_origin
 from app.validators.untp import UntpValidationError, validate_untp_document
 from app.utils import multikey_to_jwk
@@ -99,98 +99,146 @@ class PublisherRegistrar:
         return matches[0].value
 
     async def register_issuer(self, registration):
-        """Register a new issuer on a DID WebVH registry (BCVH / did:webvh:1.0)."""
+        """Register a new issuer with the TDW server."""
+        # Derive did path components from registration
         namespace = registration.get("scope").replace(" ", "-").lower()
         identifier = registration.get("name").replace(" ", "-").lower()
 
+        # Request identifier from TDW server
         r = requests.get(
-            f"{self.did_web_server}/",
-            params={"namespace": namespace, "identifier": identifier},
-            timeout=60,
+            f"{self.did_web_server}?namespace={namespace}&identifier={identifier}"
         )
-        if not r.ok:
-            self._raise_registry_error(r, "Failed to fetch DID WebVH log entry template")
-
         try:
-            template = r.json()
-        except ValueError:
-            self._raise_registry_error(r, "DID WebVH template is not JSON")
+            did = r.json()["didDocument"]["id"]
+        except (ValueError, KeyError):
+            raise HTTPException(status_code=r.status_code, detail=r.text)
 
-        if not webvh_log.is_log_entry_template(template):
-            raise HTTPException(
-                status_code=502,
-                detail="DID WebVH server did not return a log entry template",
-            )
-
-        provisional_did = webvh_log.provisional_did_from_template(template)
+        # Register Authorized key in traction
         default_kid = "key-01"
+        multikey_kid = f"{did}#{default_kid}-multikey"
+        jwk_kid = f"{did}#{default_kid}-jwk"
 
         traction = TractionController()
         traction.authorize()
-        traction.ensure_publisher_witness()
-
-        # WebVH genesis update key is a did:key in Traction (not the provisional did:webvh id).
-        authorized_key = traction.create_issuer_update_multikey()
-
-        doc_state = webvh_log.build_genesis_document_state(
-            template=template,
-            registration=registration,
-            authorized_key=authorized_key,
-        )
-        template_proof = template.get("proof") if isinstance(template.get("proof"), dict) else None
-        log_entry = webvh_log.unsigned_log_entry(doc_state)
-
-        issuer_vm = f"did:key:{authorized_key}#{authorized_key}"
-        signed_log_entry = webvh_log.sign_log_entry(
-            traction,
-            log_entry,
-            verification_method=issuer_vm,
-            template_proof=template_proof,
-        )
-
-        witness_did = settings.PUBLISHER_WITNESS_ID
-        witness_vm = f"{witness_did}#{self.publisher_multikey}"
-        witness_signature = webvh_log.sign_witness_signature(
-            traction,
-            signed_log_entry,
-            witness_verification_method=witness_vm,
-            template_proof=template_proof,
-        )
-
-        webvh_log.log_submission_payload(
-            namespace=namespace,
-            identifier=identifier,
-            log_entry=signed_log_entry,
-            witness_signature=witness_signature,
-            unsigned_log_entry=log_entry,
-        )
-
-        r = requests.post(
-            f"{self.did_web_server}/{namespace}/{identifier}",
-            json={
-                "logEntry": signed_log_entry,
-                "witnessSignature": witness_signature,
-            },
-            timeout=120,
-        )
-        if not r.ok:
-            self._raise_registry_error(r, "Failed to submit DID WebVH log entry")
-
         try:
-            result = r.json()
-        except ValueError:
-            self._raise_registry_error(r, "DID WebVH registry returned non-JSON response")
+            authorized_key = traction.get_multikey(did)
+            if not authorized_key:
+                authorized_key = traction.create_did_web(did)
+                traction.bind_key(authorized_key, multikey_kid)
+            try:
+                traction.bind_key(authorized_key, multikey_kid)
+            except:
+                pass
+        except:
+            authorized_key = traction.create_did_web(did)
+            traction.bind_key(authorized_key, multikey_kid)
 
-        final_log_entry = result.get("logEntry", result)
-        final_state = final_log_entry.get("state", final_log_entry)
-        resolved_did = webvh_log.resolve_did_from_log_entry(
-            final_log_entry if "state" in final_log_entry else {"state": final_state}
+        # Create initial DID document
+        did_document = DidDocument(
+            id=did,
+            name=registration.get("name"),
+            description=registration.get("description"),
+            authentication=[
+                multikey_kid,
+                jwk_kid,
+            ],
+            assertionMethod=[
+                multikey_kid,
+                jwk_kid,
+            ],
+            verificationMethod=[
+                VerificationMethod(
+                    id=multikey_kid,
+                    type="Multikey",
+                    controller=did,
+                    publicKeyMultibase=authorized_key,
+                ),
+                VerificationMethod(
+                    id=jwk_kid,
+                    type="JsonWebKey",
+                    controller=did,
+                    publicKeyJwk=multikey_to_jwk(authorized_key),
+                ),
+            ],
         )
 
-        issuer_multikey_kid = f"{resolved_did}#{default_kid}-multikey"
-        traction.bind_key(authorized_key, issuer_multikey_kid)
+        # Bind an delegated issuing multikey if provided
+        if registration.get("multikey"):
+            multikey = registration.get("multikey")
+            delegated_kid = "key-02"
+            delegated_kid_multikey = f"{did}#{delegated_kid}-multikey"
+            delegated_kid_jwk = f"{did}#{delegated_kid}-jwk"
+            did_document.authentication.append(delegated_kid_multikey)
+            did_document.assertionMethod.append(delegated_kid_multikey)
+            did_document.verificationMethod.append(
+                VerificationMethod(
+                    id=delegated_kid_multikey,
+                    type="Multikey",
+                    controller=did,
+                    publicKeyMultibase=multikey,
+                )
+            )
+            did_document.authentication.append(delegated_kid_jwk)
+            did_document.assertionMethod.append(delegated_kid_jwk)
+            did_document.verificationMethod.append(
+                VerificationMethod(
+                    id=delegated_kid_jwk,
+                    type="JsonWebKey",
+                    controller=did,
+                    publicKeyJwk=multikey_to_jwk(multikey),
+                )
+            )
 
-        return final_state, authorized_key
+        did_document = did_document.model_dump()
+
+        # Sign DID document
+        client_proof_options = r.json()["proofOptions"].copy()
+        client_proof_options["verificationMethod"] = (
+            f"did:key:{authorized_key}#{authorized_key}"
+        )
+        signed_did_document = traction.add_di_proof(
+            document=did_document, 
+            options=client_proof_options
+        )
+
+        # Endorse DID document
+        publisher_proof_options = r.json()["proofOptions"].copy()
+        publisher_proof_options["verificationMethod"] = (
+            f"did:key:{self.publisher_multikey}#{self.publisher_multikey}"
+        )
+        endorsed_did_document = traction.add_di_proof(
+            document=signed_did_document, 
+            options=publisher_proof_options
+        )
+
+        r = requests.post(self.did_web_server, json={"didDocument": endorsed_did_document})
+        if r.status_code != 201:
+            raise HTTPException(status_code=r.status_code, detail='Error registering DID.')
+        # try:
+        #     log_entry = r.json()["logEntry"]
+        # except (ValueError, KeyError):
+        #     raise HTTPException(status_code=r.status_code, detail=r.text)
+
+        # # Sign log entry with authorized key
+        # signed_log_entry = traction.add_di_proof(
+        #     document=log_entry, 
+        #     options={
+        #         "type": "DataIntegrityProof",
+        #         "cryptosuite": "eddsa-jcs-2022",
+        #         "proofPurpose": "assertionMethod",
+        #         "verificationMethod": f"did:key:{authorized_key}#{authorized_key}",
+        #     }
+        # )
+        # r = requests.post(
+        #     f"{self.did_web_server}/{namespace}/{identifier}",
+        #     json={"logEntry": signed_log_entry},
+        # )
+        # try:
+        #     log_entry = r.json()
+        # except (ValueError, KeyError):
+        #     raise HTTPException(status_code=r.status_code, detail=r.text)
+
+        return did_document, authorized_key
 
     async def template_credential(self, credential_registration):
         mongo = MongoClient()

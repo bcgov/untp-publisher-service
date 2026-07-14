@@ -24,11 +24,10 @@
         </a>
 
         <div class="bcgov-left-nav-scroll">
-          <p class="bcgov-left-nav-section">Setup</p>
+          <p class="bcgov-left-nav-section">Browse</p>
           <a href="/admin" class="bcgov-left-nav-link active" data-nav="home" id="nav-home">
             Overview
           </a>
-
           <p class="bcgov-left-nav-section">Collections</p>
           <div id="sidebar-collections" class="bcgov-left-nav-items"></div>
         </div>
@@ -67,13 +66,11 @@
               <div class="overview-section-head">
                 <div>
                   <h2 class="overview-section-title" id="collections-heading">Browse data</h2>
-                  <p class="overview-section-subtitle" id="collections-subtitle">
-                    Open a collection to verify records after each action.
+                  <p class="overview-section-subtitle">
+                    Issuers and status lists are provisioned from
+                    <code>configs/issuers.yaml</code> at startup. Use this UI to verify records.
                   </p>
                 </div>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-open-help" title="Getting started">
-                  Help
-                </button>
               </div>
               <div id="collection-sections"></div>
             </section>
@@ -83,10 +80,7 @@
             <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
               <h2 class="mb-0" id="list-title"></h2>
               <span class="badge bg-secondary" id="list-total"></span>
-              <div class="ms-auto" id="list-actions"></div>
             </div>
-            <div id="issuer-fun-panel" class="d-none mb-3"></div>
-            <div id="issuer-secret-once" class="d-none mb-3"></div>
             <div class="card mb-3">
               <div class="card-body">
                 <form class="row g-2" id="search-form">
@@ -125,12 +119,6 @@
 
           <div id="view-detail" class="d-none">
             <div class="card mb-3" id="detail-context"></div>
-            <div class="card mb-3 d-none" id="detail-related-card">
-              <div class="card-header">
-                <h3 class="card-title mb-0">Related records</h3>
-              </div>
-              <div class="card-body d-flex flex-wrap gap-2" id="detail-related"></div>
-            </div>
             <div class="card">
               <div class="card-header">
                 <h3 class="card-title" id="detail-title"></h3>
@@ -144,228 +132,24 @@
       </main>
     </div>
 
-    <div id="issuer-wizard-modal" class="issuer-wizard-modal d-none" role="dialog" aria-modal="true" aria-labelledby="issuer-wizard-title">
-      <div class="issuer-wizard-backdrop" id="issuer-wizard-backdrop"></div>
+    <div id="api-key-modal" class="issuer-wizard-modal d-none" role="dialog" aria-modal="true">
+      <div class="issuer-wizard-backdrop" id="api-key-backdrop"></div>
       <div class="issuer-wizard-panel card">
-        <div class="card-header d-flex align-items-center justify-content-between gap-2">
-          <div>
-            <h2 class="card-title mb-0" id="issuer-wizard-title">Register Issuer</h2>
-            <p class="text-secondary small mb-0" id="issuer-wizard-step-label">Step 1 of 3</p>
-          </div>
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="issuer-wizard-close" aria-label="Close wizard">✕</button>
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h2 class="card-title mb-0">API key</h2>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="api-key-close">✕</button>
         </div>
         <div class="card-body">
-          <div id="issuer-wizard-alert" class="alert alert-danger d-none mb-3" role="alert"></div>
-          <form id="issuer-create-form" class="row g-3">
-            <div class="col-12 issuer-wizard-step" data-step="1">
-              <label class="form-label required" for="issuer-scope">Scope</label>
-              <input type="text" class="form-control" id="issuer-scope" name="scope" required placeholder="e.g. Mines Act" autocomplete="off" />
-              <div class="form-hint mb-3">
-                Legal act or program name used as issuer scope (free text).
-              </div>
-              <label class="form-label required" for="issuer-name">Name</label>
-              <input type="text" class="form-control" id="issuer-name" name="name" required placeholder="Chief Permitting Officer" autocomplete="off" />
-              <div class="form-hint">
-                Display name; used in the DID path identifier.
-              </div>
-            </div>
-
-            <div class="col-12 issuer-wizard-step d-none" data-step="2">
-              <label class="form-label required" for="issuer-description">Description</label>
-              <textarea class="form-control" id="issuer-description" name="description" rows="3" required placeholder="Officer or employee designated under the Act…"></textarea>
-              <div class="form-hint mb-3">Short description used for operator context.</div>
-              <label class="form-label" for="issuer-multikey">Delegated Multikey</label>
-              <input type="text" class="form-control font-monospace" id="issuer-multikey" name="multikey" placeholder="z6Mk…" />
-              <div class="form-hint">Optional external signing key.</div>
-            </div>
-
-            <div class="col-12 issuer-wizard-step d-none" data-step="3">
-              <p class="text-secondary small mb-2">Review before creating:</p>
-              <ul class="small mb-0 ps-3">
-                <li><strong>Name:</strong> <span id="issuer-review-name"></span></li>
-                <li><strong>Scope:</strong> <span id="issuer-review-scope"></span></li>
-                <li><strong>Description:</strong> <span id="issuer-review-description"></span></li>
-                <li><strong>Delegated key:</strong> <span id="issuer-review-multikey"></span></li>
-              </ul>
-            </div>
-
-            <div class="col-12 d-flex gap-2 justify-content-between">
-              <div class="d-flex gap-2">
-                <button type="button" class="btn btn-outline-secondary d-none" id="issuer-wizard-back">Back</button>
-                <button type="button" class="btn btn-primary" id="issuer-wizard-next">Next</button>
-              </div>
-              <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary d-none" id="issuer-submit">Register issuer</button>
-                <button type="button" class="btn btn-outline-secondary" id="issuer-cancel">Cancel</button>
-              </div>
-            </div>
-          </form>
-        </div>
-        <div class="card-body pt-0">
-          <div class="card d-none" id="issuer-result-card">
-            <div class="card-header">
-              <h3 class="card-title mb-0">Registration result</h3>
-            </div>
-            <div class="card-body">
-              <p class="mb-2"><strong>Issuer DID:</strong> <code id="issuer-result-id"></code></p>
-              <pre class="detail-json" id="issuer-result-json"></pre>
-              <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="issuer-view-record">
-                View issuer record
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="template-wizard-modal" class="issuer-wizard-modal d-none" role="dialog" aria-modal="true" aria-labelledby="template-wizard-title">
-      <div class="issuer-wizard-backdrop" id="template-wizard-backdrop"></div>
-      <div class="issuer-wizard-panel card">
-        <div class="card-header d-flex align-items-center justify-content-between gap-2">
-          <div>
-            <h2 class="card-title mb-0" id="template-wizard-title">Create Template</h2>
-            <p class="text-secondary small mb-0" id="template-wizard-step-label">Step 1 of 3</p>
-          </div>
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="template-wizard-close" aria-label="Close wizard">✕</button>
-        </div>
-        <div class="card-body">
-          <div id="template-wizard-alert" class="alert alert-danger d-none mb-3" role="alert"></div>
-          <form id="template-create-form" class="row g-3">
-            <div class="col-12 template-wizard-step" data-step="1">
-              <label class="form-label required" for="template-issuer">Issuer</label>
-              <select class="form-select" id="template-issuer" name="issuer" required></select>
-              <div class="form-hint mb-3">Select a registered issuer DID.</div>
-              <label class="form-label required" for="template-type">Credential type</label>
-              <input type="text" class="form-control" id="template-type" name="type" value="BCPetroleumAndNaturalGasTitleCredential" required />
-              <div class="form-hint mb-3">Use <code>BCMinesActPermitCredential</code> for the bundled mines-act UNTP preset.</div>
-              <label class="form-label required" for="template-version">Version</label>
-              <input type="text" class="form-control" id="template-version" name="version" value="v1.0" required />
-            </div>
-
-            <div class="col-12 template-wizard-step d-none" data-step="2">
-              <p class="text-secondary small mb-2">
-                Issuer scope (reference scheme / legal act live in credential templates under <code>configs/credentials/</code>).
-              </p>
-              <p class="mb-3 font-monospace small" id="template-issuer-scope-display">Select an issuer in step 1.</p>
-              <div id="template-governance-block">
-                <label class="form-label required mt-3" for="template-governance">Governance URL</label>
-                <input type="url" class="form-control" id="template-governance" name="governance" value="https://bcgov.github.io/digital-trust-toolkit/docs/governance/pilots/bc-petroleum-and-natural-gas-title" required />
-              </div>
-              <p class="text-secondary small mb-0 d-none" id="template-governance-preset-note">
-                Governance profile is bundled in the mines-act preset (no separate URL required).
-              </p>
-            </div>
-
-            <div class="col-12 template-wizard-step d-none" data-step="3">
-              <p class="text-secondary small mb-2">
-                Publication payload mappings (incoming <code>options</code> → credential subject):
-              </p>
-              <ul class="small ps-3 mb-3" id="template-review-paths"></ul>
-              <p class="text-secondary small mb-3">
-                Type: <code>DigitalConformityCredential</code>
-              </p>
-              <p class="mb-1"><strong>Issuer:</strong> <span id="template-review-issuer"></span></p>
-              <p class="mb-1"><strong>Type:</strong> <span id="template-review-type"></span></p>
-              <p class="mb-0"><strong>Version:</strong> <span id="template-review-version"></span></p>
-            </div>
-
-            <div class="col-12 d-flex gap-2 justify-content-between">
-              <div class="d-flex gap-2">
-                <button type="button" class="btn btn-outline-secondary d-none" id="template-wizard-back">Back</button>
-                <button type="button" class="btn btn-primary" id="template-wizard-next">Next</button>
-              </div>
-              <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary d-none" id="template-submit">Create template</button>
-                <button type="button" class="btn btn-outline-secondary" id="template-cancel">Cancel</button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <div id="record-preview-modal" class="issuer-wizard-modal d-none" role="dialog" aria-modal="true" aria-labelledby="record-preview-title">
-      <div class="issuer-wizard-backdrop" id="record-preview-backdrop"></div>
-      <div class="issuer-wizard-panel card">
-        <div class="card-header d-flex align-items-center justify-content-between gap-2">
-          <div>
-            <h2 class="card-title mb-0" id="record-preview-title">Record preview</h2>
-            <p class="text-secondary small mb-0" id="record-preview-subtitle"></p>
-          </div>
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="record-preview-close" aria-label="Close preview">✕</button>
-        </div>
-        <div class="card-body pt-2">
-          <pre class="record-preview-json" id="record-preview-json">Loading…</pre>
-        </div>
-        <div class="card-footer d-flex justify-content-end gap-2">
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="record-preview-open-page">Open full page</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="api-key-modal" class="issuer-wizard-modal d-none" role="dialog" aria-modal="true" aria-labelledby="api-key-modal-title">
-      <div class="issuer-wizard-backdrop" id="api-key-modal-backdrop"></div>
-      <div class="issuer-wizard-panel card api-key-modal-panel">
-        <div class="card-header d-flex align-items-center justify-content-between gap-2">
-          <div>
-            <h2 class="card-title mb-0" id="api-key-modal-title">API key</h2>
-            <p class="text-secondary small mb-0">Tenant credential for admin API access</p>
-          </div>
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="api-key-modal-close" aria-label="Close">✕</button>
-        </div>
-        <form id="api-key-form" class="card-body">
-          <div id="api-key-modal-alert" class="alert alert-danger d-none mb-3" role="alert"></div>
-          <label class="form-label required" for="api-key-input">TRACTION_API_KEY</label>
-          <div class="api-key-input-wrap">
-            <input
-              type="password"
-              class="form-control font-monospace api-key-input"
-              id="api-key-input"
-              name="apiKey"
-              autocomplete="off"
-              spellcheck="false"
-              required
-            />
-            <button
-              type="button"
-              class="btn btn-outline-secondary api-key-toggle-btn"
-              id="api-key-toggle"
-              aria-label="Show API key"
-              title="Show API key"
-            >
-              Show
-            </button>
-          </div>
-          <p class="form-hint mt-2 mb-0">
-            Stored in this browser session only. Never share or commit your API key.
+          <p class="text-secondary small">
+            Same value as the publisher Traction tenant <code>TRACTION_API_KEY</code> /
+            <code>X-API-Key</code> header.
           </p>
-          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4">
-            <button type="button" class="btn btn-outline-danger btn-sm d-none" id="api-key-clear">
-              Clear saved key
-            </button>
-            <div class="d-flex gap-2 ms-auto">
-              <button type="button" class="btn btn-outline-secondary" id="api-key-cancel">Cancel</button>
-              <button type="submit" class="btn btn-bcgov-gold" id="api-key-save">Save API key</button>
-            </div>
+          <label class="form-label" for="api-key-input">API key</label>
+          <input type="password" class="form-control" id="api-key-input" autocomplete="off" />
+          <div class="d-flex gap-2 mt-3">
+            <button type="button" class="btn btn-bcgov-gold" id="api-key-save">Save</button>
+            <button type="button" class="btn btn-outline-secondary" id="api-key-clear">Clear</button>
           </div>
-        </form>
-      </div>
-    </div>
-
-    <div id="getting-started-modal" class="issuer-wizard-modal d-none" role="dialog" aria-modal="true" aria-labelledby="getting-started-title">
-      <div class="issuer-wizard-backdrop" id="getting-started-backdrop"></div>
-      <div class="issuer-wizard-panel card">
-        <div class="card-header d-flex align-items-center justify-content-between gap-2">
-          <div>
-            <h2 class="card-title mb-0" id="getting-started-title">Getting Started</h2>
-            <p class="text-secondary small mb-0" id="getting-started-counter">Step 1 of 3</p>
-          </div>
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="getting-started-close" aria-label="Close help">✕</button>
-        </div>
-        <div class="card-body">
-          <div id="getting-started-prerequisite" class="getting-started-prerequisite d-none" role="note"></div>
-          <div class="getting-started-stepper mb-3" id="getting-started-stepper" aria-label="Getting started progress"></div>
-          <div id="getting-started-current"></div>
         </div>
       </div>
     </div>

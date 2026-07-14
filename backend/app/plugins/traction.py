@@ -1,9 +1,8 @@
 from config import settings
 import requests
-from fastapi import HTTPException  # used by ensure_publisher_witness
+from fastapi import HTTPException
 from app.utils import verkey_to_multikey, timestamp
 from app.plugins.mongodb import MongoClient
-from app.models.mongodb import IssuerRecord
 
 
 class TractionControllerError(Exception):
@@ -53,6 +52,7 @@ class TractionController:
         """Idempotent startup provisioning from ``configs/issuers.yaml``."""
         self.authorize()
         from app.repo_configs import list_issuer_instances
+        from app.services.issuer_provision import ensure_issuer_record
         from app.services.status_lists import ensure_issuer_status_lists
 
         issuers = list_issuer_instances()
@@ -69,26 +69,28 @@ class TractionController:
                 settings.LOGGER.warning("Skipping issuer with empty id.")
                 continue
 
-            await self._provision_issuer_did_and_key(
+            ensure_issuer_record(issuer, mongo=mongo)
+            await self._check_issuer_did_and_key(
                 mongo=mongo,
                 issuer_id=issuer_id,
-                name=name,
                 expected_vm=expected_vm,
             )
             await ensure_issuer_status_lists(issuer_id, mongo=mongo)
 
-    async def _provision_issuer_did_and_key(
+    async def _check_issuer_did_and_key(
         self,
         *,
         mongo: MongoClient,
         issuer_id: str,
-        name: str,
         expected_vm: str,
     ) -> None:
-        """DID/key checks; operations skipped for now when a check fails."""
+        """Optional DID/key checks after the local IssuerRecord exists.
+
+        Operations are logged as Skip when a check fails (no auto-create yet).
+        """
         if not expected_vm:
-            settings.LOGGER.warning(
-                "Issuer %s has no verificationMethod; skip DID/key checks.",
+            settings.LOGGER.info(
+                "Issuer %s has no verificationMethod in configs; skip DID/key checks.",
                 issuer_id,
             )
             return
@@ -124,23 +126,13 @@ class TractionController:
             issuer_id,
         )
         issuer_record = mongo.find_one("IssuerRecord", {"id": issuer_id})
-        if not issuer_record:
-            mongo.insert(
-                "IssuerRecord",
-                IssuerRecord(
-                    id=issuer_id,
-                    name=name,
-                    authorized_key=expected_vm,
-                ).model_dump(),
-            )
-            settings.LOGGER.info("Local issuer record created for %s.", issuer_id)
-        elif issuer_record.get("authorized_key") != expected_vm:
-            settings.LOGGER.warning(
-                "Issuer %s local authorized_key mismatch "
-                "(record=%s, config=%s); leave unchanged.",
+        if issuer_record and issuer_record.get("authorized_key") != expected_vm:
+            refreshed = {**issuer_record, "authorized_key": expected_vm}
+            refreshed.pop("_id", None)
+            mongo.replace("IssuerRecord", {"id": issuer_id}, refreshed)
+            settings.LOGGER.info(
+                "Updated authorized_key on local issuer record for %s.",
                 issuer_id,
-                issuer_record.get("authorized_key"),
-                expected_vm,
             )
 
     def resolve(self, did, *, required: bool = True):
@@ -235,15 +227,6 @@ class TractionController:
             return None
         return verkey_to_multikey(did_info[0]["verkey"])
 
-    def create_issuer_update_multikey(self) -> str:
-        """
-        Provision the issuer genesis ``updateKeys`` multikey for DID WebVH registration.
-
-        ACA-Py cannot register ``did:webvh:…`` placeholders in the wallet; the update key is a
-        normal ``did:key`` used to sign the log entry and listed in ``parameters.updateKeys``.
-        """
-        return self.create_did_key()
-
     def create_did_web(self, did):
         """Create a ``did:web`` in the wallet (must be a valid ``did:web:…`` identifier)."""
         r = requests.post(
@@ -274,29 +257,6 @@ class TractionController:
             json={"multikey": multikey, "kid": kid},
         )
         return self._try_response(r, "kid")
-
-    def ensure_publisher_witness(self) -> str:
-        """
-        Ensure ``PUBLISHER_WITNESS_ID`` is usable in this tenant and return its multikey.
-
-        The witness ``did:key`` must be present in the wallet (bound to the configured multikey).
-        """
-        witness_did = settings.PUBLISHER_WITNESS_ID
-        multikey = self.publisher_multikey
-        if not witness_did or not multikey:
-            raise HTTPException(
-                status_code=500,
-                detail="PUBLISHER_WITNESS_ID is not configured or is invalid",
-            )
-        existing = self.get_multikey(witness_did)
-        witness_vm = f"{witness_did}#{multikey}"
-        if not existing:
-            self.bind_key(multikey, witness_vm)
-        elif existing != multikey:
-            settings.LOGGER.warning(
-                "Wallet multikey for witness DID does not match PUBLISHER_WITNESS_ID"
-            )
-        return multikey
 
     def sign_vc_jwt(self, document):
         did = document.get('issuer') if isinstance(document.get('issuer'), str) else document.get('issuer').get('id')

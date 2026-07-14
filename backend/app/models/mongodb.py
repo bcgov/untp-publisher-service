@@ -12,10 +12,13 @@ class IssuerRecord(BaseModel):
     name: str = Field()
     scope: str = Field(
         None,
-        description="Statutory scope (BC Laws act name) bound at issuer registration.",
+        description="Issuer scope / namespace (from configs or registration).",
     )
     secret_hash: str = Field(None)
-    authorized_key: str = Field()
+    authorized_key: str | None = Field(
+        None,
+        description="Issuing multikey when known (from configs verificationMethod or registration).",
+    )
 
 
 class CredentialTypeRecord(BaseModel):
