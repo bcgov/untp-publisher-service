@@ -192,21 +192,48 @@ def credential_version_for_type(credential_type: str) -> str:
     return (credential.get("version") or "v1.0").strip()
 
 
+def _path_under(root: Path, *parts: str) -> Path:
+    """Join ``parts`` under ``root``; reject absolute segments and ``..`` escape."""
+    if not parts:
+        raise HTTPException(status_code=400, detail="Invalid config path")
+    root_resolved = root.resolve()
+    segments: list[str] = []
+    for part in parts:
+        text = str(part).strip()
+        if not text:
+            raise HTTPException(status_code=400, detail="Invalid config path")
+        piece = Path(text)
+        if piece.is_absolute():
+            raise HTTPException(status_code=400, detail="Invalid config path")
+        for segment in piece.parts:
+            if segment in ("", ".", ".."):
+                raise HTTPException(status_code=400, detail="Invalid config path")
+            segments.append(segment)
+    candidate = root_resolved.joinpath(*segments).resolve()
+    try:
+        candidate.relative_to(root_resolved)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid config path") from exc
+    return candidate
+
+
 def credential_set_dir(credential_type: str) -> Path:
     """``configs/credentials/{type}/{version}/`` — inferred from publication config."""
     version = credential_version_for_type(credential_type)
-    return credentials_dir() / credential_type / version
+    return _path_under(credentials_dir(), credential_type, version)
 
 
 def _asset_path(credential_type: str, filename: str) -> Path:
-    return credential_set_dir(credential_type) / filename
+    version = credential_version_for_type(credential_type)
+    return _path_under(credentials_dir(), credential_type, version, filename)
 
 
 def _template_path_for_type(credential_type: str, credential: dict[str, Any]) -> Path:
     template_path = credential.get("template")
     if isinstance(template_path, str) and template_path.strip():
         return resolve_config_path(template_path.strip())
-    return credential_set_dir(credential_type) / "template.yaml"
+    version = credential_version_for_type(credential_type)
+    return _path_under(credentials_dir(), credential_type, version, "template.yaml")
 
 
 def sample_publication_payload_path(credential_type: str) -> Path:
@@ -343,7 +370,7 @@ def load_publisher_extension_context() -> dict[str, Any]:
 
 def resolve_config_path(relative_path: str) -> Path:
     """Resolve a path relative to ``config_root()`` (e.g. ``credentials/…``)."""
-    path = config_root() / relative_path
+    path = _path_under(config_root(), relative_path.strip())
     if not path.is_file():
         raise HTTPException(
             status_code=500,
@@ -353,13 +380,15 @@ def resolve_config_path(relative_path: str) -> Path:
 
 
 def resolve_repo_path(relative_path: str) -> Path:
-    rel = Path(relative_path)
-    if rel.parts and rel.parts[0] == "backend":
-        path = Path(basedir) / Path(*rel.parts[1:])
-    elif rel.parts and rel.parts[0] == "app":
-        path = Path(basedir) / rel
+    rel = Path(relative_path.strip())
+    if rel.is_absolute() or not rel.parts:
+        raise HTTPException(status_code=400, detail="Invalid config path")
+    if rel.parts[0] == "backend":
+        path = _path_under(Path(basedir), *rel.parts[1:])
+    elif rel.parts[0] == "app":
+        path = _path_under(Path(basedir), *rel.parts)
     else:
-        path = repo_root() / rel
+        path = _path_under(repo_root(), *rel.parts)
     if not path.is_file():
         raise HTTPException(
             status_code=500,

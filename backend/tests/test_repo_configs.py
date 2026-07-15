@@ -90,6 +90,37 @@ def test_inferred_credential_paths():
     assert data_schema_path("BCMinesActPermitCredential").name == "data.schema.json"
 
 
+def test_path_under_rejects_traversal():
+    from fastapi import HTTPException
+
+    from app.repo_configs.loader import (
+        _path_under,
+        credentials_dir,
+        resolve_config_path,
+        resolve_repo_path,
+    )
+
+    root = credentials_dir()
+    for bad in ("..", "../etc", "/etc/passwd", "foo/../bar"):
+        try:
+            _path_under(root, bad)
+            raise AssertionError(f"expected reject for {bad!r}")
+        except HTTPException as exc:
+            assert exc.status_code == 400
+
+    try:
+        resolve_config_path("../README.md")
+        raise AssertionError("expected resolve_config_path reject")
+    except HTTPException as exc:
+        assert exc.status_code == 400
+
+    try:
+        resolve_repo_path("../README.md")
+        raise AssertionError("expected resolve_repo_path reject")
+    except HTTPException as exc:
+        assert exc.status_code == 400
+
+
 def test_load_data_schema():
     schema = load_data_schema("BCMinesActPermitCredential")
     assert schema["type"] == "object"
