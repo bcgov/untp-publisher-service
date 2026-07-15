@@ -2,10 +2,11 @@
 # id: namespace:alias — full DID is did:web:{WEBVH_SERVER_URL hostname}:{id}
 # Optional verificationMethod: Ed25519 multikey on the DID document / Traction wallet.
 # Per-credential assets: configs/credentials/{type}/{version}/
-#   template.yaml  — Jinja VC template (registration + publish)
-#   oca.json       — OCA bundle
-#   payload.json   — sample publication API request
-#   sample.json    — sample issued credential (examples / OCA tooling)
+#   template.yaml      — Jinja VC template (registration + publish)
+#   data.schema.json   — JSON Schema for publish ``data`` (+ x-publisher-pointers)
+#   oca.json           — OCA bundle
+#   payload.json       — sample publication API request
+#   sample.json        — sample issued credential (examples / OCA tooling)
 
 instances:
   - id: mines-act:chief-permitting-officer
@@ -14,6 +15,3 @@ instances:
     credentials:
       - type: BCMinesActPermitCredential
         version: v1.1
-        pointers:
-          cardinality: /data/permit/identifier
-          entity: /data/permittee/identifier

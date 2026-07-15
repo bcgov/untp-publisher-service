@@ -52,7 +52,7 @@ class TractionController:
     async def provision(self):
         """Idempotent startup provisioning from ``configs/issuers.yaml``."""
         self.authorize()
-        from app.repo_configs import list_issuer_instances
+        from app.repo_configs.loader import list_issuer_instances
         from app.services.provisioning import (
             ensure_credential_type,
             ensure_issuer_record,

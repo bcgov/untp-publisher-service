@@ -65,6 +65,24 @@ def test_normalize_publication_requires_permit_id(publication_payload):
     with pytest.raises(HTTPException) as exc:
         normalize_publication(payload)
     assert exc.value.status_code == 400
+    assert "Invalid publication data" in str(exc.value.detail)
+
+
+def test_normalize_publication_rejects_unknown_data_property(publication_payload):
+    payload = copy.deepcopy(publication_payload)
+    payload["data"]["extra"] = True
+    with pytest.raises(HTTPException) as exc:
+        normalize_publication(payload)
+    assert exc.value.status_code == 400
+    assert "Invalid publication data" in str(exc.value.detail)
+
+
+def test_normalize_publication_requires_mine(publication_payload):
+    payload = copy.deepcopy(publication_payload)
+    del payload["data"]["mine"]
+    with pytest.raises(HTTPException) as exc:
+        normalize_publication(payload)
+    assert exc.value.status_code == 400
 
 
 def test_compose_credential(publication_payload, type_record, issuer, monkeypatch):
@@ -85,7 +103,6 @@ def test_compose_credential(publication_payload, type_record, issuer, monkeypatc
     type_record["template"] = template
 
     credential = composer.compose_credential(
-        template=template,
         options=options,
         type_record=type_record,
         issuer=issuer,
@@ -137,3 +154,20 @@ def test_compose_credential(publication_payload, type_record, issuer, monkeypatc
     assert assessment["assessedProduct"][0]["product"]["id"] == (
         "urn:ca:bcgov:mines-act:permit:Q-20:commodity:construction-aggregate"
     )
+    assert credential["renderMethod"][0]["type"] == "OCABundle"
+    assert "digestMultibase" not in credential["renderMethod"][0]
+
+
+def test_oca_render_method_includes_digest_when_enabled(monkeypatch):
+    monkeypatch.setattr(composer.settings, "OCA_DIGEST", True)
+    monkeypatch.setattr(
+        composer,
+        "publisher_origin",
+        lambda: "https://publisher.test",
+    )
+    methods = composer.oca_render_method(
+        credential_type=CREDENTIAL_TYPE,
+        version="v1.1",
+    )
+    assert methods[0]["digestMultibase"].startswith("z")
+    assert methods[0]["id"].endswith("/oca.json")

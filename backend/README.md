@@ -35,7 +35,7 @@ curl -sS -X POST http://localhost:8000/test-suite/build-credential \
 ```
 
 Include **`template`**, **`version`**, and **`data`** on the publication payload.
-Holder and permit ids are resolved from `data` via `issuers.yaml` pointers.
+Holder and permit ids are resolved from `data` via `x-publisher-pointers` in `data.schema.json`.
 
 - **`POST /test-suite/validate`** — JSON body is the UNTP document; optional query **`kind`** (`dcc_credential` or `dcc_attestation`) skips automatic `type` detection.
 - **`POST /test-suite/build-credential`** — JSON body is a publication payload (`template`, `version`, `data`); returns **`credential`** (unsigned, no `proof`) after UNTP validation (400 when invalid).
@@ -61,6 +61,7 @@ The image published to GitHub Container Registry is **`ghcr.io/bcgov/untp-publis
 ## Configuration notes
 
 - **`PUBLISHER_DOMAIN`** — Public publisher host/origin used in credential IDs and related resource URLs (e.g. `http://localhost:8000` or `publisher.example.com`).
+- **`OCA_DIGEST`** — When ``true``, OCA ``renderMethod`` includes ``digestMultibase`` of ``oca.json``. Default ``false``: omit the digest so the bundle at a stable URL can evolve without invalidating already-issued credentials. Only enable if OCA bytes for that type/version are immutable.
 - **MongoDB** — either a full URI or separate fields:
   - **`MONGO_URI`** — connection string (overrides host/port/user/password); database selection always uses **`MONGO_DB`**
   - or **`MONGO_HOST`**, **`MONGO_PORT`**, **`MONGO_USER`**, **`MONGO_PASSWORD`**, **`MONGO_DB`**

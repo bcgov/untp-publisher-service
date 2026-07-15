@@ -65,3 +65,32 @@ class MongoClient:
 
     def delete(self, collection, query):
         self.db[collection].delete_one(query)
+
+    def claim_status_list_index(self, *, issuer_id: str, purpose: str) -> dict | None:
+        """Atomically claim one free index from the active status list for ``purpose``.
+
+        Uses ``$pop`` on ``indexes`` so concurrent publishers cannot share an index.
+        Returns ``{"index": <claimed>, "endpoint": <str>, "id": <str>}`` or ``None``.
+        """
+        before = self.db["StatusListRecord"].find_one_and_update(
+            {
+                "issuer": issuer_id,
+                "purpose": purpose,
+                "active": True,
+                "indexes.0": {"$exists": True},
+            },
+            {"$pop": {"indexes": 1}},
+            projection={"_id": False, "id": True, "endpoint": True, "indexes": True},
+            return_document=pymongo.ReturnDocument.BEFORE,
+            sort=[("_id", pymongo.DESCENDING)],
+        )
+        if not before:
+            return None
+        indexes = before.get("indexes") or []
+        if not indexes:
+            return None
+        return {
+            "index": indexes[-1],
+            "endpoint": before.get("endpoint"),
+            "id": before.get("id"),
+        }

@@ -1,14 +1,15 @@
 # Publishing credentials
 Instructions for lines of business to obtain Verifiable Credentials from the publisher.
 
-Send ``template``, ``version``, and ``data``. Entity and cardinality values are taken from
-``data`` using JSON Pointers configured on that credential type in ``configs/issuers.yaml``.
+Send ``template``, ``version``, and ``data``. ``data`` is validated against
+``configs/credentials/{type}/{version}/data.schema.json``. Entity and cardinality
+ids are taken from ``data`` using ``x-publisher-pointers`` in that schema.
 
 ## Integration
 ### Issuer and credential type setup
 1. Open an issue on the [digital trust toolkit](https://github.com/bcgov/digital-trust-toolkit)
     Include the name, namespace and description of the issuing entity (and credential types to publish).
-2. An admin adds the issuer (and `credentials[]` with `pointers`) to `configs/issuers.yaml` and merges related credential assets under `configs/credentials/`. Startup provisioning creates local issuer, status list, and credential type records.
+2. An admin adds the issuer (and `credentials[]`) to `configs/issuers.yaml` and merges related credential assets under `configs/credentials/` (including `data.schema.json` with `x-publisher-pointers`). Startup provisioning creates local issuer, status list, and credential type records.
 3. Once deployed, a secret key will be provided to you (`POST /auth/secret`).
 
 ### Credential publication

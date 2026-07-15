@@ -56,7 +56,8 @@ async def post_build_credential(
     Build an unsigned credential from a publication request
     (``template`` + ``version`` + ``data``).
 
-    Entity and cardinality are resolved from ``data`` via issuers.yaml pointers.
+    Entity and cardinality are resolved from ``data`` via ``x-publisher-pointers``
+    in the credential ``data.schema.json``.
 
     The assembled credential is validated (JSON Schema, JSON-LD, Pydantic) before return;
     invalid output yields HTTP 400.

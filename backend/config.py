@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     LOGGER: Logger = Field(default_factory=lambda: logging.getLogger(__name__))
 
     PUBLISHER_DOMAIN: str = Field(default="http://localhost")
+    #: When ``True``, OCA ``renderMethod`` includes ``digestMultibase`` of the
+    #: current ``oca.json``. Prefer ``False`` unless the OCA URL bytes are
+    #: immutable for that credential version (digest pins break if the file changes).
+    OCA_DIGEST: bool = Field(default=False)
     TRACTION_API_URL: str = Field(default="http://localhost")
     TRACTION_API_KEY: str = Field(default="dev-local")
     TRACTION_TENANT_ID: str = Field(default="dev-local")

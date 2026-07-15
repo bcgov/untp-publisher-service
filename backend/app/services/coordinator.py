@@ -32,8 +32,7 @@ class PublisherCoordinator:
         if not credential_registration:
             raise HTTPException(status_code=404, detail="Unregistered credential type.")
 
-        credential_template = credential_registration.get("template")
-        if not credential_template:
+        if not credential_registration.get("template"):
             raise HTTPException(
                 status_code=500,
                 detail=(
@@ -50,7 +49,6 @@ class PublisherCoordinator:
             raise HTTPException(status_code=404, detail="Issuer not registered.")
         try:
             credential = compose_credential(
-                template=credential_template,
                 options=options,
                 type_record=credential_registration,
                 issuer=issuer,
@@ -77,13 +75,16 @@ class PublisherCoordinator:
         issuer_id = credential_registration.get("issuer")
         status_entries = []
         for purpose in ["revocation", "suspension", "refresh"]:
-            status_list_record = None
-            if issuer_id:
-                status_list_record = mongo.find_one(
-                    "StatusListRecord",
-                    {"issuer": issuer_id, "purpose": purpose, "active": True},
+            if not issuer_id:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"No status list for purpose {purpose!r}",
                 )
-            if not status_list_record:
+            claimed = mongo.claim_status_list_index(
+                issuer_id=issuer_id,
+                purpose=purpose,
+            )
+            if not claimed or claimed.get("endpoint") is None:
                 raise HTTPException(
                     status_code=500,
                     detail=f"No status list for purpose {purpose!r}",
@@ -92,14 +93,9 @@ class PublisherCoordinator:
                 {
                     "type": "BitstringStatusListEntry",
                     "statusPurpose": purpose,
-                    "statusListIndex": str(status_list_record["indexes"].pop()),
-                    "statusListCredential": status_list_record["endpoint"],
+                    "statusListIndex": str(claimed["index"]),
+                    "statusListCredential": claimed["endpoint"],
                 }
-            )
-            mongo.replace(
-                "StatusListRecord",
-                {"id": status_list_record["id"]},
-                status_list_record,
             )
         credential["credentialStatus"] = status_entries
 
@@ -114,7 +110,7 @@ class PublisherCoordinator:
             credentialSubject=credential.get("credentialSubject"),
             credentialStatus=credential.get("credentialStatus"),
             refreshService=credential.get("refreshService"),
-            renderMethod=credential_template.get("renderMethod"),
+            renderMethod=credential.get("renderMethod"),
         ).model_dump()
 
         return credential

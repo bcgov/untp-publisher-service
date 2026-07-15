@@ -118,11 +118,11 @@ def test_ensure_credential_type_creates_once(monkeypatch):
     mongo.issuers[issuer_id] = {"id": issuer_id, "name": "Officer"}
 
     monkeypatch.setattr(
-        "app.services.provisioning.publisher_origin",
+        "app.services.composer.publisher_origin",
         lambda: "https://publisher.example",
     )
     monkeypatch.setattr(
-        "app.services.provisioning.generate_digest_multibase",
+        "app.services.composer.generate_digest_multibase",
         lambda _bundle: "zDigest",
     )
 

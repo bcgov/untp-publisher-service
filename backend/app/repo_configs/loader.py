@@ -144,21 +144,9 @@ def list_issuer_instances() -> list[dict[str, Any]]:
     Each item is the expanded issuer dict (full DID in ``id``, original yaml id in
     ``alias``) plus retained ``credentials[]`` entries from the yaml instance.
     """
-    path = issuers_file()
-    if not path.is_file():
-        return []
-    doc = _load_yaml_file(path)
-    instances = doc.get("instances") or []
-    if not isinstance(instances, list):
-        raise HTTPException(
-            status_code=500,
-            detail="issuers.yaml instances must be a list",
-        )
     issuers: list[dict[str, Any]] = []
-    for instance in instances:
-        if not isinstance(instance, dict):
-            continue
-        config = _normalize_instance(instance)
+    for entry in _publication_index()["by_issuer_id"].values():
+        config = entry["config"]
         issuer = dict(config["issuer"])
         issuer["credentials"] = list(config["credentials"])
         issuers.append(issuer)
@@ -176,7 +164,7 @@ def _credential_entry(credential_type: str) -> dict[str, Any]:
 
 
 def credential_yaml_entry(credential_type: str) -> dict[str, Any]:
-    """Issuers.yaml credential entry (type, version, pointers, …)."""
+    """Issuers.yaml credential entry (type, version, …)."""
     return dict(_credential_entry(credential_type)["credential"])
 
 
@@ -189,15 +177,6 @@ def load_publication_config(credential_type: str) -> dict[str, Any]:
     }
 
 
-def load_publication_config_optional(credential_type: str | None) -> dict[str, Any] | None:
-    if not credential_type:
-        return None
-    entry = _publication_index()["by_type"].get(credential_type)
-    if not entry:
-        return None
-    return load_publication_config(credential_type)
-
-
 def load_publication_config_by_issuer(issuer_id: str) -> dict[str, Any]:
     entry = _publication_index()["by_issuer_id"].get(issuer_id)
     if not entry:
@@ -208,31 +187,15 @@ def load_publication_config_by_issuer(issuer_id: str) -> dict[str, Any]:
     return entry["config"]
 
 
-def load_publication_config_by_issuer_optional(issuer_id: str | None) -> dict[str, Any] | None:
-    if not issuer_id:
-        return None
-    entry = _publication_index()["by_issuer_id"].get(issuer_id)
-    if not entry:
-        return None
-    return entry["config"]
-
-
-def _credential_version(credential: dict[str, Any]) -> str:
-    return (credential.get("version") or "v1.0").strip()
-
-
 def credential_version_for_type(credential_type: str) -> str:
-    return _credential_version(_credential_entry(credential_type)["credential"])
+    credential = _credential_entry(credential_type)["credential"]
+    return (credential.get("version") or "v1.0").strip()
 
 
 def credential_set_dir(credential_type: str) -> Path:
     """``configs/credentials/{type}/{version}/`` — inferred from publication config."""
     version = credential_version_for_type(credential_type)
     return credentials_dir() / credential_type / version
-
-
-# Backward-compatible alias.
-sample_set_dir = credential_set_dir
 
 
 def _asset_path(credential_type: str, filename: str) -> Path:
@@ -250,13 +213,28 @@ def sample_publication_payload_path(credential_type: str) -> Path:
     return _asset_path(credential_type, "payload.json")
 
 
+def data_schema_path(credential_type: str) -> Path:
+    """``configs/credentials/{type}/{version}/data.schema.json``."""
+    return _asset_path(credential_type, "data.schema.json")
+
+
+def load_data_schema(credential_type: str) -> dict[str, Any]:
+    """JSON Schema for the publish ``data`` object (required per credential type)."""
+    return _load_json_file(
+        data_schema_path(credential_type),
+        label="publication data schema",
+    )
+
+
 def sample_issued_credential_path(credential_type: str) -> Path:
     return _asset_path(credential_type, "sample.json")
 
 
 def oca_bundle_path(credential_type: str) -> Path:
     """``configs/credentials/{type}/{version}/oca.json`` — inferred from publication config."""
-    explicit = _credential_entry(credential_type)["credential"].get("assets", {}).get("ocaBundle")
+    explicit = (
+        _credential_entry(credential_type)["credential"].get("assets", {}).get("ocaBundle")
+    )
     if isinstance(explicit, str) and explicit.strip():
         return resolve_repo_path(explicit.strip())
     return _asset_path(credential_type, "oca.json")
@@ -282,22 +260,15 @@ def _load_json_file(path: Path, *, label: str) -> dict[str, Any]:
 
 
 def load_sample_publication_payload(credential_type: str) -> dict[str, Any]:
-    path = sample_publication_payload_path(credential_type)
-    return _load_json_file(path, label="publication payload sample")
+    return _load_json_file(
+        sample_publication_payload_path(credential_type),
+        label="publication payload sample",
+    )
 
 
-def load_sample_publication_payload_optional(
+def load_sample_issued_credential_optional(
     credential_type: str | None,
 ) -> dict[str, Any] | None:
-    if not credential_type:
-        return None
-    path = sample_publication_payload_path(credential_type)
-    if not path.is_file():
-        return None
-    return load_sample_publication_payload(credential_type)
-
-
-def load_sample_issued_credential_optional(credential_type: str | None) -> dict[str, Any] | None:
     if not credential_type:
         return None
     path = sample_issued_credential_path(credential_type)
@@ -314,17 +285,6 @@ def load_oca_bundle(credential_type: str) -> dict[str, Any]:
             detail=f"No OCA bundle for credential type {credential_type!r} at {path}",
         )
     return _load_json_file(path, label="OCA bundle")
-
-
-def load_oca_bundle_optional(credential_type: str | None) -> dict[str, Any] | None:
-    if not credential_type:
-        return None
-    if credential_type not in _publication_index()["by_type"]:
-        return None
-    path = oca_bundle_path(credential_type)
-    if not path.is_file():
-        return None
-    return load_oca_bundle(credential_type)
 
 
 def load_credential_template_source(credential_type: str) -> str:
@@ -352,15 +312,13 @@ def load_credential_template_source(credential_type: str) -> str:
 
 
 def load_credential_template_source_optional(credential_type: str | None) -> str | None:
-    if not credential_type:
-        return None
-    if credential_type not in _publication_index()["by_type"]:
+    if not credential_type or credential_type not in _publication_index()["by_type"]:
         return None
     return load_credential_template_source(credential_type)
 
 
 def load_credential_template(credential_type: str) -> dict[str, Any]:
-    """Parse credential template after rendering with a stub context (empty arrays)."""
+    """Parse credential template after rendering with a stub context."""
     from app.services.templates import (
         materialize_credential_document,
         template_stub_context,
@@ -375,25 +333,9 @@ def load_credential_template(credential_type: str) -> dict[str, Any]:
     )
 
 
-def load_credential_template_optional(credential_type: str | None) -> dict[str, Any] | None:
-    if not credential_type:
-        return None
-    if credential_type not in _publication_index()["by_type"]:
-        return None
-    return load_credential_template(credential_type)
-
-
-def list_publication_config_types() -> list[str]:
-    return sorted(_publication_index()["by_type"].keys())
-
-
-def publisher_extension_context_path() -> Path:
-    return config_root() / "contexts" / "publisher-v1.jsonld"
-
-
 def load_publisher_extension_context() -> dict[str, Any]:
     """JSON-LD document for publisher terms (``SimpleRefreshQuery``, ``OCABundle``)."""
-    path = publisher_extension_context_path()
+    path = config_root() / "contexts" / "publisher-v1.jsonld"
     if not path.is_file():
         raise FileNotFoundError(f"Publisher extension context missing at {path}")
     return json.loads(path.read_text(encoding="utf-8"))

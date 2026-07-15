@@ -10,16 +10,24 @@ from fastapi import HTTPException
 from app.repo_configs.loader import (
     credential_yaml_entry,
     load_credential_template_source_optional,
+    load_data_schema,
+    load_oca_bundle,
     load_publication_config,
 )
 from app.services.templates import (
-    build_registration_template,
     materialize_credential_document,
     publication_template_context,
 )
-from app.utils import format_utc_datetime, require_nonempty_string, resolve_json_pointer
+from app.utils import (
+    format_utc_datetime,
+    generate_digest_multibase,
+    require_nonempty_string,
+    resolve_json_pointer,
+)
 from app.validators.untp import UntpValidationError, validate_untp_document
 from config import settings
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 
 
 def publisher_origin() -> str:
@@ -32,6 +40,26 @@ def publisher_origin() -> str:
 def publisher_extension_context_url() -> str:
     """Public URL for the publisher JSON-LD extension context."""
     return f"{publisher_origin()}/contexts/publisher/v1"
+
+
+def oca_render_method(
+    *,
+    credential_type: str,
+    version: str | None = None,
+) -> list[dict[str, Any]]:
+    """Build OCA ``renderMethod``; include ``digestMultibase`` only if ``OCA_DIGEST``."""
+    cfg = credential_yaml_entry(credential_type)
+    ver = (version or cfg.get("version") or "v1.0").strip()
+    entry: dict[str, Any] = {
+        "type": "OCABundle",
+        "id": f"{publisher_origin()}/templates/{credential_type}/{ver}/oca.json",
+        "name": "Overlay Capture Architecture Bundle",
+    }
+    if settings.OCA_DIGEST:
+        entry["digestMultibase"] = generate_digest_multibase(
+            load_oca_bundle(credential_type)
+        )
+    return [entry]
 
 
 def ensure_publisher_extension_context(credential: dict[str, Any]) -> None:
@@ -49,13 +77,21 @@ def ensure_publisher_extension_context(credential: dict[str, Any]) -> None:
         credential["@context"] = [*ctx, url]
 
 
-def publish_pointers_for_type(credential_type: str) -> dict[str, str]:
-    credential = credential_yaml_entry(credential_type)
-    pointers = credential.get("pointers") or {}
+def _publish_pointers_for_type(credential_type: str) -> dict[str, str]:
+    """Load entity/cardinality JSON Pointers from ``data.schema.json``.
+
+    Schema pointers are relative to the publish ``data`` object (e.g. ``/permit/identifier``).
+    Optional ``entityName`` may be declared; otherwise it is derived from ``entity``.
+    """
+    schema = load_data_schema(credential_type)
+    pointers = schema.get("x-publisher-pointers") or {}
     if not isinstance(pointers, dict):
         raise HTTPException(
             status_code=500,
-            detail=f"issuers.yaml pointers for {credential_type!r} must be a mapping",
+            detail=(
+                f"data.schema.json for {credential_type!r} must declare "
+                "x-publisher-pointers as a mapping"
+            ),
         )
     cardinality = pointers.get("cardinality")
     entity = pointers.get("entity")
@@ -63,8 +99,8 @@ def publish_pointers_for_type(credential_type: str) -> dict[str, str]:
         raise HTTPException(
             status_code=500,
             detail=(
-                f"issuers.yaml credential {credential_type!r} must declare "
-                "pointers.cardinality and pointers.entity"
+                f"data.schema.json for {credential_type!r} must declare "
+                "x-publisher-pointers.cardinality and x-publisher-pointers.entity"
             ),
         )
     return {
@@ -83,10 +119,23 @@ def _sibling_name_pointer(entity_pointer: str) -> str:
     raise HTTPException(
         status_code=500,
         detail=(
-            "pointers.entity must end with /identifier or /registeredId, "
-            "or set pointers.entityName explicitly"
+            "x-publisher-pointers.entity must end with /identifier or /registeredId, "
+            "or set x-publisher-pointers.entityName explicitly"
         ),
     )
+
+
+def _validate_publication_data(credential_type: str, data: dict[str, Any]) -> None:
+    """Validate publish ``data`` against ``data.schema.json`` for the credential type."""
+    schema = load_data_schema(credential_type)
+    try:
+        Draft202012Validator(schema).validate(data)
+    except JsonSchemaValidationError as exc:
+        path = ".".join(str(p) for p in exc.absolute_path) or "(root)"
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid publication data at {path}: {exc.message}",
+        ) from exc
 
 
 def normalize_publication(request: dict[str, Any]) -> dict[str, Any]:
@@ -94,7 +143,7 @@ def normalize_publication(request: dict[str, Any]) -> dict[str, Any]:
 
     Output keys:
     - ``template``, ``version``, ``data``, ``credentialId``, ``validUntil``
-    - ``entityId``, ``entityName``, ``cardinalityId`` (resolved from issuers.yaml pointers)
+    - ``entityId``, ``entityName``, ``cardinalityId`` (from data.schema.json x-publisher-pointers)
     - ``document`` (full request used for pointer resolution / hash)
 
     Credential subject shaping (party / facility / products) is done in Jinja
@@ -117,6 +166,8 @@ def normalize_publication(request: dict[str, Any]) -> dict[str, Any]:
             ),
         )
 
+    _validate_publication_data(template, data)
+
     document = {
         "template": template,
         "version": version,
@@ -125,20 +176,7 @@ def normalize_publication(request: dict[str, Any]) -> dict[str, Any]:
         "validUntil": request.get("validUntil"),
         "data": data,
     }
-    pointers = publish_pointers_for_type(template)
-
-    cardinality_id = require_nonempty_string(
-        resolve_json_pointer(document, pointers["cardinality"]),
-        label="cardinality (from pointers.cardinality)",
-    )
-    entity_id = require_nonempty_string(
-        resolve_json_pointer(document, pointers["entity"]),
-        label="entity (from pointers.entity)",
-    )
-    entity_name = require_nonempty_string(
-        resolve_json_pointer(document, pointers["entityName"]),
-        label="entity name (from pointers.entityName)",
-    )
+    pointers = _publish_pointers_for_type(template)
 
     return {
         "template": template,
@@ -147,64 +185,65 @@ def normalize_publication(request: dict[str, Any]) -> dict[str, Any]:
         "credentialId": request.get("credentialId"),
         "validFrom": request.get("validFrom"),
         "validUntil": request.get("validUntil"),
-        "entityId": entity_id,
-        "entityName": entity_name,
-        "cardinalityId": cardinality_id,
+        "entityId": require_nonempty_string(
+            resolve_json_pointer(data, pointers["entity"]),
+            label="entity (from x-publisher-pointers.entity)",
+        ),
+        "entityName": require_nonempty_string(
+            resolve_json_pointer(data, pointers["entityName"]),
+            label="entity name (from x-publisher-pointers.entityName)",
+        ),
+        "cardinalityId": require_nonempty_string(
+            resolve_json_pointer(data, pointers["cardinality"]),
+            label="cardinality (from x-publisher-pointers.cardinality)",
+        ),
         "document": document,
     }
 
 
-def validate_publication(*, options: dict[str, Any]) -> None:
-    cardinality_id = options.get("cardinalityId")
-    if cardinality_id is None or str(cardinality_id).strip() == "":
-        raise HTTPException(
-            status_code=400,
-            detail="cardinalityId is required",
-        )
-    entity_id = options.get("entityId")
-    if entity_id is None or str(entity_id).strip() == "":
-        raise HTTPException(status_code=400, detail="entityId is required")
-
-
 def compose_credential(
     *,
-    template: dict[str, Any],
     options: dict[str, Any],
     type_record: dict[str, Any],
     issuer: dict[str, Any],
 ) -> dict[str, Any]:
     """Compose a credential by rendering ``template.yaml`` for the publication request."""
-    validate_publication(options=options)
+    if not str(options.get("cardinalityId") or "").strip():
+        raise HTTPException(status_code=400, detail="cardinalityId is required")
+    if not str(options.get("entityId") or "").strip():
+        raise HTTPException(status_code=400, detail="entityId is required")
 
-    template_source = load_credential_template_source_optional(type_record.get("type"))
+    credential_type = type_record.get("type")
+    template_source = load_credential_template_source_optional(credential_type)
     if not template_source:
         raise HTTPException(
             status_code=500,
             detail=(
-                f"No credential template for type {type_record.get('type')!r}; "
+                f"No credential template for type {credential_type!r}; "
                 "add configs/credentials/{type}/{version}/template.yaml"
             ),
         )
 
-    text_context = publication_template_context(options=options)
-    credential = materialize_credential_document(template_source, text_context)
+    credential = materialize_credential_document(
+        template_source,
+        publication_template_context(options=options),
+    )
 
-    # Prefer configured issuer (Mongo / publication config) over stub values.
     credential["issuer"] = {
         "type": ["CredentialIssuer"],
         "id": issuer["id"],
         "name": issuer["name"],
     }
-    if template.get("renderMethod"):
-        credential["renderMethod"] = template["renderMethod"]
+    credential["renderMethod"] = oca_render_method(
+        credential_type=str(credential_type or ""),
+        version=type_record.get("version"),
+    )
 
     published_at = format_utc_datetime(datetime.now(timezone.utc))
-    credential_id = options.get("credentialId")
-    credential["id"] = f"{publisher_origin()}/credentials/{credential_id}"
-    if options.get("validFrom"):
-        credential["validFrom"] = options["validFrom"]
-    else:
-        credential["validFrom"] = published_at
+    credential["id"] = (
+        f"{publisher_origin()}/credentials/{options.get('credentialId')}"
+    )
+    credential["validFrom"] = options.get("validFrom") or published_at
     if options.get("validUntil"):
         credential["validUntil"] = options["validUntil"]
 
@@ -225,21 +264,13 @@ def compose_unsigned_credential_from_publication(
     issuer = pub["issuer"]
     cred_cfg = pub["credential"]
 
-    template = build_registration_template(
-        credential_type=credential_type,
-        issuer=issuer,
-    )
-    type_record = {
-        "type": credential_type,
-        "version": cred_cfg.get("version", "v1.0"),
-        "issuer": issuer.get("id"),
-        "template": template,
-    }
-
     credential = compose_credential(
-        template=template,
         options=options,
-        type_record=type_record,
+        type_record={
+            "type": credential_type,
+            "version": cred_cfg.get("version", "v1.0"),
+            "issuer": issuer.get("id"),
+        },
         issuer=issuer,
     )
     try:

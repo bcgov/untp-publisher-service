@@ -21,6 +21,7 @@ Helm chart for the [UNTP Publisher](https://github.com/bcgov/untp-publisher-serv
 | backend.environment.publisherWitnessId | string | `""` | Witness `did:key` (sets `PUBLISHER_WITNESS_ID`; multikey derived at runtime) |
 | backend.environment.projectTitle | string | `"UNTP Publisher"` | Brand / OpenAPI title (`PROJECT_TITLE`) |
 | backend.environment.projectVersion | string | `"v0"` | Version string (`PROJECT_VERSION`) |
+| backend.environment.ocaDigest | bool | `false` | When true, include `digestMultibase` on OCA `renderMethod` (`OCA_DIGEST`) |
 | backend.traction.apiUrl | string | `""` | Traction tenant proxy base URL (sets `TRACTION_API_URL`) |
 | backend.traction.existingSecret | string | `""` | Pre-created Traction Secret. When empty, Helm manages `{fullname}-traction`. When set, Helm does not create the Secret. |
 | backend.traction.secretKeys.apiKey | string | `"traction_api_key"` | Secret key for the Traction API key |

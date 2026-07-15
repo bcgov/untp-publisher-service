@@ -3,8 +3,8 @@
 The UNTP Publisher is a service that helps lines of business publish **UNTP-aligned** verifiable credentials. Issuance runs through **BC Traction** (tenant APIs); this repository is the publisher API and supporting logic.
 
 Publication payloads supply ``template``, ``version``, and ``data``. Entity and cardinality
-are resolved from ``data`` via JSON Pointers declared on the credential type in
-``configs/issuers.yaml`` (``pointers.entity``, ``pointers.cardinality``).
+are resolved from ``data`` via ``x-publisher-pointers`` in
+``configs/credentials/{type}/{version}/data.schema.json``.
 
 The goal is for published data to be queryable and usable by BC-registered organizations in their business processes and transactions.
 

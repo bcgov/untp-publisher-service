@@ -71,5 +71,9 @@ class PublicationRequest(BaseModel):
     )
     data: dict[str, Any] = Field(
         examples=[MINES_ACT_PUBLISH_EXAMPLE["data"]],
-        description="Template input data (entity/cardinality resolved via issuers.yaml pointers).",
+        description=(
+            "Template input data; validated against "
+            "configs/credentials/{type}/{version}/data.schema.json. "
+            "Entity/cardinality resolved via x-publisher-pointers in that schema."
+        ),
     )

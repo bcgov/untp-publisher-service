@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from app.plugins import MongoClient
-from app.repo_configs import list_issuer_instances
+from app.repo_configs.loader import list_issuer_instances
 from app.security import check_api_key_header
 from app.services.provisioning import STATUS_PURPOSES
 

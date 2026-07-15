@@ -16,9 +16,8 @@ from app.models.mongodb import (
 from app.plugins.mongodb import MongoClient, MongoClientError
 from app.plugins.status_list import BitstringStatusList
 from app.repo_configs.loader import load_oca_bundle
-from app.services.composer import publisher_origin
+from app.services.composer import oca_render_method, publisher_origin
 from app.services.templates import build_registration_template
-from app.utils import generate_digest_multibase
 from config import settings
 
 STATUS_PURPOSES = ("revocation", "suspension", "refresh")
@@ -152,15 +151,10 @@ def ensure_credential_type(
         issuer=issuer_record,
     )
     oca_bundle = load_oca_bundle(credential_type)
-    origin = publisher_origin()
-    credential_template["renderMethod"] = [
-        {
-            "type": "OCABundle",
-            "id": f"{origin}/templates/{credential_type}/{credential_version}/oca.json",
-            "name": "Overlay Capture Architecture Bundle",
-            "digestMultibase": generate_digest_multibase(oca_bundle),
-        }
-    ]
+    credential_template["renderMethod"] = oca_render_method(
+        credential_type=credential_type,
+        version=credential_version,
+    )
 
     record = CredentialTemplateRecord(
         type=credential_type,

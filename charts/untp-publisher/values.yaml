@@ -57,6 +57,9 @@ backend:
     projectTitle: "UNTP Publisher"
     # -- App version string. Sets PROJECT_VERSION.
     projectVersion: "v0"
+    # -- When true, include digestMultibase on OCA renderMethod (OCA_DIGEST).
+    # Keep false unless oca.json for each type/version is immutable.
+    ocaDigest: false
 
   image:
     # -- Backend image repository

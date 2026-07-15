@@ -47,6 +47,8 @@ spec:
               value: {{ .Values.backend.environment.projectTitle | quote }}
             - name: PROJECT_VERSION
               value: {{ .Values.backend.environment.projectVersion | quote }}
+            - name: OCA_DIGEST
+              value: {{ .Values.backend.environment.ocaDigest | quote }}
 
             # WEBVH SERVER
             - name: WEBVH_SERVER_URL

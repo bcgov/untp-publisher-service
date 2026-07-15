@@ -2,8 +2,10 @@
 
 from app.repo_configs.loader import (
     credential_set_dir,
+    data_schema_path,
     load_credential_template,
     load_credential_template_source,
+    load_data_schema,
     load_oca_bundle,
     load_publication_config,
     load_publication_config_by_issuer,
@@ -85,6 +87,18 @@ def test_inferred_credential_paths():
     assert sample_publication_payload_path("BCMinesActPermitCredential").name == "payload.json"
     assert sample_issued_credential_path("BCMinesActPermitCredential").name == "sample.json"
     assert oca_bundle_path("BCMinesActPermitCredential").name == "oca.json"
+    assert data_schema_path("BCMinesActPermitCredential").name == "data.schema.json"
+
+
+def test_load_data_schema():
+    schema = load_data_schema("BCMinesActPermitCredential")
+    assert schema["type"] == "object"
+    assert "permit" in schema["properties"]
+    assert "permittee" in schema["properties"]
+    assert "mine" in schema["properties"]
+    pointers = schema["x-publisher-pointers"]
+    assert pointers["cardinality"] == "/permit/identifier"
+    assert pointers["entity"] == "/permittee/identifier"
 
 
 def test_load_sample_publication_payload():
