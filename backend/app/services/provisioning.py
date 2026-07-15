@@ -129,7 +129,7 @@ def ensure_credential_type(
         )
         return existing
 
-    # Unique index is often on version alone — also guard type-only lookups used at publish.
+    # Unique on (type, version) at the DB layer — also guard type-only lookups used at publish.
     by_type = mongo.find_one("CredentialTemplateRecord", {"type": credential_type})
     if by_type:
         settings.LOGGER.info(

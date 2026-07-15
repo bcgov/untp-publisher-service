@@ -30,7 +30,16 @@ class MongoClient:
             [("issuer", pymongo.ASCENDING), ("purpose", pymongo.ASCENDING), ("active", pymongo.ASCENDING)],
             name="issuer_purpose_active",
         )
-        self.db["CredentialTemplateRecord"].create_index([("version")], unique=True)
+        # Prefer (type, version); drop legacy unique-on-version-only if present.
+        try:
+            self.db["CredentialTemplateRecord"].drop_index("version_1")
+        except pymongo.errors.OperationFailure:
+            pass
+        self.db["CredentialTemplateRecord"].create_index(
+            [("type", pymongo.ASCENDING), ("version", pymongo.ASCENDING)],
+            unique=True,
+            name="type_version",
+        )
         self.db["CredentialPickupRecord"].create_index([("id")], unique=True)
 
     def insert(self, collection, item):

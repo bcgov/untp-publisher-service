@@ -15,10 +15,16 @@ ids are taken from ``data`` using ``x-publisher-pointers`` in that schema.
 ### Credential publication
 #### By api
 1. Authenticate with either:
-    - a client access token from `POST /auth/token` (`Authorization: Bearer …`), or
-    - an admin `X-API-Key` (same key used for `POST /auth/secret` / issuer ops)
+    - a client access token from `POST /auth/token` (`Authorization: Bearer …`).
+      The token `client_id` must be the issuer id (`IssuerInstanceRecord.id` / DID)
+      for the credential type you publish.
+    - an admin `X-API-Key` (same key used for `POST /auth/secret` / issuer ops);
+      admin may publish any registered type.
 2. Send a publication request to `POST /credentials/publish`
     *Publication requests will depend on the provisioned credential type.*
+    *Omit `credentialId` (or send a new one) on first issue; on re-issue you may
+    reuse the previous id after the prior record is marked refresh, or omit it
+    to allocate a new id.*
     ```json
     {
         "template": "BCMinesActPermitCredential",

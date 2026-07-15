@@ -32,14 +32,8 @@ class PublisherCoordinator:
         if not credential_registration:
             raise HTTPException(status_code=404, detail="Unregistered credential type.")
 
-        if not credential_registration.get("template"):
-            raise HTTPException(
-                status_code=500,
-                detail=(
-                    f"No stored template for credential type {credential_type!r}; "
-                    "provision from configs/credentials/"
-                ),
-            )
+        # Compose reloads trusted ``template.yaml`` from disk; the Mongo record is
+        # only the registration gate (issuer / type / version / OCA snapshot).
         origin = publisher_origin()
 
         issuer = mongo.find_one(
@@ -74,6 +68,8 @@ class PublisherCoordinator:
 
         issuer_id = credential_registration.get("issuer")
         status_entries = []
+        # TODO: release claimed status-list indexes if Traction issue/sign or
+        # CredentialRecord insert fails after this (bits are popped before success).
         for purpose in ["revocation", "suspension", "refresh"]:
             if not issuer_id:
                 raise HTTPException(

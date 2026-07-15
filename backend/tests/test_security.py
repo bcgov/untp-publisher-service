@@ -80,3 +80,18 @@ def test_jwt_or_api_key_prefers_api_key_when_both_present(auth_client):
         },
     )
     assert response.status_code == 401
+
+
+def test_jwt_or_api_key_rejects_token_without_client_id(auth_client, monkeypatch):
+    monkeypatch.setattr(settings, "JWT_SECRET", "test-jwt-secret-at-least-32-bytes!!")
+    token = jwt.encode(
+        {"expires": int(time.time()) + 3600},
+        settings.JWT_SECRET,
+        algorithm=settings.JWT_ALGORITHM,
+    )
+    response = auth_client.get(
+        "/protected",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 403
+    assert "client_id" in response.json()["detail"]
