@@ -1,72 +1,49 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from fastapi.templating import Jinja2Templates
-from app.models.publications import (
-    Publication,
-)
+from app.models.publications import PublicationRequest
 from app.models.mongodb import CredentialRecord
 from app.plugins.mongodb import MongoClient
 from config import settings
-from app.utils import timestamp
-from app.plugins.orgbook import OrgbookClient
-from app.plugins import (
-    TractionController,
-    PublisherRegistrar,
-)
-from app.security import JWTBearer
+from app.plugins import TractionController
+from app.services.coordinator import PublisherCoordinator
+from app.services.composer import normalize_publication
+from app.security import jwt_or_api_key
 import uuid
-import segno
-import copy
 
-router = APIRouter(prefix="/credentials")
+router = APIRouter(prefix="/credentials", tags=["Credentials"])
 
 
-@router.post("/publish", tags=["Client"], dependencies=[Depends(JWTBearer())])
-async def publish_credential(request_body: Publication):
+@router.post("/publish", dependencies=[Depends(jwt_or_api_key)])
+async def publish_credential(request_body: PublicationRequest):
     settings.LOGGER.info("Publication request")
-    credential_input = request_body.model_dump()["credential"]
+    raw = request_body.model_dump()
+    options = normalize_publication(raw)
 
-    options = request_body.model_dump()["options"]
     if not options.get("credentialId"):
         options["credentialId"] = str(uuid.uuid4())
         settings.LOGGER.info("No credential id provided, new id generated.")
-        
-    settings.LOGGER.info('Credential Id: ' + options["credentialId"])
-    
+
+    settings.LOGGER.info("Credential Id: " + options["credentialId"])
+
     mongo = MongoClient()
-    
-    # Check if credential type has a registration
-    credential_type = credential_input.get("type")
+
+    credential_type = options["template"]
     credential_registration = mongo.find_one(
-        'CredentialTypeRecord',
-        {'type': credential_type}
+        "CredentialTemplateRecord",
+        {"type": credential_type},
     )
     if not credential_registration:
         raise HTTPException(
             status_code=404,
             detail="Unregistered credential type",
         )
-    
-    # Check if entity id provided exists in orgbook
+
     entity_id = options.get("entityId")
-    try:
-        OrgbookClient().fetch_buisness_info(entity_id)
-    except:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No orgbook registration found for {entity_id}",
-        )
-        
-    # Check cardinality, returns hash if new issuance is required
-    cardinality_hash = await PublisherRegistrar().check_cardinality(
-        credential_input=copy.deepcopy(credential_input), options=options
-    )
-        
+
+    cardinality_hash = await PublisherCoordinator().check_cardinality(options=options)
+
     if cardinality_hash:
-        # Format credential
-        credential = await PublisherRegistrar().format_credential(
-            credential_input=copy.deepcopy(credential_input), options=options
-        )
+        credential = await PublisherCoordinator().format_credential(options=options)
 
         traction = TractionController()
         traction.authorize()
@@ -100,47 +77,52 @@ async def publish_credential(request_body: Publication):
         )
         return JSONResponse(status_code=201, content={"credentialId": vc["id"]})
 
-    else:
-        credential_records = mongo.find_one(
-            "CredentialRecord",
-            {
-                "type": credential_input.get("type"),
-                "entity_id": options.get("entityId"),
-                "cardinality_id": options.get("cardinalityId"),
-                "refresh": False,
-            },
-        )
-        vc = credential_records['vc']
-        return JSONResponse(status_code=200, content={"credentialId": vc['id']})
-
-
-
-@router.get("/refresh", tags=["Public"])
-async def refresh_credential(type: str, entity: str, cardinality: str, request: Request):
-    entity_id = entity
-    cardinality_id = cardinality
-    credential_type = type
-    mongo = MongoClient()
-    credential_record = mongo.find_one(
-        "CredentialRecord", 
+    credential_records = mongo.find_one(
+        "CredentialRecord",
         {
             "type": credential_type,
-            "entity_id": entity_id,
-            "cardinality_id": cardinality_id,
-            "refresh": False
-        }
+            "entity_id": options.get("entityId"),
+            "cardinality_id": options.get("cardinalityId"),
+            "refresh": False,
+        },
     )
-    vc = credential_record['vc']
-    vc_jwt = credential_record['vc_jwt']
-    if "application/vc+jwt" in request.headers["accept"]:
-        return Response(content=vc_jwt, media_type="application/vc+jwt")
-    elif "application/vc" in request.headers["accept"]:
-        return JSONResponse(headers={"Content-Type": "application/vc"}, content=vc)
-    return JSONResponse(headers={"Content-Type": "application/vc"}, content=vc)
+    vc = credential_records["vc"]
+    return JSONResponse(status_code=200, content={"credentialId": vc["id"]})
 
 
-@router.get("/{credential_id}", tags=["Public"])
-async def get_credential(credential_id: str, request: Request):
+def _enveloped_credential_response(credential_record: dict) -> JSONResponse:
+    vc_jwt = credential_record.get("vc_jwt")
+    if not vc_jwt:
+        raise HTTPException(status_code=500, detail="Credential record missing vc_jwt")
+    enveloped = TractionController.as_enveloped_vc(vc_jwt)
+    return JSONResponse(headers={"Content-Type": "application/vc"}, content=enveloped)
+
+
+@router.get("/refresh")
+async def refresh_credential(type: str, entity: str, cardinality: str):
+    """Return the active credential as an EnvelopedVerifiableCredential."""
+    mongo = MongoClient()
+    credential_record = mongo.find_one(
+        "CredentialRecord",
+        {
+            "type": type,
+            "entity_id": entity,
+            "cardinality_id": cardinality,
+            "refresh": False,
+        },
+    )
+    if not credential_record:
+        raise HTTPException(status_code=404, detail="No record found.")
+    return _enveloped_credential_response(credential_record)
+
+
+@router.get("/{credential_id}")
+async def get_credential(credential_id: str):
+    """Return a published credential as an EnvelopedVerifiableCredential.
+
+    Response ``Content-Type`` is ``application/vc`` (VCDM 2.0 envelope wrapping
+    ``data:application/vc+jwt,…``).
+    """
     mongo = MongoClient()
     credential_record = mongo.find_one("CredentialRecord", {"id": credential_id})
     if not credential_record:
@@ -148,59 +130,4 @@ async def get_credential(credential_id: str, request: Request):
             status_code=404,
             detail="No record found.",
         )
-    vc = credential_record["vc"]
-    vc_jwt = credential_record["vc_jwt"]
-    if "application/vc+jwt" in request.headers["accept"]:
-        return Response(content=vc_jwt, media_type="application/vc+jwt")
-    elif "application/vc" in request.headers["accept"]:
-        return JSONResponse(headers={"Content-Type": "application/vc"}, content=vc)
-    else:
-        branding = {"logo": "https://avatars.githubusercontent.com/u/916280"}
-        meta = {
-            "name": vc["name"],
-            "issuer": vc["issuer"]["name"],
-        }
-        values = {
-            "cardinalityId": credential_record["cardinality_id"],
-            "entityId": vc["credentialSubject"]["issuedToParty"]["registeredId"],
-            "entityName": vc["credentialSubject"]["issuedToParty"]["name"],
-        }
-        context = {
-            "title": credential_record["type"],
-            "branding": branding,
-            "meta": meta,
-            "values": values,
-            "qrcode": segno.make(vc["id"]),
-            "vc": vc,
-            "jwt": vc_jwt,
-        }
-        return Jinja2Templates(directory="app/templates").TemplateResponse(
-            request=request, name="minimal.jinja", context=context
-        )
-
-
-@router.get("/status/{status_credential_id}", tags=["Public"])
-async def get_status_list_credential(status_credential_id: str, request: Request):
-    mongo = MongoClient()
-    status_list_record = mongo.find_one(
-        "StatusListRecord", {"id": status_credential_id}
-    )
-    if not status_list_record:
-        raise HTTPException(
-            status_code=404,
-            detail="No record found.",
-        )
-    status_list_credential = status_list_record["credential"]
-    status_list_credential["validFrom"] = timestamp()
-    status_list_credential["validUntil"] = timestamp(5)
-    traction = TractionController()
-    traction.authorize()
-    if "application/vc+jwt" in request.headers["accept"]:
-        vc_jwt = traction.sign_vc_jwt(status_list_credential)
-        return Response(content=vc_jwt, media_type="application/vc+jwt")
-    elif "application/vc" in request.headers["accept"]:
-        vc = traction.issue_vc(status_list_credential)
-        return JSONResponse(headers={"Content-Type": "application/vc"}, content=vc)
-    else:
-        vc = traction.issue_vc(status_list_credential)
-        return JSONResponse(content=vc)
+    return _enveloped_credential_response(credential_record)
