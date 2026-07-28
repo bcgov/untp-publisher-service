@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Query
 
+from app.models.publications import MINES_ACT_PUBLISH_EXAMPLE, PublicationRequest
+from app.services.composer import compose_unsigned_credential_from_publication
 from app.validators.untp import UntpArtefactKind, validate_untp_document_with_checks
 
 router = APIRouter(prefix="/test-suite", tags=["Test suite"])
@@ -33,3 +35,34 @@ async def post_validate(
     if run.raising is not None:
         out["error"] = str(run.raising)
     return out
+
+
+@router.post("/build-credential")
+async def post_build_credential(
+    body: Annotated[
+        PublicationRequest,
+        Body(
+            openapi_examples={
+                "mines_act": {
+                    "summary": "BC Mines Act Permit Q-20",
+                    "description": "From configs/credentials/BCMinesActPermitCredential/v1.1/payload.json",
+                    "value": MINES_ACT_PUBLISH_EXAMPLE,
+                }
+            }
+        ),
+    ],
+) -> dict[str, Any]:
+    """
+    Build an unsigned credential from a publication request
+    (``template`` + ``version`` + ``data``).
+
+    Entity and cardinality are resolved from ``data`` via ``x-publisher-pointers``
+    in the credential ``data.schema.json``.
+
+    The assembled credential is validated (JSON Schema, JSON-LD, Pydantic) before return;
+    invalid output yields HTTP 400.
+    """
+    credential = compose_unsigned_credential_from_publication(
+        publication=body.model_dump(exclude_none=True),
+    )
+    return {"credential": credential}

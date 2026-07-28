@@ -34,7 +34,6 @@ backend:
     witnessPublicKeyMultibase: "z6MkekByGjKYvP6dpMBJEHt5UN72rKPVoDgzcS9Hoq6bjfr1"
   environment:
     orgbookUrl: "https://dev.orgbook.gov.bc.ca"
-    issuerRegistryUrl: "https://bcgov.github.io/digital-trust-toolkit/registrations/issuers/dev.json"
   resources:
     limits:
       cpu: 300m

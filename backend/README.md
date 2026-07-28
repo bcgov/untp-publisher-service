@@ -18,10 +18,28 @@ uv run uvicorn app:app --reload --host 0.0.0.0 --port 8000
 
 ## Test suite mode (`TEST_SUITE`)
 
-Set **`TEST_SUITE=true`** in the environment to run a **minimal** app: only **`GET /server/status`** and **`POST /test-suite/validate`**. The publisher API (auth, registrations, credentials, static) is **not** registered. Use this for isolated UNTP validation in CI or harnesses.
+Set **`TEST_SUITE=true`** in the environment to run a **minimal** app: **`GET /server/status`**, **`POST /test-suite/validate`**, and **`POST /test-suite/build-credential`**. The publisher API (auth, credentials, templates, static) is **not** registered. Use this for isolated UNTP validation and credential templating in CI or local harnesses.
+
+```bash
+cd backend
+TEST_SUITE=true PUBLISHER_DOMAIN=http://localhost:8000 uv run uvicorn app:app --reload --host 0.0.0.0 --port 8000
+```
+
+Build an unsigned Mines Act credential from the sample publication payload:
+
+```bash
+curl -sS -X POST http://localhost:8000/test-suite/build-credential \
+  -H 'Content-Type: application/json' \
+  -d @../configs/credentials/BCMinesActPermitCredential/v1.1/payload.json \
+  | jq .
+```
+
+Include **`template`**, **`version`**, and **`data`** on the publication payload.
+Holder and permit ids are resolved from `data` via `x-publisher-pointers` in `data.schema.json`.
 
 - **`POST /test-suite/validate`** — JSON body is the UNTP document; optional query **`kind`** (`dcc_credential` or `dcc_attestation`) skips automatic `type` detection.
-- Response: **`success`**, **`validation_checks`** (same structure as the validator’s per-check report), **`artefact_kind`**, and **`error`** when validation fails.
+- **`POST /test-suite/build-credential`** — JSON body is a publication payload (`template`, `version`, `data`); returns **`credential`** (unsigned, no `proof`) after UNTP validation (400 when invalid).
+- Response (validate): **`success`**, **`validation_checks`** (same structure as the validator’s per-check report), **`artefact_kind`**, and **`error`** when validation fails.
 
 When **`TEST_SUITE`** is unset or false, **`/test-suite/*`** routes are omitted entirely.
 
@@ -42,5 +60,11 @@ The image published to GitHub Container Registry is **`ghcr.io/bcgov/untp-publis
 
 ## Configuration notes
 
-- **`ORGBOOK_URL`** — Base URL for OrgBook **read-only** lookups (`/api/v4/search`). Not used for OrgBook VC issuance.
-- **`MONGO_DB`** — Application database name; must match the MongoDB user’s authentication database when using chart defaults.
+- **`PUBLISHER_DOMAIN`** — Public publisher host/origin used in credential IDs and related resource URLs (e.g. `http://localhost:8000` or `publisher.example.com`).
+- **`OCA_DIGEST`** — When ``true``, OCA ``renderMethod`` includes ``digestMultibase`` of ``oca.json``. Default ``false``: omit the digest so the bundle at a stable URL can evolve without invalidating already-issued credentials. Only enable if OCA bytes for that type/version are immutable.
+- **MongoDB** — either a full URI or separate fields:
+  - **`MONGO_URI`** — connection string (overrides host/port/user/password); database selection always uses **`MONGO_DB`**
+  - or **`MONGO_HOST`**, **`MONGO_PORT`**, **`MONGO_USER`**, **`MONGO_PASSWORD`**, **`MONGO_DB`**
+  - **`MONGO_AUTH_SOURCE`** — optional for split mode (e.g. `admin` on Railway/managed MongoDB)
+- **`WEBVH_SERVER_URL`** — WebVH / DID web server base URL (e.g. `https://sandbox.bcvh.vonx.io`). Issuer DIDs from `configs/issuers.yaml` use this URL's hostname: alias `mines-act:chief-permitting-officer` becomes `did:web:{host}:mines-act:chief-permitting-officer`.
+- **`PUBLISHER_WITNESS_ID`** — Witness `did:key` for Traction proof options (e.g. `did:key:z6Mk…`). The Ed25519 multikey is derived at runtime as **`PUBLISHER_WITNESS_MULTIKEY`**.

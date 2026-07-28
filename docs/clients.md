@@ -1,47 +1,50 @@
 # Publishing credentials
-Instructions for lines of business to obtain Verifiable Credentials from the publisher. OrgBook may be used to **resolve entities** (e.g. by `entityId`) when publishing; issued credentials are **not** forwarded to OrgBook for search.
+Instructions for lines of business to obtain Verifiable Credentials from the publisher.
+
+Send ``template``, ``version``, and ``data``. ``data`` is validated against
+``configs/credentials/{type}/{version}/data.schema.json``. Entity and cardinality
+ids are taken from ``data`` using ``x-publisher-pointers`` in that schema.
 
 ## Integration
-### Issuer registration
-1. Open a issue on the [digital trust toolkit](https://github.com/bcgov/digital-trust-toolkit)
-    Include the name, scope and description of the issuing entity.
-    ```
-    Subject: [Issuer registration] Example Issuer
-
-    Name: Example Issuer
-    Scope: Pilots
-    Description: An example issuer used for pilots.
-    ```
-2. An admin will carry the registration and open a PR to close the issue, with the registration information.
-3. Once the PR is merged, a secret key will be provided to you.
-
-### Credential Type registration
-1. Open a issue on the [digital trust toolkit](https://github.com/bcgov/digital-trust-toolkit)
-    *An admin will register the credential type.*
+### Issuer and credential type setup
+1. Open an issue on the [digital trust toolkit](https://github.com/bcgov/digital-trust-toolkit)
+    Include the name, namespace and description of the issuing entity (and credential types to publish).
+2. An admin adds the issuer (and `credentials[]`) to `configs/issuers.yaml` and merges related credential assets under `configs/credentials/` (including `data.schema.json` with `x-publisher-pointers`). Startup provisioning creates local issuer, status list, and credential type records.
+3. Once deployed, a secret key will be provided to you (`POST /auth/secret`).
 
 ### Credential publication
 #### By api
-1. Request an access token from the UNTP publisher
+1. Authenticate with either:
+    - a client access token from `POST /auth/token` (`Authorization: Bearer …`).
+      The token `client_id` must be the issuer id (`IssuerInstanceRecord.id` / DID)
+      for the credential type you publish.
+    - an admin `X-API-Key` (same key used for `POST /auth/secret` / issuer ops);
+      admin may publish any registered type.
+2. Send a publication request to `POST /credentials/publish`
+    *Publication requests will depend on the provisioned credential type.*
+    *Omit `credentialId` (or send a new one) on first issue; on re-issue you may
+    reuse the previous id after the prior record is marked refresh, or omit it
+    to allocate a new id.*
     ```json
     {
-        "client_id": "",
-        "client_secret": ""
-    }
-    ```
-2. Send a publication request
-    *Publication requests will depend on the credential type registration.*
-    ```json
-    {
-        "credential": {
-            "type": "",
-            "validFrom": "",
-            "validUntil": "",
-            "credentialSubject": {}
-        },
-        "options": {
-            "entityId": "",
-            "credentialId": "",
-            "cardinalityId": ""
+        "template": "BCMinesActPermitCredential",
+        "version": "v1.1",
+        "credentialId": "",
+        "data": {
+            "permit": {
+                "issuanceDate": "",
+                "identifier": ""
+            },
+            "permittee": {
+                "name": "Example Mining Co.",
+                "identifier": ""
+            },
+            "mine": {
+                "name": "",
+                "identifier": "",
+                "infoPageId": ""
+            },
+            "commodities": []
         }
     }
     ```
@@ -49,39 +52,14 @@ Instructions for lines of business to obtain Verifiable Credentials from the pub
 #### By File upload
 *TBD*
 
-## Extensions
-### Untp
-For UNTP Digital Conformity Credentials, `assessedFacility` and `assessedProduct` must be provided in addition to the standard request information.
-#### Assessed Facility
-A list of assessed facilities
-```json
-{
-    "type": ["Facility"],
-    "id": "",
-    "name": "",
-    "description": "",
-    "registeredId": "",
-    "idScheme": {
-      "id": "",
-      "name": ""
-    }
-}
-```
-#### Assessed Product
-A list of assessed products
-```json
-{
-    "type": ["Product"],
-    "id": "",
-    "name": "",
-    "description": "",
-    "registeredId": "",
-    "idScheme": {
-      "id": "",
-      "name": ""
-    }
-}
-```
+## Mines Act DCC (BCMinesActPermitCredential)
+
+Facility (`mine`), products (`commodities`), and optional evidence are supplied in
+``data``. The Jinja credential template maps them into UNTP
+``assessedFacility`` / ``assessedProduct`` / ``evidence`` — callers do **not**
+send those UNTP objects in the publish body.
+
+Optional ``mine.infoPageId`` adds evidence linking to the mine’s NRS authorizations page.
 
 ## Examples
 ### Lines of Business
@@ -97,24 +75,6 @@ A list of assessed products
 {
   "type": "BCPetroleumAndNaturalGasTitleCredential",
   "version": "v1.0",
-  "additionalType": "DigitalConformityCredential",
-  "corePaths": {
-    "entityId": "$.credentialSubject.issuedToParty.registeredId",
-    "cardinalityId": "$.credentialSubject.titleNumber"
-  },
-  "subjectPaths": {
-    "term": "$.credentialSubject.term",
-    "area": "$.credentialSubject.area",
-    "caveats": "$.credentialSubject.caveats",
-    "titleType": "$.credentialSubject.titleType",
-    "titleNumber": "$.credentialSubject.titleNumber",
-    "originType": "$.credentialSubject.originType",
-    "originNumber": "$.credentialSubject.originNumber"
-  },
-  "additionalPaths": {
-    "wells": "$.credentialSubject.assessment[0].assessedFacility",
-    "tracts": "$.credentialSubject.assessment[0].assessedProduct"
-  },
   "relatedResources": {
     "context": "https://bcgov.github.io/digital-trust-toolkit/contexts/BCPetroleumAndNaturalGasTitle/v1.jsonld",
     "legalAct": "https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/00_96361_01",
@@ -142,6 +102,7 @@ A list of assessed products
     },
     "options": {
         "entityId": "",
+        "entityName": "Example Mining Co.",
         "cardinalityId": "62715",
         "additionalData": {
             "wells": [
@@ -191,24 +152,7 @@ A list of assessed products
 ```json
 {
   "type": "BCMinesActPermitCredential",
-  "version": "v1.0",
-  "additionalType": "DigitalConformityCredential",
-  "corePaths": {
-    "entityId": "$.credentialSubject.issuedToParty.registeredId",
-    "cardinalityId": "$.credentialSubject.permitNumber"
-  },
-  "subjectPaths": {
-    "permitNumber": "$.credentialSubject.titleNumber"
-  },
-  "additionalPaths": {
-    "assessedProduct": "$.credentialSubject.assessment[0].assessedProduct",
-    "assessedFacility": "$.credentialSubject.assessment[0].assessedFacility"
-  },
-  "relatedResources": {
-    "context": "https://bcgov.github.io/digital-trust-toolkit/contexts/BCPetroleumAndNaturalGasTitle/v1.jsonld",
-    "legalAct": "https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/00_96361_01",
-    "governance": "https://bcgov.github.io/digital-trust-toolkit/docs/governance/pilots/bc-petroleum-and-natural-gas-title"
-  }
+  "version": "v1.1"
 }
 ```
 ##### Publication Payload
@@ -218,13 +162,11 @@ A list of assessed products
         "type": "BCMinesActPermitCredential",
         "validFrom": "2024-06-01T00:00:00Z",
         "validUntil": "2025-06-01T00:00:00Z",
-        "credentialSubject": {
-            "type": "MinesActPermit",
-            "permitNumber": "62715"
-        }
+        "credentialSubject": {}
     },
     "options": {
         "entityId": "",
+        "entityName": "Example Mining Co.",
         "cardinalityId": "62715",
         "additionalData": {
             "assessedProduct": [

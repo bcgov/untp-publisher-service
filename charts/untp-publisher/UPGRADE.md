@@ -17,7 +17,6 @@ Chart **name** and directory changed from `orgbook-publisher` to **`untp-publish
 - Point `helm upgrade` at `./charts/untp-publisher` (or the packaged chart version from releases).
 - If you must keep **Kubernetes resource names** stable (e.g. `myrelease-orgbook-publisher`), set `fullnameOverride` and `nameOverride` in your values to the previous strings.
 - If you must keep the **MongoDB** application user/database or **container image** repository, override `mongodb.customUser.*` and `backend.image.repository` in values.
-- The pod still receives **`ORGBOOK_URL`** for optional read-only entity lookup; unset or leave empty only if your deployment does not use that integration.
 
 ---
 

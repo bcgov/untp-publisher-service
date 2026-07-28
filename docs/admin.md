@@ -1,53 +1,46 @@
 # Administrative role
 
-A publisher software admin has 3 key functions:
-- Register issuers
-- Register credential types
-- Generate/Provide secrets to issuers
+Publisher admins work from **repo configs** and a few API-key / client-auth endpoints — there is no separate Mongo admin UI.
 
+## What admins do
 
-## Issuer Registrations
-An issuer registration will begin with a request, in the form of a gh issue on the [digital trust toolkit](https://github.com/bcgov/digital-trust-toolkit/issues).
+1. Declare issuers and `credentials[]` in `configs/issuers.yaml`, with assets under `configs/credentials/{type}/{version}/`.
+   Treat `template.yaml` as trusted app config (Jinja). Do not accept untrusted
+   template uploads — only untrusted input is publish `data` values.
+2. Deploy so startup provisioning creates local `IssuerInstanceRecord`, status lists, and `CredentialTemplateRecord` rows.
+3. Issue a client secret with `POST /auth/secret` (`X-API-Key`).
+4. Confirm configuration via the public ops APIs (also `X-API-Key` where noted):
 
-Once that issue has been approved by the respective governance team, the admin is responsible for conducting the issuer registration through an api call. He will need to gather the name, scope and description of the issuer from the issue and send the following request:
+| URL | Auth | Purpose |
+|-----|------|---------|
+| `GET /issuers` | `X-API-Key` | Issuer instances from yaml (+ whether provisioned locally) |
+| `GET /templates/{type}/{version}` | None | Provisioned VC template |
+| `GET /templates/{type}/{version}/oca.json` | None | OCA bundle |
+| `GET /status-lists/{id}` | None | Status list credential |
+| `POST /auth/secret` | `X-API-Key` | Generate issuer client secret |
+| `POST /auth/token` | Client secret | Exchange for publish JWT |
+| `POST /credentials/publish` | Client JWT **or** `X-API-Key` | Issue and store a credential |
+
+Mongo inspection, when needed, is done with normal DB tools (Compass, `mongosh`), not the publisher API.
+
+## Issuer and credential type provisioning (configs)
+
+```yaml
+instances:
+  - id: mines-act:chief-permitting-officer
+    name: Chief Permitting Officer
+    description: …
+    credentials:
+      - type: BCMinesActPermitCredential
+        version: v1.1
 ```
-POST
-https://publisher.example.com/registrations/issuer
-{
-    "name": $ISSUER_NAME,
-    "scope": $ISSUER_SCOPE,
-    "description": $ISSUER_DESCRIPTION
-}
-```
 
-The request must contain an `X-API-KEY` header corresponding to the Publisher's Traction Tenant `api_key` value.
+On startup the publisher runs MongoDB schema migrations (indexes), then creates/updates:
 
-A successful response will return a 201 with a did document. The admin can confirm the did web's availablility be resolving it through the traction did resolver endpoint. Alternatively, the uniresolver may be used.
+- local `IssuerInstanceRecord` rows
+- three status lists per issuer
+- `CredentialTemplateRecord` for each `credentials[]` entry (template/OCA from `configs/credentials/{type}/{version}/`)
 
-At this point, a [PR should be opened](https://github.com/bcgov/digital-trust-toolkit/pulls) to address the issue and add this issuer to the [corresponding registry](https://github.com/bcgov/digital-trust-toolkit/tree/main/related_resources/registrations/issuers).
+Full DID = `did:web:{WEBVH_SERVER_URL hostname}:{id}`.
 
-## Credential Type Registration
-The credential type registration is the most complex and critical component: it defines how issuers issue Verifiable Credentials through this publisher. OrgBook is used only for **entity lookup** during publication; credential type definitions and issued VCs are **not** pushed to OrgBook for indexing.
-
-This will also begin with a gh issue, describing the credential to be issued, the data points contained in the credential and other associated metadata. 
-```
-POST
-https://publisher.example.com/registrations/credentials
-{
-    "type": "BCExampleDocumentCredential",
-    "version": "1.0",
-    "issuer": "did:web:example.gov.bc.ca",
-    "mappings": {
-        "entityId": "documentOwner",
-        "cardinalityId": "documentNumber"
-    },
-    "subjectType": "ExampleDocument",
-    "subjectPaths": {
-        "documentOwner": "$.credentialSubject.documentOwner",
-        "documentNumber": "$.credentialSubject.documentNumber",
-    },
-    "relatedResources": {
-        "context": "https://bcgov.github.io/digital-trust-toolkit/contexts/ExampleDocument/v1.jsonld"
-    }
-}
-```
+Issuers then authenticate with a client secret (`POST /auth/secret` / `POST /auth/token`) and publish via the credentials APIs.

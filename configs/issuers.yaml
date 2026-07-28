@@ -1,0 +1,17 @@
+# Issuer registry.
+# id: namespace:alias — full DID is did:web:{WEBVH_SERVER_URL hostname}:{id}
+# Optional verificationMethod: Ed25519 multikey on the DID document / Traction wallet.
+# Per-credential assets: configs/credentials/{type}/{version}/
+#   template.yaml      — Jinja VC template (registration + publish)
+#   data.schema.json   — JSON Schema for publish ``data`` (+ x-publisher-pointers)
+#   oca.json           — OCA bundle
+#   payload.json       — sample publication API request
+#   sample.json        — sample issued credential (examples / OCA tooling)
+
+instances:
+  - id: mines-act:chief-permitting-officer
+    name: Chief Permitting Officer
+    description: The Chief Permitting Officer is responsible for issuing Mines Act permits.
+    credentials:
+      - type: BCMinesActPermitCredential
+        version: v1.1

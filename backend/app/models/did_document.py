@@ -3,9 +3,7 @@ from pydantic import BaseModel, Field, AliasChoices, field_validator
 
 BASE_CONTEXT = [
     "https://www.w3.org/ns/did/v1",
-    "https://www.w3.org/ns/credentials/v2",
-    "https://w3id.org/security/multikey/v1",
-    "https://w3id.org/security/jwk/v1",
+    "https://www.w3.org/ns/cid/v1",
 ]
 
 
@@ -31,8 +29,6 @@ class Service(BaseModel):
 class DidDocument(BaseModel):
     context: List[str] = Field(BASE_CONTEXT, alias="@context")
     id: str = Field()
-    name: str = Field(None)
-    description: str = Field(None)
     controller: str = Field(None)
     authentication: List[Union[str, VerificationMethod]] = Field(None)
     assertionMethod: List[Union[str, VerificationMethod]] = Field(None)

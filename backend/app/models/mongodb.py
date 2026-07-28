@@ -7,27 +7,26 @@ class BaseModel(BaseModel):
         return super().model_dump(by_alias=True, exclude_none=True, **kwargs)
 
 
-class IssuerRecord(BaseModel):
+class IssuerInstanceRecord(BaseModel):
     id: str = Field()
     name: str = Field()
+    namespace: str = Field(
+        None,
+        description="Issuer namespace (from configs or registration).",
+    )
     secret_hash: str = Field(None)
-    authorized_key: str = Field()
+    authorized_key: str | None = Field(
+        None,
+        description="Issuing multikey when known (from configs verificationMethod or registration).",
+    )
 
 
-class CredentialTypeRecord(BaseModel):
+class CredentialTemplateRecord(BaseModel):
     type: str = Field()
     version: str = Field()
     issuer: str = Field()
-    context: dict = Field()
     template: dict = Field()
     oca_bundle: dict = Field()
-    json_schema: dict = Field()
-    core_paths: dict = Field()
-    subject_type: str = Field()
-    subject_paths: dict = Field()
-    additional_type: str = Field(None)
-    additional_paths: dict = Field(None)
-    status_lists: list = Field()
 
 
 class CredentialRecord(BaseModel):
@@ -45,6 +44,11 @@ class CredentialRecord(BaseModel):
 
 class StatusListRecord(BaseModel):
     id: str = Field()
+    issuer: str = Field(None, description="Issuer DID that owns this status list.")
+    purpose: str = Field(
+        None,
+        description="Bitstring status purpose: revocation, suspension, or refresh.",
+    )
     type: str = Field(None)
     version: str = Field(None)
     active: bool = Field(None)

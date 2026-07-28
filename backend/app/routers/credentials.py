@@ -1,72 +1,115 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from fastapi.templating import Jinja2Templates
-from app.models.publications import (
-    Publication,
-)
+from app.models.publications import PublicationRequest
 from app.models.mongodb import CredentialRecord
-from app.plugins.mongodb import MongoClient
+from app.plugins.mongodb import MongoClient, MongoClientError
 from config import settings
-from app.utils import timestamp
-from app.plugins.orgbook import OrgbookClient
-from app.plugins import (
-    TractionController,
-    PublisherRegistrar,
-)
-from app.security import JWTBearer
+from app.plugins import TractionController
+from app.services.coordinator import PublisherCoordinator
+from app.services.composer import normalize_publication
+from app.security import AuthPrincipal, jwt_or_api_key
 import uuid
-import segno
-import copy
 
-router = APIRouter(prefix="/credentials")
+router = APIRouter(prefix="/credentials", tags=["Credentials"])
 
 
-@router.post("/publish", tags=["Client"], dependencies=[Depends(JWTBearer())])
-async def publish_credential(request_body: Publication):
+def _authorize_publish(
+    auth: AuthPrincipal,
+    *,
+    issuer_id: str,
+) -> None:
+    """Admin API key may publish any type; JWT must match the type's issuer."""
+    if auth.via == "api_key":
+        return
+    if auth.via == "jwt" and auth.client_id == issuer_id:
+        return
+    raise HTTPException(
+        status_code=403,
+        detail="client_id is not authorized for this credential type",
+    )
+
+
+def _allocate_credential_id(
+    mongo: MongoClient,
+    *,
+    requested_id: str | None,
+    credential_type: str,
+    entity_id: str,
+    cardinality_id: str,
+) -> str:
+    """Pick a credential id for a new issue; reclaim superseded ids when safe."""
+    credential_id = (requested_id or "").strip() or str(uuid.uuid4())
+    existing = mongo.find_one("CredentialRecord", {"id": credential_id})
+    if not existing:
+        return credential_id
+
+    # Allow reuse when the prior row was just marked refresh for this identity.
+    if (
+        existing.get("refresh")
+        and existing.get("type") == credential_type
+        and existing.get("entity_id") == entity_id
+        and existing.get("cardinality_id") == cardinality_id
+    ):
+        mongo.delete("CredentialRecord", {"id": credential_id})
+        return credential_id
+
+    raise HTTPException(
+        status_code=409,
+        detail="credentialId already exists",
+    )
+
+
+@router.post("/publish")
+async def publish_credential(
+    request_body: PublicationRequest,
+    auth: Annotated[AuthPrincipal, Depends(jwt_or_api_key)],
+):
     settings.LOGGER.info("Publication request")
-    credential_input = request_body.model_dump()["credential"]
+    raw = request_body.model_dump()
+    options = normalize_publication(raw)
+    requested_credential_id = options.get("credentialId")
 
-    options = request_body.model_dump()["options"]
-    if not options.get("credentialId"):
-        options["credentialId"] = str(uuid.uuid4())
-        settings.LOGGER.info("No credential id provided, new id generated.")
-        
-    settings.LOGGER.info('Credential Id: ' + options["credentialId"])
-    
     mongo = MongoClient()
-    
-    # Check if credential type has a registration
-    credential_type = credential_input.get("type")
+
+    credential_type = options["template"]
     credential_registration = mongo.find_one(
-        'CredentialTypeRecord',
-        {'type': credential_type}
+        "CredentialTemplateRecord",
+        {"type": credential_type},
     )
     if not credential_registration:
         raise HTTPException(
             status_code=404,
             detail="Unregistered credential type",
         )
-    
-    # Check if entity id provided exists in orgbook
-    entity_id = options.get("entityId")
-    try:
-        OrgbookClient().fetch_buisness_info(entity_id)
-    except:
+
+    issuer_id = (credential_registration.get("issuer") or "").strip()
+    if not issuer_id:
         raise HTTPException(
-            status_code=404,
-            detail=f"No orgbook registration found for {entity_id}",
+            status_code=500,
+            detail=f"Credential type {credential_type!r} has no issuer",
         )
-        
-    # Check cardinality, returns hash if new issuance is required
-    cardinality_hash = await PublisherRegistrar().check_cardinality(
-        credential_input=copy.deepcopy(credential_input), options=options
-    )
-        
+    _authorize_publish(auth, issuer_id=issuer_id)
+
+    entity_id = options.get("entityId")
+    cardinality_id = options.get("cardinalityId")
+
+    # TODO: retire/revoke (or suspend) active credentials when a permit disappears
+    # from the daily source feed — replayed publishes only cover present rows.
+    cardinality_hash = await PublisherCoordinator().check_cardinality(options=options)
+
     if cardinality_hash:
-        # Format credential
-        credential = await PublisherRegistrar().format_credential(
-            credential_input=copy.deepcopy(credential_input), options=options
+        options["credentialId"] = _allocate_credential_id(
+            mongo,
+            requested_id=requested_credential_id,
+            credential_type=credential_type,
+            entity_id=entity_id,
+            cardinality_id=cardinality_id,
         )
+        settings.LOGGER.info("Credential Id: " + options["credentialId"])
+
+        credential = await PublisherCoordinator().format_credential(options=options)
 
         traction = TractionController()
         traction.authorize()
@@ -74,73 +117,89 @@ async def publish_credential(request_body: Publication):
         if not vc:
             raise HTTPException(
                 status_code=500,
-                detail="Unexpected error occured while trying to issue the credential.",
+                detail="Unexpected error occurred while trying to issue the credential.",
             )
         vc_jwt = traction.sign_vc_jwt(vc)
         if not vc_jwt:
             raise HTTPException(
                 status_code=500,
-                detail="Unexpected error occured while trying to issue the credential.",
+                detail="Unexpected error occurred while trying to issue the credential.",
             )
 
-        mongo.insert(
-            "CredentialRecord",
-            CredentialRecord(
-                id=options.get("credentialId"),
-                type=credential_type,
-                entity_id=entity_id,
-                cardinality_id=options.get("cardinalityId"),
-                cardinality_hash=cardinality_hash,
-                refresh=False,
-                revocation=False,
-                suspension=False,
-                vc=vc,
-                vc_jwt=vc_jwt,
-            ).model_dump(),
-        )
+        try:
+            mongo.insert(
+                "CredentialRecord",
+                CredentialRecord(
+                    id=options.get("credentialId"),
+                    type=credential_type,
+                    entity_id=entity_id,
+                    cardinality_id=cardinality_id,
+                    cardinality_hash=cardinality_hash,
+                    refresh=False,
+                    revocation=False,
+                    suspension=False,
+                    vc=vc,
+                    vc_jwt=vc_jwt,
+                ).model_dump(),
+            )
+        except MongoClientError as exc:
+            raise HTTPException(
+                status_code=409,
+                detail="credentialId already exists",
+            ) from exc
         return JSONResponse(status_code=201, content={"credentialId": vc["id"]})
 
-    else:
-        credential_records = mongo.find_one(
-            "CredentialRecord",
-            {
-                "type": credential_input.get("type"),
-                "entity_id": options.get("entityId"),
-                "cardinality_id": options.get("cardinalityId"),
-                "refresh": False,
-            },
-        )
-        vc = credential_records['vc']
-        return JSONResponse(status_code=200, content={"credentialId": vc['id']})
-
-
-
-@router.get("/refresh", tags=["Public"])
-async def refresh_credential(type: str, entity: str, cardinality: str, request: Request):
-    entity_id = entity
-    cardinality_id = cardinality
-    credential_type = type
-    mongo = MongoClient()
     credential_record = mongo.find_one(
-        "CredentialRecord", 
+        "CredentialRecord",
         {
             "type": credential_type,
             "entity_id": entity_id,
             "cardinality_id": cardinality_id,
-            "refresh": False
-        }
+            "refresh": False,
+        },
     )
-    vc = credential_record['vc']
-    vc_jwt = credential_record['vc_jwt']
-    if "application/vc+jwt" in request.headers["accept"]:
-        return Response(content=vc_jwt, media_type="application/vc+jwt")
-    elif "application/vc" in request.headers["accept"]:
-        return JSONResponse(headers={"Content-Type": "application/vc"}, content=vc)
-    return JSONResponse(headers={"Content-Type": "application/vc"}, content=vc)
+    if not credential_record:
+        raise HTTPException(
+            status_code=409,
+            detail="Credential changed concurrently; retry publish",
+        )
+    vc = credential_record["vc"]
+    return JSONResponse(status_code=200, content={"credentialId": vc["id"]})
 
 
-@router.get("/{credential_id}", tags=["Public"])
-async def get_credential(credential_id: str, request: Request):
+def _enveloped_credential_response(credential_record: dict) -> JSONResponse:
+    vc_jwt = credential_record.get("vc_jwt")
+    if not vc_jwt:
+        raise HTTPException(status_code=500, detail="Credential record missing vc_jwt")
+    enveloped = TractionController.as_enveloped_vc(vc_jwt)
+    return JSONResponse(headers={"Content-Type": "application/vc"}, content=enveloped)
+
+
+@router.get("/refresh")
+async def refresh_credential(type: str, entity: str, cardinality: str):
+    """Return the active credential as an EnvelopedVerifiableCredential."""
+    mongo = MongoClient()
+    credential_record = mongo.find_one(
+        "CredentialRecord",
+        {
+            "type": type,
+            "entity_id": entity,
+            "cardinality_id": cardinality,
+            "refresh": False,
+        },
+    )
+    if not credential_record:
+        raise HTTPException(status_code=404, detail="No record found.")
+    return _enveloped_credential_response(credential_record)
+
+
+@router.get("/{credential_id}")
+async def get_credential(credential_id: str):
+    """Return a published credential as an EnvelopedVerifiableCredential.
+
+    Response ``Content-Type`` is ``application/vc`` (VCDM 2.0 envelope wrapping
+    ``data:application/vc+jwt,…``).
+    """
     mongo = MongoClient()
     credential_record = mongo.find_one("CredentialRecord", {"id": credential_id})
     if not credential_record:
@@ -148,59 +207,4 @@ async def get_credential(credential_id: str, request: Request):
             status_code=404,
             detail="No record found.",
         )
-    vc = credential_record["vc"]
-    vc_jwt = credential_record["vc_jwt"]
-    if "application/vc+jwt" in request.headers["accept"]:
-        return Response(content=vc_jwt, media_type="application/vc+jwt")
-    elif "application/vc" in request.headers["accept"]:
-        return JSONResponse(headers={"Content-Type": "application/vc"}, content=vc)
-    else:
-        branding = {"logo": "https://avatars.githubusercontent.com/u/916280"}
-        meta = {
-            "name": vc["name"],
-            "issuer": vc["issuer"]["name"],
-        }
-        values = {
-            "cardinalityId": credential_record["cardinality_id"],
-            "entityId": vc["credentialSubject"]["issuedToParty"]["registeredId"],
-            "entityName": vc["credentialSubject"]["issuedToParty"]["name"],
-        }
-        context = {
-            "title": credential_record["type"],
-            "branding": branding,
-            "meta": meta,
-            "values": values,
-            "qrcode": segno.make(vc["id"]),
-            "vc": vc,
-            "jwt": vc_jwt,
-        }
-        return Jinja2Templates(directory="app/templates").TemplateResponse(
-            request=request, name="minimal.jinja", context=context
-        )
-
-
-@router.get("/status/{status_credential_id}", tags=["Public"])
-async def get_status_list_credential(status_credential_id: str, request: Request):
-    mongo = MongoClient()
-    status_list_record = mongo.find_one(
-        "StatusListRecord", {"id": status_credential_id}
-    )
-    if not status_list_record:
-        raise HTTPException(
-            status_code=404,
-            detail="No record found.",
-        )
-    status_list_credential = status_list_record["credential"]
-    status_list_credential["validFrom"] = timestamp()
-    status_list_credential["validUntil"] = timestamp(5)
-    traction = TractionController()
-    traction.authorize()
-    if "application/vc+jwt" in request.headers["accept"]:
-        vc_jwt = traction.sign_vc_jwt(status_list_credential)
-        return Response(content=vc_jwt, media_type="application/vc+jwt")
-    elif "application/vc" in request.headers["accept"]:
-        vc = traction.issue_vc(status_list_credential)
-        return JSONResponse(headers={"Content-Type": "application/vc"}, content=vc)
-    else:
-        vc = traction.issue_vc(status_list_credential)
-        return JSONResponse(content=vc)
+    return _enveloped_credential_response(credential_record)
