@@ -62,7 +62,9 @@ class TractionController:
         issuers = list_issuer_instances()
         settings.LOGGER.info("Provisioning %s issuer(s) from issuers.yaml.", len(issuers))
         mongo = MongoClient()
-        mongo.provision()
+        from migrations import run_migrations
+
+        run_migrations(mongo.db)
 
         for issuer in issuers:
             issuer_id = (issuer.get("id") or "").strip()

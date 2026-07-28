@@ -4,7 +4,6 @@ from pathlib import Path
 import logging
 import os
 from logging import Logger
-from typing import Any
 from urllib.parse import urlparse
 
 from pydantic import Field, computed_field, model_validator
@@ -13,18 +12,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from witness import did_key_to_multikey
 
 basedir = os.path.abspath(os.path.dirname(__file__))
-
-_MONGO_URI_PREFIXES = ("mongodb://", "mongodb+srv://")
-
-
-def _database_name_from_mongo_uri(uri: str) -> str | None:
-    normalised = uri.replace("mongodb+srv://", "https://", 1).replace(
-        "mongodb://", "http://", 1
-    )
-    path = (urlparse(normalised).path or "").strip("/")
-    if not path:
-        return None
-    return path.split("/")[0]
 
 
 class Settings(BaseSettings):
@@ -93,7 +80,8 @@ class Settings(BaseSettings):
 
     #: Full connection string (``mongodb://`` or ``mongodb+srv://``). When set, overrides
     #: ``MONGO_HOST`` / ``MONGO_PORT`` / ``MONGO_USER`` / ``MONGO_PASSWORD``.
-    #: Database name is always ``MONGO_DB`` (URI path is ignored for selection).
+    #: Convenience for pasting a managed-Mongo connection string; database name is always
+    #: ``MONGO_DB`` (URI path is ignored for selection).
     MONGO_URI: str = Field(default="")
 
     MONGO_HOST: str = Field(default="localhost")

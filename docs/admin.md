@@ -35,7 +35,7 @@ instances:
         version: v1.1
 ```
 
-On startup the publisher creates/updates:
+On startup the publisher runs MongoDB schema migrations (indexes), then creates/updates:
 
 - local `IssuerInstanceRecord` rows
 - three status lists per issuer

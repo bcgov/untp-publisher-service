@@ -7,6 +7,7 @@ WORKDIR /fastapi
 COPY backend/pyproject.toml backend/uv.lock backend/README.md ./
 COPY backend/app ./app
 COPY backend/untp ./untp
+COPY backend/migrations ./migrations
 COPY backend/config.py backend/main.py backend/witness.py ./
 
 # Repo-root credential / publication configs (CONFIG_ROOT=/config in container).

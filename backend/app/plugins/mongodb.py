@@ -22,26 +22,6 @@ class MongoClient:
             )
         self.db = self.client[settings.MONGO_DB]
 
-    def provision(self):
-        self.db["IssuerInstanceRecord"].create_index([("id")], unique=True)
-        self.db["CredentialRecord"].create_index([("id")], unique=True)
-        self.db["StatusListRecord"].create_index([("id")], unique=True)
-        self.db["StatusListRecord"].create_index(
-            [("issuer", pymongo.ASCENDING), ("purpose", pymongo.ASCENDING), ("active", pymongo.ASCENDING)],
-            name="issuer_purpose_active",
-        )
-        # Prefer (type, version); drop legacy unique-on-version-only if present.
-        try:
-            self.db["CredentialTemplateRecord"].drop_index("version_1")
-        except pymongo.errors.OperationFailure:
-            pass
-        self.db["CredentialTemplateRecord"].create_index(
-            [("type", pymongo.ASCENDING), ("version", pymongo.ASCENDING)],
-            unique=True,
-            name="type_version",
-        )
-        self.db["CredentialPickupRecord"].create_index([("id")], unique=True)
-
     def insert(self, collection, item):
         try:
             self.db[collection].insert_one(item)
