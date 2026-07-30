@@ -1,6 +1,6 @@
 # untp-publisher
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.0.5](https://img.shields.io/badge/AppVersion-0.0.5-informational?style=flat-square)
+![Version: 0.1.1](https://img.shields.io/badge/Version-0.1.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.0.5](https://img.shields.io/badge/AppVersion-0.0.5-informational?style=flat-square)
 
 Helm chart for the [UNTP Publisher](https://github.com/bcgov/untp-publisher-service) — credential type registration, issuance via Traction, optional read-only entity lookup, and optional bundled MongoDB.
 
@@ -16,9 +16,9 @@ Helm chart for the [UNTP Publisher](https://github.com/bcgov/untp-publisher-serv
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | backend.containerSecurityContext | object | `{}` | Security context for backend containers |
-| backend.testSuite | bool | `false` | When true, sets `TEST_SUITE` and exposes only `/server/status` and `/test-suite/validate` |
-| backend.environment.webvhServerUrl | string | `""` | WebVH / DID web server base URL. Hostname is used for issuer `did:web` IDs from `issuers.yaml`. |
-| backend.environment.publisherWitnessId | string | `""` | Witness `did:key` (sets `PUBLISHER_WITNESS_ID`; multikey derived at runtime) |
+| backend.testSuite | bool | `false` | When true, sets `TEST_SUITE` and exposes only `/server/status` and `/test-suite/*`. Startup still runs Traction/Mongo provision. |
+| backend.environment.webvhServerUrl | string | `""` | WebVH / DID web server base URL (`WEBVH_SERVER_URL`). Hostname is used for issuer `did:web` IDs from `issuers.yaml`. |
+| backend.environment.publisherWitnessId | string | `""` | Witness `did:key` (`PUBLISHER_WITNESS_ID`; multikey derived at runtime) |
 | backend.environment.projectTitle | string | `"UNTP Publisher"` | Brand / OpenAPI title (`PROJECT_TITLE`) |
 | backend.environment.projectVersion | string | `"v0"` | Version string (`PROJECT_VERSION`) |
 | backend.environment.ocaDigest | bool | `false` | When true, include `digestMultibase` on OCA `renderMethod` (`OCA_DIGEST`) |
@@ -42,7 +42,7 @@ Helm chart for the [UNTP Publisher](https://github.com/bcgov/untp-publisher-serv
 | backend.service.apiPort | int | `8000` | Backend API container port |
 | backend.service.servicePort | int | `8000` | Backend service port |
 | backend.service.type | string | `"ClusterIP"` | Backend service type |
-| fullnameOverride | string | `"untp-publisher"` | String to fully override the chart name |
+| fullnameOverride | string | `"untp-publisher-service"` | String to fully override the chart name |
 | ingress.annotations | object | `{}` | Annotations for the ingress resource |
 | ingress.enabled | bool | `true` | Enable the Ingress resource |
 | ingress.labels | object | `{}` | Additional labels for the ingress resource |
@@ -51,9 +51,9 @@ Helm chart for the [UNTP Publisher](https://github.com/bcgov/untp-publisher-serv
 | mongodb.auth.rootUsername | string | `"admin"` | MongoDB root username |
 | mongodb.commonLabels | object | `{ app.kubernetes.io/role: database }` | Labels added to all MongoDB resources |
 | mongodb.containerSecurityContext | object | `{}` | Set MongoDB container security context |
-| mongodb.customUser.database | string | `"untp-publisher"` | Name of the MongoDB database |
-| mongodb.customUser.existingSecret | string | `""` | Name of an existing secret for custom-user credentials. Leave empty to let the subchart generate its own credentials secret. When set, the subchart uses this secret instead of generating one, and the backend deployment reads credentials from this secret. |
-| mongodb.customUser.name | string | `"untp-publisher"` | Name of the custom MongoDB user |
+| mongodb.customUser.database | string | `"untp-publisher-service"` | Name of the MongoDB database |
+| mongodb.customUser.existingSecret | string | `"untp-publisher-service-mongodb-custom-user-secret"` | Parent-managed custom-user Secret name (lookup on upgrade). Override for a custom Secret or non-default release name (`{release}-mongodb-custom-user-secret`). |
+| mongodb.customUser.name | string | `"untp-publisher-service"` | Name of the custom MongoDB user |
 | mongodb.customUser.secretKeys | object | `{"database":"CUSTOM_DB","name":"CUSTOM_USER","password":"CUSTOM_PASSWORD"}` | Secret key names in the custom-user secret. Defaults match the CloudPirates subchart's generated secret keys. |
 | mongodb.enabled | bool | `true` | Enable bundled MongoDB subchart |
 | mongodb.image.pullPolicy | string | `"IfNotPresent"` | MongoDB image pull policy |
@@ -71,7 +71,7 @@ Helm chart for the [UNTP Publisher](https://github.com/bcgov/untp-publisher-serv
 | mongodb.service.port | int | `27017` | MongoDB service port |
 | mongodb.service.type | string | `"ClusterIP"` | MongoDB service type |
 | mongodb.targetPlatform | string | `""` | Target platform for MongoDB deployment. Set to "openshift" for OpenShift compatibility. |
-| nameOverride | string | `"untp-publisher"` | String to partially override the chart name |
+| nameOverride | string | `"untp-publisher-service"` | String to partially override the chart name |
 | networkPolicy.ingress.namespaceSelector | object | `{}` | Namespace selector labels for the backend ingress network policy |
 
 ----------------------------------------------

@@ -24,16 +24,16 @@ backend:
     repository: ghcr.io/bcgov/untp-publisher-service
     tag: dev-0.0.2
     pullPolicy: Always
-  # Hostname only (sets Ingress rule + pod DOMAIN). Public origin: https://untp-publisher-api-dev.apps.gold.devops.gov.bc.ca
+  # Hostname only (sets Ingress rule + pod PUBLISHER_DOMAIN).
+  # Public origin: https://untp-publisher-api-dev.apps.gold.devops.gov.bc.ca
   host: untp-publisher-api-dev.apps.gold.devops.gov.bc.ca
   traction:
     apiUrl: "https://traction-tenant-proxy-dev.apps.silver.devops.gov.bc.ca"
     existingSecret: untp-publisher-service-traction-tenant-info
-  didwebvh:
-    serverUrl: "https://registry-dev.digitaltrust.gov.bc.ca"
-    witnessPublicKeyMultibase: "z6MkekByGjKYvP6dpMBJEHt5UN72rKPVoDgzcS9Hoq6bjfr1"
   environment:
-    orgbookUrl: "https://dev.orgbook.gov.bc.ca"
+    webvhServerUrl: "https://registry-dev.digitaltrust.gov.bc.ca"
+    # Same witness as backend/tests/test_did_key.py (multikey → did:key).
+    publisherWitnessId: "did:key:z6MkekByGjKYvP6dpMBJEHt5UN72rKPVoDgzcS9Hoq6bjfr1"
   resources:
     limits:
       cpu: 300m

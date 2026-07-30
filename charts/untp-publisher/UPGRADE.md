@@ -1,5 +1,11 @@
 # Upgrade Guide
 
+## Chart 0.1.1 — WebVH values wiring
+
+- Removed unused **`backend.didwebvh`** keys (`serverUrl`, `witnessPublicKeyMultibase`). They never reached the pod.
+- Set WebVH / witness via **`backend.environment.webvhServerUrl`** (`WEBVH_SERVER_URL`) and **`backend.environment.publisherWitnessId`** (`PUBLISHER_WITNESS_ID`, a `did:key:…`).
+- Ingress is only created when **`ingress.enabled`** is true.
+
 ## Chart 0.1.0 — Rename to `untp-publisher`
 
 Chart **name** and directory changed from `orgbook-publisher` to **`untp-publisher`**.

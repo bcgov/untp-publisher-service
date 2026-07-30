@@ -26,11 +26,11 @@ MongoDB app-user credentials are **not** regenerated on every `helm upgrade`: se
 
 ### Test suite mode (optional)
 
-Set **`backend.testSuite: true`** to expose only **`GET /server/status`** and **`POST /test-suite/validate`** (publisher API routes are not registered). Startup is unchanged: the pod still runs **`main.py`** and **`provision()`** (Traction + Mongo). MongoDB must be healthy.
+Set **`backend.testSuite: true`** to expose only **`GET /server/status`** and **`/test-suite/*`** (publisher API routes are not registered). Startup is unchanged: the pod still runs **`main.py`** and **`provision()`** (Traction + Mongo). MongoDB and the Traction Secret must be healthy.
 
 ### Traction
 
-Required when **`backend.testSuite`** is false. Set **`backend.traction.apiUrl`** in values (non-secret). Create a Secret for the tenant credentials and reference it with **`backend.traction.existingSecret`**.
+Required when **`backend.testSuite`** is false (and still needed at startup for provision even when true). Set **`backend.traction.apiUrl`** in values (non-secret). Create a Secret for the tenant credentials and reference it with **`backend.traction.existingSecret`**.
 
 ```yaml
 backend:
@@ -48,11 +48,22 @@ kubectl create secret generic untp-publisher-service-traction-tenant-info \
 
 Default keys are `traction_tenant_id` and `traction_api_key` (`backend.traction.secretKeys`). When `existingSecret` is empty, Helm manages **`{fullname}-traction`** (e.g. `untp-publisher-service-traction`).
 
+### WebVH / witness
+
+Set under **`backend.environment`** (mapped to pod env by the Deployment):
+
+```yaml
+backend:
+  environment:
+    webvhServerUrl: "https://registry-dev.digitaltrust.gov.bc.ca"
+    publisherWitnessId: "did:key:z6Mk…"
+```
+
 ### Ingress / TLS (dev)
 
 Dev follows [BC-Wallet-Demo `deploy/showcase/values-dev.yaml`](https://github.com/bcgov/BC-Wallet-Demo/blob/main/deploy/showcase/values-dev.yaml):
 
-- Host: `untp-publisher-dev.apps.gold.devops.gov.bc.ca` (standard Gold `*.apps.gold.devops.gov.bc.ca` Route)
+- Host: `untp-publisher-api-dev.apps.gold.devops.gov.bc.ca` (standard Gold `*.apps.gold.devops.gov.bc.ca` Route)
 - Annotation: `route.openshift.io/termination: edge` (router terminates HTTPS)
 - **No** `ingress.tls` block and **no** custom cert Secret
 
@@ -60,5 +71,5 @@ Traction dev tenant proxy remains on **Silver** (`traction-tenant-proxy-dev.apps
 
 ## Notes
 
-- **`backend.host`** sets the Ingress host and the pod `DOMAIN` env var (hostname only, no `https://`; do not set `DOMAIN` under `backend.environment`).
+- **`backend.host`** sets the Ingress host and the pod **`PUBLISHER_DOMAIN`** env var (hostname only, no `https://`; do not set `PUBLISHER_DOMAIN` under `backend.environment`).
 - Overlays omit **HPA / autoscaling** fields from the legacy gitops chart; the current chart uses fixed `backend.replicaCount`.
