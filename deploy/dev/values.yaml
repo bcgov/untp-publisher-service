@@ -1,12 +1,12 @@
-## Development overlay — namespace f890b1-dev (shared with tests-untp-ri).
-## See tests-untp repo deploy/f890b1-dev-quota.md for combined quota split.
+## Development overlay — namespace f890b1-dev.
 ##   cd charts/untp-publisher && helm dependency update
 ##   helm upgrade --install untp-publisher-service . -f ../../deploy/dev/values.yaml -n f890b1-dev
 ##
 ## Public URL: standard Gold Route host (*.apps.gold.devops.gov.bc.ca; same edge-TLS pattern as BC-Wallet-Demo on Silver).
 ## OpenShift edge termination — no ingress.tls / no custom cert Secret.
 ##
-## Pre-create Traction Secret (see backend.traction.existingSecret).
+## Pre-create Traction Secret untp-publisher-service-traction-tenant-info
+## (keys: traction_tenant_id, traction_api_key) — see backend.traction.existingSecret.
 
 ingress:
   annotations:
@@ -22,7 +22,7 @@ backend:
   testSuite: false
   image:
     repository: ghcr.io/bcgov/untp-publisher-service
-    tag: dev-0.0.2
+    tag: dev-0.0.3
     pullPolicy: Always
   # Hostname only (sets Ingress rule + pod PUBLISHER_DOMAIN).
   # Public origin: https://untp-publisher-api-dev.apps.gold.devops.gov.bc.ca
@@ -47,9 +47,11 @@ mongodb:
     # Must match Helm release name untp-publisher-service (parent-managed secret).
     existingSecret: untp-publisher-service-mongodb-custom-user-secret
   targetPlatform: openshift
-  # 512Mi PVC — half of namespace 1Gi netapp-file-standard (RI uses the other 512Mi).
+  # MongoDB 8 needs ~500Mi free disk; a 512Mi volume fails once journal/FTDC grow.
+  # 1Gi on netapp-block-standard (namespace also has 1Gi netapp-file-standard).
   persistence:
-    size: 512Mi
+    storageClass: netapp-block-standard
+    size: 1Gi
   resources:
     limits:
       memory: 384Mi

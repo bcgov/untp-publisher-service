@@ -5,7 +5,8 @@
 ## Public URL: standard Gold Route host (*.apps.gold.devops.gov.bc.ca).
 ## OpenShift edge termination — no ingress.tls / no custom cert Secret.
 ##
-## Pre-create Traction Secret (see backend.traction.existingSecret).
+## Pre-create Traction Secret untp-publisher-service-traction-tenant-info
+## (keys: traction_tenant_id, traction_api_key) — see backend.traction.existingSecret.
 
 ingress:
   annotations:
@@ -21,7 +22,8 @@ backend:
   testSuite: false
   image:
     repository: ghcr.io/bcgov/untp-publisher-service
-    tag: v0.0.5
+    # Same build as f890b1-dev until a tagged release ships current main.
+    tag: dev-0.0.3
     pullPolicy: Always
   # Hostname only (sets Ingress rule + pod PUBLISHER_DOMAIN).
   # Public origin: https://untp-publisher-api-test.apps.gold.devops.gov.bc.ca
@@ -35,24 +37,26 @@ backend:
     publisherWitnessId: "did:key:z6MkpiDTaJuPzFZpg8MCYRM4ff7i6hNMQaL7fUP5pHBFo75c"
   resources:
     limits:
-      cpu: 400m
-      memory: 1600Mi
-    requests:
-      cpu: 100m
+      cpu: 300m
       memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 256Mi
 
 mongodb:
   customUser:
     # Must match Helm release name untp-publisher-service (parent-managed secret).
     existingSecret: untp-publisher-service-mongodb-custom-user-secret
   targetPlatform: openshift
+  # Namespace storage quota is 1Gi; MongoDB 8 needs ~500Mi free → use full 1Gi.
   persistence:
-    size: 2Gi
+    storageClass: netapp-block-standard
+    size: 1Gi
   resources:
     limits:
-      memory: 1Gi
+      memory: 512Mi
     requests:
-      cpu: 50m
+      cpu: 25m
       memory: 256Mi
   commonLabels:
     backup: "true"
