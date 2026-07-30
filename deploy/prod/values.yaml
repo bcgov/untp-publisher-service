@@ -1,0 +1,59 @@
+## Production overlay — namespace f890b1-prod.
+##   cd charts/untp-publisher && helm dependency update
+##   helm upgrade --install untp-publisher-service . -f ../../deploy/prod/values.yaml -n f890b1-prod
+##
+## Public URL: standard Gold Route host (*.apps.gold.devops.gov.bc.ca).
+## OpenShift edge termination — no ingress.tls / no custom cert Secret.
+##
+## Pre-create Traction Secret (see backend.traction.existingSecret).
+
+ingress:
+  annotations:
+    route.openshift.io/termination: edge
+  # No tls: — router terminates HTTPS.
+
+networkPolicy:
+  ingress:
+    namespaceSelector:
+      network.openshift.io/policy-group: ingress
+
+backend:
+  testSuite: false
+  image:
+    repository: ghcr.io/bcgov/untp-publisher-service
+    tag: v0.0.5
+    pullPolicy: IfNotPresent
+  # Hostname only (sets Ingress rule + pod PUBLISHER_DOMAIN).
+  # Public origin: https://untp-publisher-api.apps.gold.devops.gov.bc.ca
+  host: untp-publisher-api.apps.gold.devops.gov.bc.ca
+  traction:
+    apiUrl: "https://traction-tenant-proxy-prod.apps.silver.devops.gov.bc.ca"
+    existingSecret: untp-publisher-service-traction-tenant-info
+  environment:
+    webvhServerUrl: "https://registry.digitaltrust.gov.bc.ca"
+    # Witness multikey from former orgbook-publisher prod chart → did:key.
+    publisherWitnessId: "did:key:z6MkpJybUKKTCjrYPL6B6EWw534ESR3oEC6Bo2XSAefeUG7Y"
+  resources:
+    limits:
+      cpu: 400m
+      memory: 1600Mi
+    requests:
+      cpu: 200m
+      memory: 820Mi
+
+mongodb:
+  customUser:
+    # Must match Helm release name untp-publisher-service (parent-managed secret).
+    existingSecret: untp-publisher-service-mongodb-custom-user-secret
+  targetPlatform: openshift
+  persistence:
+    size: 8Gi
+  resources:
+    limits:
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 512Mi
+  commonLabels:
+    backup: "true"
+    env: prod
