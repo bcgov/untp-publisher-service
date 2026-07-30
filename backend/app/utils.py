@@ -29,7 +29,10 @@ def format_utc_datetime(dt: datetime | None = None) -> str:
 
 def valid_uri(value):
     DID_REGEX = re.compile("did:([a-z0-9]+):((?:[a-zA-Z0-9._%-]*:)*[a-zA-Z0-9._%-]+)")
-    if DID_REGEX.match(value) or validators.url(value):
+    if DID_REGEX.match(value):
+        return True
+    # ``simple_host=True`` allows localhost / bare hosts used in local PUBLISHER_DOMAIN.
+    if validators.url(value) or validators.url(value, simple_host=True):
         return True
     return False
 

@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from app.plugins.mongodb import MongoClientError
 from app.routers import credentials
 from app.security import AuthPrincipal
+from app.services.composer import RENDER_METHOD_CONTEXT_URL
 from config import settings
 
 ISSUER_ID = "did:web:registry.test:mines-act:chief-permitting-officer"
@@ -189,6 +190,22 @@ def test_publish_first_issue_with_api_key(publish_env):
     assert len(mongo.credentials) == 1
     assert mongo.credentials[0]["refresh"] is False
     traction.issue_vc.assert_called_once()
+    issued = traction.issue_vc.call_args.args[0]
+    assert "refreshService" not in issued
+    refresh_status = next(
+        s for s in issued["credentialStatus"] if s["statusPurpose"] == "refresh"
+    )
+    assert refresh_status["statusReference"] == (
+        "https://publisher.test/credentials/refresh"
+        "?type=BCMinesActPermitCredential"
+        f"&entity={SAMPLE_DATA['permittee']['identifier']}"
+        f"&cardinality={SAMPLE_DATA['permit']['identifier']}"
+    )
+    assert RENDER_METHOD_CONTEXT_URL in issued["@context"]
+    assert not any(
+        isinstance(c, str) and c.endswith("/contexts/publisher/v1")
+        for c in issued["@context"]
+    )
 
 
 def test_publish_skip_when_unchanged(publish_env):

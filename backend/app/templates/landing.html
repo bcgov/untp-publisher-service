@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ project_title }}</title>
+    <link rel="icon" href="/static/admin/images/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/css/bc-sans.css" />
+    <link rel="stylesheet" href="/static/css/publisher.css" />
+    <style>
+      :root {
+        --primary: {{ primary_color }};
+        --secondary: {{ secondary_color }};
+        --heading: {{ primary_color }};
+        /* Text scale for the navy plane: mixing toward the ground colour keeps
+           glyphs opaque, unlike opacity which also softens the rendering. */
+        --on-primary-strong: color-mix(in srgb, var(--on-primary) 94%, var(--primary));
+        --on-primary-muted: color-mix(in srgb, var(--on-primary) 76%, var(--primary));
+        --cta-ink: color-mix(in srgb, var(--primary) 85%, #000);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        font-family: var(--font);
+        color: var(--ink);
+        background: var(--surface);
+      }
+
+      a {
+        font-family: inherit;
+      }
+
+      /* ---------- hero plane ---------- */
+
+      .hero-band {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        color: var(--on-primary);
+        background-color: var(--primary);
+        background-image:
+          radial-gradient(
+            110% 85% at 88% 2%,
+            color-mix(in srgb, var(--secondary) 12%, transparent),
+            transparent 58%
+          ),
+          radial-gradient(
+            85% 75% at 2% 100%,
+            color-mix(in srgb, var(--primary) 62%, #000),
+            transparent 60%
+          ),
+          linear-gradient(
+            158deg,
+            color-mix(in srgb, var(--primary) 88%, #000) 0%,
+            var(--primary) 46%,
+            color-mix(in srgb, var(--primary) 84%, #1a5a96) 100%
+          );
+      }
+
+      /* Same measure and gutters as the Discovery content column, so the title
+         holds one optical left edge across both pages. */
+      .hero {
+        width: 100%;
+        max-width: 72rem;
+        margin: 0 auto;
+        padding: clamp(3.25rem, 9vw, 5.5rem) clamp(1.25rem, 5vw, 2.5rem)
+          clamp(3.75rem, 10vw, 6.25rem);
+      }
+
+      .hero-copy {
+        max-width: 40rem;
+      }
+
+      .hero h1 {
+        font-size: clamp(2.1rem, 5.2vw, 3rem);
+        font-weight: 700;
+        line-height: 1.1;
+        letter-spacing: -0.015em;
+      }
+
+      /* The gold rule is the shared signature; it needs more weight here than
+         on Discovery because the display type is larger. */
+      .hero h1 .title-rule {
+        border-bottom-width: 3px;
+        padding-bottom: 0.22rem;
+      }
+
+      .tagline {
+        margin-top: 1.15rem;
+        max-width: 32rem;
+        font-size: clamp(1.05rem, 2.3vw, 1.25rem);
+        line-height: 1.5;
+        color: var(--on-primary-strong);
+      }
+
+      .description {
+        margin-top: 0.7rem;
+        max-width: 34rem;
+        font-size: 0.98rem;
+        line-height: 1.55;
+        color: var(--on-primary-muted);
+      }
+
+      /* ---------- sole call to action ---------- */
+
+      .cta {
+        margin-top: 2rem;
+      }
+
+      .cta a {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        min-height: 2.9rem;
+        padding: 0.75rem 1.35rem;
+        font-size: 1rem;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--cta-ink);
+        background: var(--secondary);
+        border: 1px solid color-mix(in srgb, var(--secondary) 72%, #000);
+        border-radius: 3px;
+        text-decoration: none;
+        transition: background-color 0.12s ease, border-color 0.12s ease;
+      }
+
+      .cta a:hover {
+        background: color-mix(in srgb, var(--secondary) 86%, #fff);
+        border-color: color-mix(in srgb, var(--secondary) 55%, #000);
+      }
+
+      .cta a svg {
+        width: 1rem;
+        height: 1rem;
+        display: block;
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .cta a svg {
+          transition: transform 0.14s ease;
+        }
+        .cta a:hover svg {
+          transform: translateX(2px);
+        }
+      }
+
+      /* Focus mirrors Discovery's ring, inverted for the navy ground. */
+      .hero a:focus-visible {
+        outline: 2px solid var(--on-primary);
+        outline-offset: 3px;
+        box-shadow: 0 0 0 5px color-mix(in srgb, var(--secondary) 45%, transparent);
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .hero-copy > * {
+          animation: rise 0.35s ease-out both;
+        }
+        .hero-copy .tagline {
+          animation-delay: 0.05s;
+        }
+        .hero-copy .description {
+          animation-delay: 0.08s;
+        }
+        .hero-copy .cta {
+          animation-delay: 0.12s;
+        }
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(0.4rem);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body class="pub-chrome">
+    <header class="pub-topbar">
+      <a class="pub-topbar-brand" href="/">
+        <img src="{{ logo_url }}" alt="" />
+        <span>{{ project_title }}</span>
+      </a>
+      {% if partner_url %}
+      <a href="{{ partner_url }}" rel="noopener noreferrer">{{ partner_label }}</a>
+      {% endif %}
+    </header>
+
+    <main class="hero-band">
+      <div class="hero">
+        <div class="hero-copy">
+          <h1><span class="title-rule">{{ project_title }}</span></h1>
+          {% if tagline %}
+          <p class="tagline">{{ tagline }}</p>
+          {% endif %}
+          {% if description %}
+          <p class="description">{{ description }}</p>
+          {% endif %}
+          <p class="cta">
+            <a href="/discovery">
+              Discover credentials
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                  fill="currentColor"
+                  d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"
+                />
+              </svg>
+            </a>
+          </p>
+        </div>
+      </div>
+    </main>
+
+    <footer class="pub-footer">
+      <span>{{ project_version }}</span>
+      ·
+      <a href="/docs">API docs</a>
+    </footer>
+  </body>
+</html>

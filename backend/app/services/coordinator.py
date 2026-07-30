@@ -4,7 +4,7 @@ from app.models.credential import Credential
 from app.plugins.mongodb import MongoClient
 from app.services.composer import (
     compose_credential,
-    ensure_publisher_extension_context,
+    ensure_render_method_context,
     publisher_origin,
 )
 from app.validators.untp import UntpValidationError, validate_untp_document
@@ -54,22 +54,17 @@ class PublisherCoordinator:
                 detail=f"UNTP validation failed: {exc}",
             ) from exc
 
-        # After UNTP checks: publisher terms need the extension context.
-        ensure_publisher_extension_context(credential)
-        credential["refreshService"] = [
-            {
-                "type": "SimpleRefreshQuery",
-                "id": (
-                    f"{origin}/credentials/refresh?type={credential_type}"
-                    f"&entity={entity_id}&cardinality={cardinality_id}"
-                ),
-            }
-        ]
+        # After UNTP checks: append render-method context for TemplateRenderMethod.
+        ensure_render_method_context(credential)
 
         issuer_id = credential_registration.get("issuer")
         status_entries = []
         # TODO: release claimed status-list indexes if Traction issue/sign or
         # CredentialRecord insert fails after this (bits are popped before success).
+        refresh_url = (
+            f"{origin}/credentials/refresh?type={credential_type}"
+            f"&entity={entity_id}&cardinality={cardinality_id}"
+        )
         for purpose in ["revocation", "suspension", "refresh"]:
             if not issuer_id:
                 raise HTTPException(
@@ -85,14 +80,15 @@ class PublisherCoordinator:
                     status_code=500,
                     detail=f"No status list for purpose {purpose!r}",
                 )
-            status_entries.append(
-                {
-                    "type": "BitstringStatusListEntry",
-                    "statusPurpose": purpose,
-                    "statusListIndex": str(claimed["index"]),
-                    "statusListCredential": claimed["endpoint"],
-                }
-            )
+            entry: dict = {
+                "type": "BitstringStatusListEntry",
+                "statusPurpose": purpose,
+                "statusListIndex": str(claimed["index"]),
+                "statusListCredential": claimed["endpoint"],
+            }
+            if purpose == "refresh":
+                entry["statusReference"] = refresh_url
+            status_entries.append(entry)
         credential["credentialStatus"] = status_entries
 
         credential = Credential(
@@ -105,7 +101,6 @@ class PublisherCoordinator:
             validUntil=credential.get("validUntil") or None,
             credentialSubject=credential.get("credentialSubject"),
             credentialStatus=credential.get("credentialStatus"),
-            refreshService=credential.get("refreshService"),
             renderMethod=credential.get("renderMethod"),
         ).model_dump()
 

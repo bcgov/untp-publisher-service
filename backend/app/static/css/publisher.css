@@ -1,0 +1,113 @@
+/* Shared BC-themed chrome for landing + discovery. */
+
+:root {
+  --primary: #013366;
+  --secondary: #fcba19;
+  --heading: #013366;
+  --link: #255a90;
+  --ink: #2d2d2d;
+  --muted: #474543;
+  --surface: #f7f8fa;
+  --paper: #ffffff;
+  --danger: #ce3e39;
+  --on-primary: #ffffff;
+  --font: "BC Sans", "Noto Sans", Verdana, Arial, sans-serif;
+}
+
+.pub-chrome {
+  font-family: var(--font);
+  color: var(--ink);
+}
+
+.pub-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  padding: 0.65rem clamp(1.25rem, 5vw, 2.5rem);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.pub-topbar a {
+  color: var(--on-primary);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.pub-topbar a:hover {
+  color: var(--secondary);
+  text-decoration: underline;
+}
+
+.pub-topbar a:focus-visible {
+  color: var(--secondary);
+  text-decoration: underline;
+  outline: 2px solid var(--on-primary);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--secondary) 45%, transparent);
+}
+
+.pub-topbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+}
+
+/* The provincial wordmark carries small "British Columbia" lettering, so it
+   needs height to stay legible. Height-driven with a width guard because
+   LANDING_LOGO_URL may point at a mark or a wider custom lockup. */
+.pub-topbar-brand img {
+  height: 2.75rem;
+  width: auto;
+  max-width: 11rem;
+  object-fit: contain;
+  display: block;
+}
+
+.pub-footer {
+  margin-top: auto;
+  padding: 1rem clamp(1.25rem, 5vw, 2.5rem);
+  font-size: 0.85rem;
+  color: var(--muted);
+  border-top: 1px solid color-mix(in srgb, var(--primary) 12%, white);
+  background: var(--paper);
+}
+
+.pub-footer a {
+  color: var(--link);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.pub-footer a:hover {
+  text-decoration: underline;
+}
+
+.pub-footer a:focus-visible {
+  text-decoration: underline;
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--secondary) 55%, transparent);
+}
+
+.title-rule {
+  display: inline-block;
+  border-bottom: 2px solid var(--secondary);
+  padding-bottom: 0.15rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

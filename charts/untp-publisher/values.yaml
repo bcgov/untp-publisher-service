@@ -57,6 +57,18 @@ backend:
     projectTitle: "UNTP Publisher"
     # -- App version string. Sets PROJECT_VERSION.
     projectVersion: "v0"
+    # -- Landing tagline under the title (LANDING_TAGLINE).
+    landingTagline: "Publish UNTP-aligned verifiable credentials through BC Traction."
+    # -- Optional second landing line; omit when empty (LANDING_DESCRIPTION).
+    landingDescription: ""
+    # -- Logo URL for header chrome (LANDING_LOGO_URL).
+    landingLogoUrl: "/static/admin/images/bcgov-logo.svg"
+    # -- Primary / secondary colours for HTML chrome.
+    landingPrimaryColor: "#013366"
+    landingSecondaryColor: "#FCBA19"
+    # -- Partner header link; rendered only when landingPartnerUrl is non-empty.
+    landingPartnerUrl: ""
+    landingPartnerLabel: "Partner"
     # -- When true, include digestMultibase on OCA renderMethod (OCA_DIGEST).
     # Keep false unless oca.json for each type/version is immutable.
     ocaDigest: false

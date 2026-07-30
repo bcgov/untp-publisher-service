@@ -62,6 +62,7 @@ class CredentialStatus(BaseModel):
     statusPurpose: str = Field(None)
     statusListIndex: str = Field(None)
     statusListCredential: str = Field(None)
+    statusReference: SkipJsonSchema[Union[str, List[str]]] = Field(None)
 
     @field_validator("id")
     @classmethod
@@ -73,10 +74,6 @@ class CredentialStatus(BaseModel):
 
 
 class TermsOfUse(BaseModel):
-    type: Union[str, List[str]] = Field()
-
-
-class RefreshService(BaseModel):
     type: Union[str, List[str]] = Field()
 
 
@@ -103,9 +100,6 @@ class Credential(BaseModel):
         Union[List[CredentialSchema], CredentialSchema]
     ] = Field(None)
     termsOfUse: SkipJsonSchema[Union[List[TermsOfUse], TermsOfUse]] = Field(None)
-    refreshService: SkipJsonSchema[Union[List[RefreshService], RefreshService]] = Field(
-        None
-    )
     evidence: SkipJsonSchema[Union[List[Evidence], Evidence]] = Field(None)
     renderMethod: SkipJsonSchema[Union[List[RenderMethod], RenderMethod]] = Field(None)
     relatedResource: SkipJsonSchema[Union[List[RelatedResource], RelatedResource]] = (

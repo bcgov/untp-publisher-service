@@ -37,9 +37,7 @@ def publisher_origin() -> str:
     return f"https://{domain}"
 
 
-def publisher_extension_context_url() -> str:
-    """Public URL for the publisher JSON-LD extension context."""
-    return f"{publisher_origin()}/contexts/publisher/v1"
+RENDER_METHOD_CONTEXT_URL = "https://w3id.org/vc/render-method/v2rc2"
 
 
 def oca_render_method(
@@ -47,13 +45,14 @@ def oca_render_method(
     credential_type: str,
     version: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Build OCA ``renderMethod``; include ``digestMultibase`` only if ``OCA_DIGEST``."""
+    """Build OCA ``TemplateRenderMethod``; include ``digestMultibase`` only if ``OCA_DIGEST``."""
     cfg = credential_yaml_entry(credential_type)
     ver = (version or cfg.get("version") or "v1.0").strip()
     entry: dict[str, Any] = {
-        "type": "OCABundle",
+        "type": "TemplateRenderMethod",
         "id": f"{publisher_origin()}/templates/{credential_type}/{ver}/oca.json",
         "name": "Overlay Capture Architecture Bundle",
+        "renderSuite": "oca-bundle",
     }
     if settings.OCA_DIGEST:
         entry["digestMultibase"] = generate_digest_multibase(
@@ -62,9 +61,8 @@ def oca_render_method(
     return [entry]
 
 
-def ensure_publisher_extension_context(credential: dict[str, Any]) -> None:
-    """Append the publisher extension context so ``SimpleRefreshQuery`` / ``OCABundle`` resolve."""
-    url = publisher_extension_context_url()
+def _append_context_url(credential: dict[str, Any], url: str) -> None:
+    """Append ``url`` to ``@context`` once (string or list)."""
     ctx = credential.get("@context")
     if ctx is None:
         credential["@context"] = [url]
@@ -75,6 +73,11 @@ def ensure_publisher_extension_context(credential: dict[str, Any]) -> None:
         return
     if isinstance(ctx, list) and url not in ctx:
         credential["@context"] = [*ctx, url]
+
+
+def ensure_render_method_context(credential: dict[str, Any]) -> None:
+    """Append the render-method context so ``TemplateRenderMethod`` resolves."""
+    _append_context_url(credential, RENDER_METHOD_CONTEXT_URL)
 
 
 def _publish_pointers_for_type(credential_type: str) -> dict[str, str]:

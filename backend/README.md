@@ -62,9 +62,26 @@ The image published to GitHub Container Registry is **`ghcr.io/bcgov/untp-publis
 
 - **`PUBLISHER_DOMAIN`** — Public publisher host/origin used in credential IDs and related resource URLs (e.g. `http://localhost:8000` or `publisher.example.com`).
 - **`OCA_DIGEST`** — When ``true``, OCA ``renderMethod`` includes ``digestMultibase`` of ``oca.json``. Default ``false``: omit the digest so the bundle at a stable URL can evolve without invalidating already-issued credentials. Only enable if OCA bytes for that type/version are immutable.
+- **Landing / Discovery HTML** (when ``TEST_SUITE`` is false): ``GET /`` and ``GET /discovery``
+  - **`PROJECT_TITLE`** / **`PROJECT_VERSION`** — Brand name and version
+  - **`LANDING_TAGLINE`** / **`LANDING_DESCRIPTION`** — Hero copy (description optional)
+  - **`LANDING_LOGO_URL`**, **`LANDING_PRIMARY_COLOR`**, **`LANDING_SECONDARY_COLOR`**
+  - **`LANDING_PARTNER_URL`** / **`LANDING_PARTNER_LABEL`** — Partner header link only when URL is set
 - **MongoDB** — either a full URI or separate fields:
   - **`MONGO_URI`** — connection string (overrides host/port/user/password); database selection always uses **`MONGO_DB`**
   - or **`MONGO_HOST`**, **`MONGO_PORT`**, **`MONGO_USER`**, **`MONGO_PASSWORD`**, **`MONGO_DB`**
   - **`MONGO_AUTH_SOURCE`** — optional for split mode (e.g. `admin` on Railway/managed MongoDB)
 - **`WEBVH_SERVER_URL`** — WebVH / DID web server base URL (e.g. `https://sandbox.bcvh.vonx.io`). Issuer DIDs from `configs/issuers.yaml` use this URL's hostname: alias `mines-act:chief-permitting-officer` becomes `did:web:{host}:mines-act:chief-permitting-officer`.
 - **`PUBLISHER_WITNESS_ID`** — Witness `did:key` for Traction proof options (e.g. `did:key:z6Mk…`). The Ed25519 multikey is derived at runtime as **`PUBLISHER_WITNESS_MULTIKEY`**.
+
+## Local demo seed
+
+With the API running and Traction configured, publish sample Mines Act permits (including republications for Discovery iteration demos):
+
+```bash
+cd backend
+uv run python scripts/seed_permits.py
+# or: uv run python scripts/seed_permits.py --base-url http://127.0.0.1:8000
+```
+
+Uses admin ``X-API-Key`` (``TRACTION_API_KEY``). Payloads live in ``scripts/seed_data/mines_act_permits.json``.

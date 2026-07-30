@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Discovery — {{ project_title }}</title>
+    <link rel="icon" href="/static/admin/images/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/css/bc-sans.css" />
+    <link rel="stylesheet" href="/static/css/publisher.css" />
+    <style>
+      :root {
+        --primary: {{ primary_color }};
+        --secondary: {{ secondary_color }};
+        --heading: {{ primary_color }};
+        --line: color-mix(in srgb, var(--primary) 18%, #d5dae1);
+        --line-soft: color-mix(in srgb, var(--primary) 9%, #e4e8ed);
+        --primary-soft: color-mix(in srgb, var(--primary) 5%, #fff);
+        --row-hover: color-mix(in srgb, var(--primary) 3.5%, #fff);
+        --ok: #2e8540;
+        --ok-ink: #1f6b34;
+        --ok-soft: color-mix(in srgb, #2e8540 8%, #fff);
+        --danger-ink: #a12622;
+        --danger-soft: color-mix(in srgb, var(--danger) 8%, #fff);
+        --warn: #c98b00;
+        --warn-ink: #8a5300;
+        --warn-soft: color-mix(in srgb, #c98b00 12%, #fff);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        font-family: var(--font);
+        color: var(--ink);
+        background: var(--surface);
+      }
+
+      .wrap {
+        flex: 1;
+        max-width: 72rem;
+        margin: 0 auto;
+        width: 100%;
+        padding: clamp(1.5rem, 5vw, 2.75rem) clamp(1rem, 4vw, 2.5rem) 3.5rem;
+      }
+
+      a,
+      button,
+      input,
+      select {
+        font-family: inherit;
+      }
+
+      .wrap a:focus-visible,
+      .wrap button:focus-visible,
+      .wrap input:focus-visible,
+      .wrap select:focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--secondary) 55%, transparent);
+      }
+
+      /* ---------- page head ---------- */
+
+      .top {
+        margin-bottom: 1.75rem;
+      }
+
+      .back {
+        display: inline-block;
+        margin-bottom: 0.9rem;
+        color: var(--link);
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-decoration: none;
+      }
+
+      .back:hover {
+        text-decoration: underline;
+      }
+
+      h1 {
+        font-size: clamp(1.7rem, 4vw, 2.25rem);
+        font-weight: 700;
+        color: var(--heading);
+        line-height: 1.15;
+      }
+
+      .lede {
+        margin-top: 0.85rem;
+        max-width: 44rem;
+        font-size: 0.98rem;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      /* ---------- toolbar ---------- */
+
+      .toolbar {
+        display: grid;
+        gap: 0.85rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: var(--paper);
+        border: 1px solid var(--line-soft);
+        border-radius: 4px;
+      }
+
+      @media (min-width: 48rem) {
+        .toolbar {
+          grid-template-columns: minmax(0, 1fr) 13rem 10rem auto;
+          align-items: end;
+          gap: 1rem;
+        }
+      }
+
+      .field {
+        display: grid;
+        gap: 0.4rem;
+        min-width: 0;
+      }
+
+      .field > span {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      input[type="search"],
+      select {
+        font-size: 0.95rem;
+        font-weight: 400;
+        color: var(--ink);
+        width: 100%;
+        min-height: 2.6rem;
+        padding: 0.55rem 0.7rem;
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        background: var(--paper);
+      }
+
+      select {
+        appearance: none;
+        padding-right: 2rem;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M0 0h10L5 6z' fill='%23474543'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.7rem center;
+        background-size: 0.6rem;
+      }
+
+      input[type="search"]::placeholder {
+        color: color-mix(in srgb, var(--muted) 65%, #fff);
+      }
+
+      /* ---------- buttons ---------- */
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        line-height: 1;
+        white-space: nowrap;
+        padding: 0.5rem 0.7rem;
+        min-height: 2.15rem;
+        color: var(--primary);
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        text-decoration: none;
+        cursor: pointer;
+        transition: background-color 0.12s ease, border-color 0.12s ease,
+          color 0.12s ease;
+      }
+
+      .btn:hover {
+        border-color: var(--primary);
+        background: var(--primary-soft);
+      }
+
+      .btn-icon {
+        width: 2.15rem;
+        min-width: 2.15rem;
+        padding: 0;
+      }
+
+      .btn-icon svg {
+        width: 1.05rem;
+        height: 1.05rem;
+        display: block;
+      }
+
+      .btn-icon .icon-check {
+        display: none;
+      }
+
+      .btn-icon.is-copied {
+        color: var(--on-primary);
+        background: var(--primary);
+        border-color: var(--primary);
+      }
+
+      .btn-icon.is-copied .icon-default {
+        display: none;
+      }
+
+      .btn-icon.is-copied .icon-check {
+        display: block;
+      }
+
+      .btn-icon.is-failed {
+        color: var(--danger-ink);
+        border-color: var(--danger);
+        background: var(--danger-soft);
+      }
+
+      .btn-clear {
+        justify-self: start;
+      }
+
+      /* ---------- counts + states ---------- */
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem 0.6rem;
+        font-size: 0.88rem;
+        color: var(--muted);
+        margin: 0 0.15rem 0.75rem;
+      }
+
+      .meta strong {
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .error {
+        padding: 0.9rem 1rem;
+        margin-bottom: 1rem;
+        border: 1px solid color-mix(in srgb, var(--danger) 35%, #fff);
+        border-left: 4px solid var(--danger);
+        border-radius: 3px;
+        background: var(--danger-soft);
+        color: var(--ink);
+      }
+
+      .state {
+        padding: 2.5rem 1.5rem;
+        text-align: center;
+        color: var(--muted);
+        background: var(--paper);
+        border: 1px solid var(--line-soft);
+        border-radius: 4px;
+      }
+
+      .state p {
+        max-width: 30rem;
+        margin: 0 auto;
+        line-height: 1.5;
+      }
+
+      .state .btn {
+        margin-top: 1rem;
+      }
+
+      #no-matches {
+        border: 0;
+        border-top: 1px solid var(--line-soft);
+        border-radius: 0;
+      }
+
+      /* ---------- results panel ---------- */
+
+      .results {
+        background: var(--paper);
+        border: 1px solid var(--line-soft);
+        border-radius: 4px;
+      }
+
+      .cols {
+        display: none;
+      }
+
+      .results.is-empty .cols {
+        display: none;
+      }
+
+      .rows {
+        list-style: none;
+      }
+
+      .group + .group {
+        border-top: 1px solid var(--line-soft);
+      }
+
+      .group[hidden] {
+        display: none;
+      }
+
+      /* The gold rule is the page signature: it marks the open entry. Applied
+         per section because the drawer background would paint over an inset
+         shadow set on the list item itself. */
+      .group.is-open .group-head,
+      .group.is-open .iters {
+        box-shadow: inset 2px 0 0 var(--secondary);
+      }
+
+      /* Stacked layout: fields pair up two-across beside the toggle. */
+      .group-head {
+        display: grid;
+        grid-template-columns: 1.75rem minmax(0, 1fr) minmax(0, 1fr);
+        gap: 0.6rem 0.9rem;
+        padding: 1rem;
+        align-items: start;
+        cursor: pointer;
+      }
+
+      .group-head > * {
+        min-width: 0;
+      }
+
+      .group:not(.is-open) .group-head:hover {
+        background: var(--row-hover);
+      }
+
+      .g-type {
+        grid-column: 2 / -1;
+        grid-row: 1;
+      }
+
+      .g-entity {
+        grid-column: 2;
+        grid-row: 2;
+      }
+
+      .g-card {
+        grid-column: 3;
+        grid-row: 2;
+      }
+
+      .g-status {
+        grid-column: 2;
+        grid-row: 3;
+      }
+
+      .g-count {
+        grid-column: 3;
+        grid-row: 3;
+      }
+
+      .g-actions {
+        grid-column: 2 / -1;
+        grid-row: 4;
+      }
+
+      .toggle {
+        grid-column: 1;
+        grid-row: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.75rem;
+        height: 1.75rem;
+        padding: 0;
+        color: var(--primary);
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        cursor: pointer;
+      }
+
+      .toggle:hover {
+        border-color: var(--primary);
+        background: var(--primary-soft);
+      }
+
+      .toggle svg {
+        width: 0.62rem;
+        height: 0.62rem;
+        transition: transform 0.14s ease;
+      }
+
+      .group.is-open .toggle svg {
+        transform: rotate(90deg);
+      }
+
+      /* Credential type keeps its source casing — uppercasing a camelCase
+         identifier makes it unreadable. */
+      .g-type {
+        font-size: 0.78rem;
+        color: color-mix(in srgb, var(--muted) 80%, #fff);
+        overflow-wrap: anywhere;
+      }
+
+      .g-entity {
+        font-size: 1.02rem;
+        font-weight: 700;
+        color: var(--heading);
+        font-variant-numeric: tabular-nums;
+        overflow-wrap: anywhere;
+      }
+
+      .g-card {
+        font-size: 0.95rem;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+        overflow-wrap: anywhere;
+      }
+
+      .count {
+        font-size: 0.9rem;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .count.is-many {
+        color: var(--ink);
+        font-weight: 700;
+      }
+
+      .g-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      /* small labels shown when columns stack */
+      .cell::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 0.1rem;
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      /* ---------- iteration history ---------- */
+
+      .iterations {
+        display: none;
+      }
+
+      .group.is-open .iterations {
+        display: block;
+      }
+
+      .iters {
+        padding: 0.9rem 1rem 0.7rem;
+        background: var(--primary-soft);
+        border-top: 1px solid var(--line-soft);
+      }
+
+      .iters-title {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .iters-title span {
+        font-weight: 400;
+        letter-spacing: 0.02em;
+        text-transform: none;
+      }
+
+      .iter {
+        display: grid;
+        gap: 0.45rem 1rem;
+        padding: 0.75rem 0;
+        border-top: 1px solid var(--line-soft);
+      }
+
+      .iters-title + .iter {
+        border-top: 0;
+        padding-top: 0.55rem;
+      }
+
+      .iter-tag {
+        font-size: 0.66rem;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .iter-tag.is-current {
+        color: var(--primary);
+      }
+
+      .iter-id {
+        font-size: 0.85rem;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+        overflow-wrap: break-word;
+      }
+
+      .iter-type {
+        display: block;
+        margin-top: 0.2rem;
+        font-size: 0.72rem;
+        color: var(--muted);
+      }
+
+      .iter-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      /* ---------- status pill ---------- */
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.3rem 0.6rem;
+        font-size: 0.76rem;
+        font-weight: 700;
+        line-height: 1;
+        text-transform: capitalize;
+        white-space: nowrap;
+        border: 1px solid;
+        border-radius: 999px;
+        color: var(--ok-ink);
+        border-color: color-mix(in srgb, var(--ok) 35%, #fff);
+        background: var(--ok-soft);
+      }
+
+      .pill::before {
+        content: "";
+        width: 0.45rem;
+        height: 0.45rem;
+        border-radius: 50%;
+        background: var(--ok);
+      }
+
+      .pill.is-revoked {
+        color: var(--danger-ink);
+        border-color: color-mix(in srgb, var(--danger) 35%, #fff);
+        background: var(--danger-soft);
+      }
+
+      .pill.is-revoked::before {
+        background: var(--danger);
+      }
+
+      .pill.is-suspended {
+        color: var(--warn-ink);
+        border-color: color-mix(in srgb, var(--warn) 45%, #fff);
+        background: var(--warn-soft);
+      }
+
+      .pill.is-suspended::before {
+        background: var(--warn);
+      }
+
+      .pill.is-superseded {
+        color: var(--muted);
+        border-color: var(--line);
+        background: var(--primary-soft);
+      }
+
+      .pill.is-superseded::before {
+        background: color-mix(in srgb, var(--muted) 55%, #fff);
+      }
+
+      /* ---------- aligned columns on wide screens ---------- */
+
+      @media (min-width: 62rem) {
+        .cols,
+        .group-head {
+          grid-template-columns:
+            1.75rem minmax(0, 1.3fr) minmax(0, 1fr) 7.75rem 6.5rem
+            5.5rem;
+          column-gap: 1.25rem;
+        }
+
+        .cols {
+          display: grid;
+          position: sticky;
+          top: 0;
+          z-index: 1;
+          padding: 0.7rem 1rem;
+          background: var(--paper);
+          border-bottom: 1px solid var(--line);
+          border-radius: 4px 4px 0 0;
+        }
+
+        .cols span {
+          font-size: 0.68rem;
+          font-weight: 700;
+          letter-spacing: 0.07em;
+          text-transform: uppercase;
+          color: var(--muted);
+        }
+
+        .group-head {
+          row-gap: 0.3rem;
+          align-items: center;
+          padding: 0.85rem 1rem 0.95rem;
+        }
+
+        .toggle {
+          grid-row: 1 / span 2;
+          align-self: center;
+        }
+
+        .g-type {
+          grid-column: 2 / -1;
+          grid-row: 1;
+        }
+
+        .g-entity {
+          grid-column: 2;
+          grid-row: 2;
+        }
+
+        .g-card {
+          grid-column: 3;
+          grid-row: 2;
+        }
+
+        .g-status {
+          grid-column: 4;
+          grid-row: 2;
+        }
+
+        .g-count {
+          grid-column: 5;
+          grid-row: 2;
+        }
+
+        .g-actions {
+          grid-column: 6;
+          grid-row: 2;
+          justify-content: flex-end;
+        }
+
+        .cell::before {
+          content: none;
+        }
+
+        /* Indent to the parent's first content column, then mirror its
+           column widths so nested rows line up with the group row above. */
+        .iters {
+          padding-left: 4rem;
+        }
+
+        .iter {
+          grid-template-columns: 5rem minmax(0, 1fr) 7.75rem 6.5rem 5.5rem;
+          column-gap: 1.25rem;
+          align-items: center;
+        }
+
+        .iter-actions {
+          grid-column: 5;
+          justify-content: flex-end;
+        }
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        border: 0;
+      }
+    </style>
+  </head>
+  <body class="pub-chrome">
+    <header class="pub-topbar">
+      <a class="pub-topbar-brand" href="/">
+        <img src="{{ logo_url }}" alt="" />
+        <span>{{ project_title }}</span>
+      </a>
+      {% if partner_url %}
+      <a href="{{ partner_url }}" rel="noopener noreferrer">{{ partner_label }}</a>
+      {% endif %}
+    </header>
+
+    <main class="wrap">
+      <div class="top">
+        <a class="back" href="/">← Back to home</a>
+        <h1><span class="title-rule">Discovery</span></h1>
+        <p class="lede">
+          Browse every credential published by this service. Expand an entry to
+          see its iteration history, copy a credential URL, or open the
+          verifiable credential.
+        </p>
+      </div>
+
+      {% if load_error %}
+      <p class="error" role="alert">{{ load_error }}</p>
+      {% endif %}
+
+      <div class="toolbar">
+        <label class="field" for="q">
+          <span>Search</span>
+          <input
+            id="q"
+            type="search"
+            placeholder="Entity, cardinality, type, or credential id"
+            autocomplete="off"
+          />
+        </label>
+        <label class="field" for="type">
+          <span>Type</span>
+          <select id="type">
+            <option value="">All types</option>
+            {% for t in credential_types %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="field" for="status">
+          <span>Status</span>
+          <select id="status">
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="revoked">Revoked</option>
+            <option value="suspended">Suspended</option>
+            <option value="superseded">Superseded</option>
+          </select>
+        </label>
+        <button type="button" class="btn btn-clear" data-clear hidden>
+          Clear filters
+        </button>
+      </div>
+
+      <p
+        class="meta"
+        id="counts"
+        data-total-groups="{{ total_groups }}"
+        data-total-credentials="{{ total_credentials }}"
+      >
+        <span>
+          <strong>{{ total_groups }}</strong>
+          entr{{ 'y' if total_groups == 1 else 'ies' }}
+        </span>
+        <span aria-hidden="true">·</span>
+        <span>
+          <strong>{{ total_credentials }}</strong>
+          credential{{ '' if total_credentials == 1 else 's' }}
+        </span>
+      </p>
+      <p class="sr-only" id="live" aria-live="polite"></p>
+
+      {% if not groups and not load_error %}
+      <div class="state">
+        <p>No issued credentials yet. Publish one, then return here.</p>
+      </div>
+      {% else %}
+      <div class="results">
+        <div class="cols" aria-hidden="true">
+          <span></span>
+          <span>Entity</span>
+          <span>Cardinality</span>
+          <span>Status</span>
+          <span>Iterations</span>
+          <span></span>
+        </div>
+
+        <ul class="rows" id="groups">
+          {% for group in groups %}
+          <li
+            class="group"
+            data-type="{{ group.type }}"
+            data-status="{{ group.status }}"
+            data-search="{{ (group.type ~ ' ' ~ group.entity_id ~ ' ' ~ group.cardinality_id ~ ' ' ~ group.id ~ ' ' ~ (group.iterations | map(attribute='id') | join(' '))) | lower }}"
+          >
+            <div class="group-head">
+              <button
+                type="button"
+                class="toggle"
+                aria-expanded="false"
+                aria-controls="iters-{{ loop.index }}"
+                aria-label="Iteration history for entity {{ group.entity_id or 'unknown' }}, cardinality {{ group.cardinality_id or 'unknown' }}"
+                data-toggle
+              >
+                <svg viewBox="0 0 8 12" aria-hidden="true" focusable="false">
+                  <path d="M1.4 0 0 1.4 4.6 6 0 10.6 1.4 12 7.4 6z" fill="currentColor" />
+                </svg>
+              </button>
+
+              <p class="g-type">{{ group.type or 'Credential' }}</p>
+
+              <p class="cell g-entity" data-label="Entity">
+                {{ group.entity_id or '—' }}
+              </p>
+
+              <p class="cell g-card" data-label="Cardinality">
+                {{ group.cardinality_id or '—' }}
+              </p>
+
+              <p class="cell g-status" data-label="Status">
+                <span class="pill {% if group.status != 'active' %}is-{{ group.status }}{% endif %}">
+                  {{ group.status }}
+                </span>
+              </p>
+
+              <p class="cell g-count" data-label="Iterations">
+                <span class="count {% if group.iteration_count > 1 %}is-many{% endif %}">
+                  {{ group.iteration_count }}
+                </span>
+              </p>
+
+              <div class="g-actions">
+                <button
+                  type="button"
+                  class="btn btn-icon"
+                  data-copy-url="{{ group.url }}"
+                  aria-label="Copy credential URL"
+                  title="Copy URL"
+                >
+                  <svg class="icon-default" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path
+                      fill="currentColor"
+                      d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
+                    />
+                  </svg>
+                  <svg class="icon-check" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path
+                      fill="currentColor"
+                      d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"
+                    />
+                  </svg>
+                </button>
+                <a
+                  class="btn btn-icon"
+                  href="{{ group.url }}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Open verifiable credential in a new tab"
+                  title="Open in new tab"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path
+                      fill="currentColor"
+                      d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7zM5 5v14h14v-7h-2v5H7V7h5V5H5z"
+                    />
+                  </svg>
+                </a>
+              </div>
+            </div>
+
+            <div class="iterations" id="iters-{{ loop.index }}">
+              <div class="iters">
+                <p class="iters-title">
+                  Iteration history <span>· newest first</span>
+                </p>
+                {% for it in group.iterations %}
+                <div class="iter">
+                  <p class="iter-tag {% if loop.first %}is-current{% endif %}">
+                    {{ 'Current' if loop.first else 'Earlier' }}
+                  </p>
+                  <p class="iter-id" title="{{ it.created or it.id }}">
+                    {{ it.created_display }}
+                    {% if it.type and it.type != group.type %}
+                    <span class="iter-type">{{ it.type }}</span>
+                    {% endif %}
+                  </p>
+                  <p>
+                    <span class="pill {% if it.status != 'active' %}is-{{ it.status }}{% endif %}">
+                      {{ it.status }}
+                    </span>
+                  </p>
+                  <div class="iter-actions">
+                    <button
+                      type="button"
+                      class="btn btn-icon"
+                      data-copy-url="{{ it.url }}"
+                      aria-label="Copy credential URL"
+                      title="Copy URL"
+                    >
+                      <svg class="icon-default" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path
+                          fill="currentColor"
+                          d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
+                        />
+                      </svg>
+                      <svg class="icon-check" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path
+                          fill="currentColor"
+                          d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"
+                        />
+                      </svg>
+                    </button>
+                    <a
+                      class="btn btn-icon"
+                      href="{{ it.url }}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="Open verifiable credential in a new tab"
+                      title="Open in new tab"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path
+                          fill="currentColor"
+                          d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7zM5 5v14h14v-7h-2v5H7V7h5V5H5z"
+                        />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+
+        <div class="state" id="no-matches" hidden>
+          <p>No credentials match this search.</p>
+          <button type="button" class="btn" data-clear>Clear filters</button>
+        </div>
+      </div>
+      {% endif %}
+    </main>
+
+    <footer class="pub-footer">
+      <span>{{ project_version }}</span>
+      ·
+      <a href="/docs">API docs</a>
+    </footer>
+
+    <script>
+      (function () {
+        const live = document.getElementById("live");
+        const q = document.getElementById("q");
+        const type = document.getElementById("type");
+        const status = document.getElementById("status");
+        const groups = Array.from(document.querySelectorAll(".group"));
+        const noMatches = document.getElementById("no-matches");
+        const results = document.querySelector(".results");
+        const counts = document.getElementById("counts");
+        const clearButtons = Array.from(
+          document.querySelectorAll("[data-clear]")
+        );
+        const totalGroups = counts
+          ? Number(counts.getAttribute("data-total-groups") || 0)
+          : 0;
+        const totalCredentials = counts
+          ? Number(counts.getAttribute("data-total-credentials") || 0)
+          : 0;
+
+        function announce(msg) {
+          if (live) live.textContent = msg;
+        }
+
+        function flash(btn, ok) {
+          if (!btn) return;
+          btn.classList.remove("is-copied", "is-failed");
+          btn.classList.add(ok ? "is-copied" : "is-failed");
+          const prev = btn.getAttribute("aria-label") || "Copy credential URL";
+          btn.setAttribute(
+            "aria-label",
+            ok ? "Copied" : "Could not copy the URL"
+          );
+          window.clearTimeout(btn._t);
+          btn._t = window.setTimeout(function () {
+            btn.classList.remove("is-copied", "is-failed");
+            btn.setAttribute("aria-label", prev);
+          }, 1600);
+        }
+
+        async function copyUrl(url, btn) {
+          let ok = false;
+          try {
+            await navigator.clipboard.writeText(url);
+            ok = true;
+          } catch (err) {
+            const ta = document.createElement("textarea");
+            ta.value = url;
+            ta.setAttribute("readonly", "");
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+              ok = document.execCommand("copy");
+            } catch (e2) {
+              ok = false;
+            }
+            document.body.removeChild(ta);
+          }
+          announce(ok ? "Copied" : "Could not copy the URL");
+          flash(btn, ok);
+        }
+
+        function setOpen(group, open) {
+          const toggle = group.querySelector("[data-toggle]");
+          group.classList.toggle("is-open", open);
+          if (toggle) toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        }
+
+        document.addEventListener("click", function (ev) {
+          const copyBtn = ev.target.closest("[data-copy-url]");
+          if (copyBtn) {
+            ev.preventDefault();
+            copyUrl(copyBtn.getAttribute("data-copy-url") || "", copyBtn);
+            return;
+          }
+
+          if (ev.target.closest("[data-clear]")) {
+            if (q) q.value = "";
+            if (type) type.value = "";
+            if (status) status.value = "";
+            applyFilters();
+            if (q) q.focus();
+            return;
+          }
+
+          const toggle = ev.target.closest("[data-toggle]");
+          if (toggle) {
+            const group = toggle.closest(".group");
+            if (group) setOpen(group, !group.classList.contains("is-open"));
+            return;
+          }
+
+          // Anywhere else on the summary row also expands, as long as the
+          // click was not a link, a control, or the end of a text selection.
+          const head = ev.target.closest(".group-head");
+          if (!head || ev.target.closest("a, button, input, select")) return;
+          const selection = window.getSelection();
+          if (selection && !selection.isCollapsed) return;
+          const group = head.closest(".group");
+          if (group) setOpen(group, !group.classList.contains("is-open"));
+        });
+
+        function applyFilters() {
+          const query = (q && q.value ? q.value : "").trim().toLowerCase();
+          const typeVal = type ? type.value : "";
+          const statusVal = status ? status.value : "";
+          const filtered = Boolean(query || typeVal || statusVal);
+          let visible = 0;
+
+          groups.forEach(function (el) {
+            const search = el.getAttribute("data-search") || "";
+            const okQ = !query || search.indexOf(query) !== -1;
+            const okT = !typeVal || el.getAttribute("data-type") === typeVal;
+            const okS = !statusVal || el.getAttribute("data-status") === statusVal;
+            const show = okQ && okT && okS;
+            el.hidden = !show;
+            if (show) visible += 1;
+          });
+
+          clearButtons.forEach(function (btn) {
+            if (btn.classList.contains("btn-clear")) btn.hidden = !filtered;
+          });
+
+          const empty = visible === 0 && groups.length > 0;
+          if (noMatches) noMatches.hidden = !empty;
+          if (results) results.classList.toggle("is-empty", empty);
+
+          if (counts) {
+            const entries = totalGroups === 1 ? "entry" : "entries";
+            const shown = filtered
+              ? "Showing " + visible + " of " + totalGroups + " " + entries
+              : totalGroups + " " + entries;
+            counts.textContent =
+              shown +
+              " · " +
+              totalCredentials +
+              " credential" +
+              (totalCredentials === 1 ? "" : "s");
+          }
+        }
+
+        if (q) q.addEventListener("input", applyFilters);
+        if (type) type.addEventListener("change", applyFilters);
+        if (status) status.addEventListener("change", applyFilters);
+      })();
+    </script>
+  </body>
+</html>
