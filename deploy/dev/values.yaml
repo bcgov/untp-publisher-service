@@ -37,10 +37,10 @@ backend:
     webvhServerUrl: "https://registry-dev.digitaltrust.gov.bc.ca"
     # Same witness as backend/tests/test_did_key.py (multikey → did:key).
     publisherWitnessId: "did:key:z6MkekByGjKYvP6dpMBJEHt5UN72rKPVoDgzcS9Hoq6bjfr1"
-    projectTitle: "UNTP Publisher"
+    projectTitle: "BC Mines Publisher"
     projectVersion: "v0"
-    landingTagline: "Publish UNTP-aligned verifiable credentials through BC Traction."
-    landingDescription: "Discover issued credentials, copy public URLs, and open verifiable credentials from this publisher."
+    landingTagline: "Verifiable critical raw material provenance for BC Mine Information."
+    landingDescription: "Browse UNTP-aligned Mines Act credentials that attest mine permits and critical mineral supply-chain provenance—copy public URLs, download VCs, and verify issuance from this publisher."
     landingLogoUrl: "https://mines.nrs.gov.bc.ca/assets/images/bcgov-mineinfo-horiz-LG.png"
     landingPrimaryColor: "#013366"
     landingSecondaryColor: "#FCBA19"
