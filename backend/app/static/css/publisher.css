@@ -12,6 +12,7 @@
   --danger: #ce3e39;
   --on-primary: #ffffff;
   --font: "BC Sans", "Noto Sans", Verdana, Arial, sans-serif;
+  --pub-topbar-offset: 5.75rem;
 }
 
 .pub-chrome {
@@ -20,54 +21,39 @@
 }
 
 .pub-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: 0.75rem 1.25rem;
-  padding: 0.65rem clamp(1.25rem, 5vw, 2.5rem);
+  padding: 0.4rem clamp(1rem, 4vw, 2rem);
   background: var(--primary);
   color: var(--on-primary);
-}
-
-.pub-topbar a {
-  color: var(--on-primary);
-  text-decoration: none;
-  font-weight: 700;
-  font-size: 0.85rem;
-}
-
-.pub-topbar a:hover {
-  color: var(--secondary);
-  text-decoration: underline;
-}
-
-.pub-topbar a:focus-visible {
-  color: var(--secondary);
-  text-decoration: underline;
-  outline: 2px solid var(--on-primary);
-  outline-offset: 3px;
-  box-shadow: 0 0 0 5px color-mix(in srgb, var(--secondary) 45%, transparent);
+  border-bottom: 2px solid var(--secondary);
 }
 
 .pub-topbar-brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
-  font-weight: 700;
-  font-size: 0.95rem;
-  letter-spacing: 0.01em;
+  line-height: 0;
 }
 
-/* The provincial wordmark carries small "British Columbia" lettering, so it
-   needs height to stay legible. Height-driven with a width guard because
-   LANDING_LOGO_URL may point at a mark or a wider custom lockup. */
+.pub-topbar-brand:focus-visible {
+  outline: 2px solid var(--on-primary);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--secondary) 45%, transparent);
+}
+
+/* Wide lockups (e.g. mines.nrs header PNG) size better by width. */
 .pub-topbar-brand img {
-  height: 2.75rem;
-  width: auto;
-  max-width: 11rem;
-  object-fit: contain;
   display: block;
+  height: auto;
+  width: min(26rem, 88vw);
+  max-height: 4.75rem;
+  object-fit: contain;
+  object-position: left center;
 }
 
 .pub-footer {

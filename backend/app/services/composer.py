@@ -37,6 +37,57 @@ def publisher_origin() -> str:
     return f"https://{domain}"
 
 
+def status_list_endpoint(status_list_id: str) -> str:
+    """Public URL for a status-list credential (always uses current publisher origin)."""
+    list_id = (status_list_id or "").strip().strip("/")
+    return f"{publisher_origin()}/status-lists/{list_id}"
+
+
+def credential_download_filename(record: dict) -> str:
+    """Build ``{type}_{cardinality}_{entity}_{date}.vc`` for downloads.
+
+    Date prefers the Data Integrity proof ``created`` value when present,
+    otherwise ``now`` UTC (``YYYY-MM-DD``).
+    """
+    cred_type = str(record.get("type") or "credential").strip() or "credential"
+    entity = str(record.get("entity_id") or "unknown").strip() or "unknown"
+    cardinality = str(record.get("cardinality_id") or "unknown").strip() or "unknown"
+
+    stamp = _download_timestamp(record)
+
+    safe = []
+    for part in (cred_type, cardinality, entity, stamp):
+        cleaned = "".join(
+            ch if ch.isalnum() or ch in "._-+" else "_" for ch in part
+        ).strip("._")
+        safe.append(cleaned or "unknown")
+    return f"{safe[0]}_{safe[1]}_{safe[2]}_{safe[3]}.vc"
+
+
+def _download_timestamp(record: dict) -> str:
+    """UTC calendar date (``YYYY-MM-DD``) from proof.created, else today."""
+    raw = ""
+    vc = record.get("vc")
+    if isinstance(vc, dict):
+        proof = vc.get("proof")
+        if isinstance(proof, list) and proof:
+            proof = proof[0]
+        if isinstance(proof, dict):
+            raw = str(proof.get("created") or "").strip()
+    if raw:
+        try:
+            normalized = raw.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(normalized)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            else:
+                dt = dt.astimezone(timezone.utc)
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
 RENDER_METHOD_CONTEXT_URL = "https://w3id.org/vc/render-method/v2rc2"
 
 

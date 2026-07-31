@@ -5,7 +5,6 @@ from app.plugins.mongodb import MongoClient
 from app.services.composer import (
     compose_credential,
     ensure_render_method_context,
-    publisher_origin,
 )
 from app.validators.untp import UntpValidationError, validate_untp_document
 from base58 import b58encode
@@ -15,6 +14,45 @@ import hashlib
 
 class PublisherCoordinatorError(Exception):
     """Generic PublisherCoordinator Error."""
+
+
+def _status_entries(vc: dict) -> list[dict]:
+    raw = (vc or {}).get("credentialStatus")
+    if isinstance(raw, dict):
+        return [raw]
+    if isinstance(raw, list):
+        return [entry for entry in raw if isinstance(entry, dict)]
+    return []
+
+
+def mark_refresh_status_bit(mongo: MongoClient, vc: dict) -> None:
+    """Flip the bitstring ``refresh`` bit for ``vc`` (signals update available)."""
+    for entry in _status_entries(vc):
+        if entry.get("statusPurpose") != "refresh":
+            continue
+        index = entry.get("statusListIndex")
+        endpoint = entry.get("statusListCredential")
+        if index is None or not endpoint:
+            raise HTTPException(
+                status_code=500,
+                detail="Credential refresh status entry is incomplete",
+            )
+        if not mongo.set_status_list_bit(
+            endpoint=str(endpoint),
+            index=int(index),
+            value=True,
+        ):
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to update refresh status list bit",
+            )
+        return
+    # BUG: refresh BitstringStatusListEntry is not attached on issue (UNTP
+    # ConformityCredential.json only allows a single credentialStatus object).
+    # Skip bit flip until multi-status / statusReference is schema-valid.
+    settings.LOGGER.warning(
+        "No refresh status entry on credential; skipping refresh bit update"
+    )
 
 
 class PublisherCoordinator:
@@ -34,8 +72,6 @@ class PublisherCoordinator:
 
         # Compose reloads trusted ``template.yaml`` from disk; the Mongo record is
         # only the registration gate (issuer / type / version / OCA snapshot).
-        origin = publisher_origin()
-
         issuer = mongo.find_one(
             "IssuerInstanceRecord", {"id": credential_registration["issuer"]}
         )
@@ -47,49 +83,67 @@ class PublisherCoordinator:
                 type_record=credential_registration,
                 issuer=issuer,
             )
-            validate_untp_document(credential)
         except UntpValidationError as exc:
             raise HTTPException(
                 status_code=400,
                 detail=f"UNTP validation failed: {exc}",
             ) from exc
 
-        # After UNTP checks: append render-method context for TemplateRenderMethod.
+        # Append publisher-managed fields, then validate the final document.
         ensure_render_method_context(credential)
 
         issuer_id = credential_registration.get("issuer")
-        status_entries = []
         # TODO: release claimed status-list indexes if Traction issue/sign or
         # CredentialRecord insert fails after this (bits are popped before success).
-        refresh_url = (
-            f"{origin}/credentials/refresh?type={credential_type}"
-            f"&entity={entity_id}&cardinality={cardinality_id}"
-        )
-        for purpose in ["revocation", "suspension", "refresh"]:
-            if not issuer_id:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"No status list for purpose {purpose!r}",
-                )
-            claimed = mongo.claim_status_list_index(
-                issuer_id=issuer_id,
-                purpose=purpose,
+        if not issuer_id:
+            raise HTTPException(
+                status_code=500,
+                detail="No status list for purpose 'revocation'",
             )
-            if not claimed or claimed.get("endpoint") is None:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"No status list for purpose {purpose!r}",
-                )
-            entry: dict = {
-                "type": "BitstringStatusListEntry",
-                "statusPurpose": purpose,
-                "statusListIndex": str(claimed["index"]),
-                "statusListCredential": claimed["endpoint"],
-            }
-            if purpose == "refresh":
-                entry["statusReference"] = refresh_url
-            status_entries.append(entry)
-        credential["credentialStatus"] = status_entries
+        claimed = mongo.claim_status_list_index(
+            issuer_id=issuer_id,
+            purpose="revocation",
+        )
+        if not claimed or claimed.get("endpoint") is None:
+            raise HTTPException(
+                status_code=500,
+                detail="No status list for purpose 'revocation'",
+            )
+        # BUG: UNTP ConformityCredential.json (v0.7.0) types credentialStatus as a
+        # single BitstringStatusListEntry object (not an array), types
+        # statusListIndex as integer (while describing a base-10 string), and
+        # forbids statusReference. Until the schema allows multi-status / VCDM
+        # refresh fields, only emit revocation as one object.
+        credential["credentialStatus"] = {
+            "type": "BitstringStatusListEntry",
+            "statusPurpose": "revocation",
+            "statusListIndex": int(claimed["index"]),
+            "statusListCredential": claimed["endpoint"],
+        }
+        # BUG: suspension / refresh status entries disabled — see BUG note above.
+        # refresh_url = f"{publisher_origin()}/credentials/refresh?" + urlencode(
+        #     {
+        #         "type": credential_type or "",
+        #         "entity": entity_id or "",
+        #         "cardinality": cardinality_id or "",
+        #     }
+        # )
+        # for purpose in ["suspension", "refresh"]:
+        #     claimed = mongo.claim_status_list_index(
+        #         issuer_id=issuer_id,
+        #         purpose=purpose,
+        #     )
+        #     ...
+        #     if purpose == "refresh":
+        #         entry["statusReference"] = refresh_url
+
+        try:
+            validate_untp_document(credential)
+        except UntpValidationError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"UNTP validation failed: {exc}",
+            ) from exc
 
         credential = Credential(
             context=credential.get("@context"),
@@ -137,6 +191,8 @@ class PublisherCoordinator:
                     settings.LOGGER.info("No change detected, keeping credential record.")
                     return None
                 settings.LOGGER.info("Change detected, updating credential record.")
+                # Signal external consumers before flipping the Mongo refresh flag.
+                mark_refresh_status_bit(mongo, record.get("vc") or {})
                 record["refresh"] = True
                 mongo.replace(
                     "CredentialRecord",

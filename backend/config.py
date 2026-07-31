@@ -37,7 +37,9 @@ class Settings(BaseSettings):
         default="Publish UNTP-aligned verifiable credentials through BC Traction."
     )
     LANDING_DESCRIPTION: str = Field(default="")
-    LANDING_LOGO_URL: str = Field(default="/static/admin/images/bcgov-logo.svg")
+    LANDING_LOGO_URL: str = Field(
+        default="https://mines.nrs.gov.bc.ca/assets/images/bcgov-mineinfo-horiz-LG.png"
+    )
     LANDING_PRIMARY_COLOR: str = Field(default="#013366")
     LANDING_SECONDARY_COLOR: str = Field(default="#FCBA19")
     #: Partner header link — rendered only when URL is non-empty.

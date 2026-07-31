@@ -6,7 +6,7 @@
     <title>Discovery — {{ project_title }}</title>
     <link rel="icon" href="/static/admin/images/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/static/css/bc-sans.css" />
-    <link rel="stylesheet" href="/static/css/publisher.css" />
+    <link rel="stylesheet" href="/static/css/publisher.css?v=5" />
     <style>
       :root {
         --primary: {{ primary_color }};
@@ -117,7 +117,7 @@
 
       @media (min-width: 48rem) {
         .toolbar {
-          grid-template-columns: minmax(0, 1fr) 13rem 10rem auto;
+          grid-template-columns: minmax(0, 1fr) 13rem 10rem;
           align-items: end;
           gap: 1rem;
         }
@@ -227,16 +227,14 @@
         background: var(--danger-soft);
       }
 
-      .btn-clear {
-        justify-self: start;
-      }
-
       /* ---------- counts + states ---------- */
 
       .meta {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.35rem 0.6rem;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.45rem 0.85rem;
         font-size: 0.88rem;
         color: var(--muted);
         margin: 0 0.15rem 0.75rem;
@@ -245,6 +243,65 @@
       .meta strong {
         color: var(--ink);
         font-variant-numeric: tabular-nums;
+      }
+
+      .meta-clear {
+        appearance: none;
+        border: 0;
+        background: none;
+        padding: 0;
+        margin: 0 0 0 auto;
+        font: inherit;
+        font-size: inherit;
+        line-height: inherit;
+        color: var(--primary);
+        cursor: pointer;
+        text-decoration: underline;
+        text-underline-offset: 0.12em;
+      }
+
+      .meta-clear:hover {
+        color: var(--ink);
+      }
+
+      .meta-clear[hidden] {
+        display: none !important;
+      }
+
+      .pager {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem 1rem;
+        padding: 0.85rem 1rem;
+        border-top: 1px solid var(--line-soft);
+        font-size: 0.88rem;
+        color: var(--muted);
+      }
+
+      .pager[hidden] {
+        display: none !important;
+      }
+
+      .pager-status {
+        font-variant-numeric: tabular-nums;
+        min-width: 7rem;
+        text-align: center;
+      }
+
+      .pager-status strong {
+        color: var(--ink);
+      }
+
+      .pager .btn {
+        min-height: 2rem;
+        padding: 0.35rem 0.7rem;
+      }
+
+      .pager .btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
       }
 
       .error {
@@ -337,33 +394,43 @@
       }
 
       .g-type {
-        grid-column: 2 / -1;
+        grid-column: 2;
         grid-row: 1;
       }
 
-      .g-entity {
-        grid-column: 2;
+      .g-issuer-name {
+        grid-column: 3;
+        grid-row: 1;
+      }
+
+      .g-org {
+        grid-column: 2 / -1;
         grid-row: 2;
       }
 
       .g-card {
-        grid-column: 3;
-        grid-row: 2;
-      }
-
-      .g-status {
         grid-column: 2;
         grid-row: 3;
       }
 
-      .g-count {
+      .g-issuer-resolve {
         grid-column: 3;
         grid-row: 3;
       }
 
+      .g-entity {
+        grid-column: 2;
+        grid-row: 4;
+      }
+
+      .g-status {
+        grid-column: 3;
+        grid-row: 4;
+      }
+
       .g-actions {
         grid-column: 2 / -1;
-        grid-row: 4;
+        grid-row: 5;
       }
 
       .toggle {
@@ -399,13 +466,23 @@
 
       /* Credential type keeps its source casing — uppercasing a camelCase
          identifier makes it unreadable. */
-      .g-type {
+      .g-type,
+      .g-org,
+      .g-issuer-name {
         font-size: 0.78rem;
         color: color-mix(in srgb, var(--muted) 80%, #fff);
-        overflow-wrap: anywhere;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
       }
 
-      .g-entity {
+      .g-org:empty,
+      .g-issuer-name:empty {
+        display: none;
+      }
+
+      .g-card {
         font-size: 1.02rem;
         font-weight: 700;
         color: var(--heading);
@@ -413,28 +490,42 @@
         overflow-wrap: anywhere;
       }
 
-      .g-card {
+      .g-entity {
         font-size: 0.95rem;
         color: var(--ink);
         font-variant-numeric: tabular-nums;
         overflow-wrap: anywhere;
       }
 
-      .count {
-        font-size: 0.9rem;
-        color: var(--muted);
-        font-variant-numeric: tabular-nums;
+      .g-issuer-resolve {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.28rem;
+        font-size: 0.95rem;
+        color: var(--primary);
+        text-decoration: underline;
+        text-underline-offset: 0.12em;
       }
 
-      .count.is-many {
+      .g-issuer-resolve svg {
+        width: 0.85rem;
+        height: 0.85rem;
+        flex-shrink: 0;
+      }
+
+      .g-issuer-resolve:hover {
         color: var(--ink);
-        font-weight: 700;
+      }
+
+      .g-issuer-resolve:empty {
+        display: none;
       }
 
       .g-actions {
         display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
+        flex-wrap: nowrap;
+        gap: 0.4rem;
+        min-width: max-content;
       }
 
       /* small labels shown when columns stack */
@@ -519,8 +610,9 @@
 
       .iter-actions {
         display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
+        flex-wrap: nowrap;
+        gap: 0.4rem;
+        min-width: max-content;
       }
 
       /* ---------- status pill ---------- */
@@ -586,15 +678,15 @@
         .cols,
         .group-head {
           grid-template-columns:
-            1.75rem minmax(0, 1.3fr) minmax(0, 1fr) 7.75rem 6.5rem
-            5.5rem;
+            1.75rem minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 7.75rem
+            7.5rem;
           column-gap: 1.25rem;
         }
 
         .cols {
           display: grid;
           position: sticky;
-          top: 0;
+          top: var(--pub-topbar-offset, 5.75rem);
           z-index: 1;
           padding: 0.7rem 1rem;
           background: var(--paper);
@@ -602,12 +694,61 @@
           border-radius: 4px 4px 0 0;
         }
 
-        .cols span {
+        .cols span,
+        .cols .col-sort {
           font-size: 0.68rem;
           font-weight: 700;
           letter-spacing: 0.07em;
           text-transform: uppercase;
           color: var(--muted);
+        }
+
+        .cols .col-sort {
+          appearance: none;
+          border: 0;
+          background: none;
+          padding: 0;
+          margin: 0;
+          font: inherit;
+          font-size: 0.68rem;
+          font-weight: 700;
+          letter-spacing: 0.07em;
+          text-transform: uppercase;
+          color: var(--muted);
+          text-align: left;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.3rem;
+        }
+
+        .cols .col-sort:hover {
+          color: var(--ink);
+        }
+
+        .cols .col-sort::after {
+          content: "↕";
+          font-size: 0.72rem;
+          opacity: 0.35;
+          letter-spacing: 0;
+          text-transform: none;
+        }
+
+        .cols .col-sort.is-asc::after {
+          content: "↑";
+          opacity: 1;
+          color: var(--primary);
+        }
+
+        .cols .col-sort.is-desc::after {
+          content: "↓";
+          opacity: 1;
+          color: var(--primary);
+        }
+
+        .cols .col-sort.is-asc,
+        .cols .col-sort.is-desc {
+          color: var(--ink);
         }
 
         .group-head {
@@ -622,26 +763,38 @@
         }
 
         .g-type {
-          grid-column: 2 / -1;
+          grid-column: 2;
           grid-row: 1;
         }
 
-        .g-entity {
+        .g-issuer-name {
+          grid-column: 3;
+          grid-row: 1;
+          display: block;
+        }
+
+        .g-org {
+          grid-column: 4;
+          grid-row: 1;
+          display: block;
+        }
+
+        .g-card {
           grid-column: 2;
           grid-row: 2;
         }
 
-        .g-card {
+        .g-issuer-resolve {
           grid-column: 3;
           grid-row: 2;
         }
 
-        .g-status {
+        .g-entity {
           grid-column: 4;
           grid-row: 2;
         }
 
-        .g-count {
+        .g-status {
           grid-column: 5;
           grid-row: 2;
         }
@@ -663,13 +816,13 @@
         }
 
         .iter {
-          grid-template-columns: 5rem minmax(0, 1fr) 7.75rem 6.5rem 5.5rem;
+          grid-template-columns: 5rem minmax(0, 1fr) 7.75rem 7.5rem;
           column-gap: 1.25rem;
           align-items: center;
         }
 
         .iter-actions {
-          grid-column: 5;
+          grid-column: 4;
           justify-content: flex-end;
         }
       }
@@ -689,12 +842,8 @@
   <body class="pub-chrome">
     <header class="pub-topbar">
       <a class="pub-topbar-brand" href="/">
-        <img src="{{ logo_url }}" alt="" />
-        <span>{{ project_title }}</span>
+        <img src="{{ logo_url }}" alt="{{ project_title }}" />
       </a>
-      {% if partner_url %}
-      <a href="{{ partner_url }}" rel="noopener noreferrer">{{ partner_label }}</a>
-      {% endif %}
     </header>
 
     <main class="wrap">
@@ -718,7 +867,7 @@
           <input
             id="q"
             type="search"
-            placeholder="Entity, cardinality, type, or credential id"
+            placeholder="Organisation, document, type, or credential id"
             autocomplete="off"
           />
         </label>
@@ -741,26 +890,20 @@
             <option value="superseded">Superseded</option>
           </select>
         </label>
-        <button type="button" class="btn btn-clear" data-clear hidden>
-          Clear filters
-        </button>
       </div>
 
       <p
         class="meta"
-        id="counts"
+        id="counts-row"
         data-total-groups="{{ total_groups }}"
-        data-total-credentials="{{ total_credentials }}"
       >
-        <span>
+        <span id="counts">
           <strong>{{ total_groups }}</strong>
           entr{{ 'y' if total_groups == 1 else 'ies' }}
         </span>
-        <span aria-hidden="true">·</span>
-        <span>
-          <strong>{{ total_credentials }}</strong>
-          credential{{ '' if total_credentials == 1 else 's' }}
-        </span>
+        <button type="button" class="meta-clear" data-clear hidden>
+          × Clear filters
+        </button>
       </p>
       <p class="sr-only" id="live" aria-live="polite"></p>
 
@@ -770,12 +913,20 @@
       </div>
       {% else %}
       <div class="results">
-        <div class="cols" aria-hidden="true">
+        <div class="cols" role="row">
           <span></span>
-          <span>Entity</span>
-          <span>Cardinality</span>
-          <span>Status</span>
-          <span>Iterations</span>
+          <button type="button" class="col-sort" data-sort="document">
+            Document
+          </button>
+          <button type="button" class="col-sort" data-sort="issuer">
+            Issuer
+          </button>
+          <button type="button" class="col-sort" data-sort="organisation">
+            Organisation
+          </button>
+          <button type="button" class="col-sort" data-sort="status">
+            Status
+          </button>
           <span></span>
         </div>
 
@@ -785,7 +936,11 @@
             class="group"
             data-type="{{ group.type }}"
             data-status="{{ group.status }}"
-            data-search="{{ (group.type ~ ' ' ~ group.entity_id ~ ' ' ~ group.cardinality_id ~ ' ' ~ group.id ~ ' ' ~ (group.iterations | map(attribute='id') | join(' '))) | lower }}"
+            data-sort-document="{{ group.cardinality_id or '' }}"
+            data-sort-issuer="{{ group.issuer_name or group.issuer_did or '' }}"
+            data-sort-organisation="{{ group.entity_name or group.entity_id or '' }}"
+            data-sort-status="{{ group.status or '' }}"
+            data-search="{{ (group.type ~ ' ' ~ (group.entity_name or '') ~ ' ' ~ group.entity_id ~ ' ' ~ group.cardinality_id ~ ' ' ~ (group.issuer_name or '') ~ ' ' ~ (group.issuer_did or '') ~ ' ' ~ group.id ~ ' ' ~ (group.iterations | map(attribute='id') | join(' '))) | lower }}"
           >
             <div class="group-head">
               <button
@@ -793,7 +948,7 @@
                 class="toggle"
                 aria-expanded="false"
                 aria-controls="iters-{{ loop.index }}"
-                aria-label="Iteration history for entity {{ group.entity_id or 'unknown' }}, cardinality {{ group.cardinality_id or 'unknown' }}"
+                aria-label="Iteration history for document {{ group.cardinality_id or 'unknown' }}, organisation {{ group.entity_id or 'unknown' }}"
                 data-toggle
               >
                 <svg viewBox="0 0 8 12" aria-hidden="true" focusable="false">
@@ -801,25 +956,49 @@
                 </svg>
               </button>
 
-              <p class="g-type">{{ group.type or 'Credential' }}</p>
+              <p class="g-type" title="{{ group.type or 'Credential' }}">{{ group.type or 'Credential' }}</p>
 
-              <p class="cell g-entity" data-label="Entity">
-                {{ group.entity_id or '—' }}
+              <p
+                class="g-issuer-name"
+                {% if group.issuer_name %}title="{{ group.issuer_name }}"{% endif %}
+              >{% if group.issuer_name %}{{ group.issuer_name }}{% endif %}</p>
+
+              <p
+                class="g-org"
+                {% if group.entity_name %}title="{{ group.entity_name }}"{% endif %}
+              >{% if group.entity_name %}{{ group.entity_name }}{% endif %}</p>
+
+              <p class="cell g-card" data-label="Document">
+                {{ group.cardinality_id or '—' }}
               </p>
 
-              <p class="cell g-card" data-label="Cardinality">
-                {{ group.cardinality_id or '—' }}
+              {% if group.issuer_resolve_url %}
+              <a
+                class="g-issuer-resolve"
+                href="{{ group.issuer_resolve_url }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Resolve {{ group.issuer_did }} on Universal Resolver"
+              >
+                Resolve
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7zM5 5v14h14v-7h-2v5H7V7h5V5H5z"
+                  />
+                </svg>
+              </a>
+              {% else %}
+              <span class="g-issuer-resolve"></span>
+              {% endif %}
+
+              <p class="cell g-entity" data-label="Organisation">
+                {{ group.entity_id or '—' }}
               </p>
 
               <p class="cell g-status" data-label="Status">
                 <span class="pill {% if group.status != 'active' %}is-{{ group.status }}{% endif %}">
                   {{ group.status }}
-                </span>
-              </p>
-
-              <p class="cell g-count" data-label="Iterations">
-                <span class="count {% if group.iteration_count > 1 %}is-many{% endif %}">
-                  {{ group.iteration_count }}
                 </span>
               </p>
 
@@ -844,6 +1023,20 @@
                     />
                   </svg>
                 </button>
+                <a
+                  class="btn btn-icon"
+                  href="{{ group.download_url }}"
+                  download="{{ group.download_name }}"
+                  aria-label="Download verifiable credential"
+                  title="Download {{ group.download_name }}"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path
+                      fill="currentColor"
+                      d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"
+                    />
+                  </svg>
+                </a>
                 <a
                   class="btn btn-icon"
                   href="{{ group.url }}"
@@ -906,6 +1099,20 @@
                     </button>
                     <a
                       class="btn btn-icon"
+                      href="{{ it.download_url }}"
+                      download="{{ it.download_name }}"
+                      aria-label="Download verifiable credential"
+                      title="Download {{ it.download_name }}"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path
+                          fill="currentColor"
+                          d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"
+                        />
+                      </svg>
+                    </a>
+                    <a
+                      class="btn btn-icon"
                       href="{{ it.url }}"
                       target="_blank"
                       rel="noopener noreferrer"
@@ -932,11 +1139,23 @@
           <p>No credentials match this search.</p>
           <button type="button" class="btn" data-clear>Clear filters</button>
         </div>
+
+        <nav class="pager" id="pager" aria-label="Results pages" hidden>
+          <button type="button" class="btn" data-page-prev>Previous</button>
+          <span class="pager-status" id="pager-status"></span>
+          <button type="button" class="btn" data-page-next>Next</button>
+        </nav>
       </div>
       {% endif %}
     </main>
 
     <footer class="pub-footer">
+      <a
+        href="https://github.com/bcgov/untp-publisher-service"
+        rel="noopener noreferrer"
+        target="_blank"
+      >UNTP Publisher Service</a>
+      ·
       <span>{{ project_version }}</span>
       ·
       <a href="/docs">API docs</a>
@@ -948,19 +1167,33 @@
         const q = document.getElementById("q");
         const type = document.getElementById("type");
         const status = document.getElementById("status");
-        const groups = Array.from(document.querySelectorAll(".group"));
+        const groupsList = document.getElementById("groups");
+        let groups = Array.from(document.querySelectorAll(".group"));
         const noMatches = document.getElementById("no-matches");
         const results = document.querySelector(".results");
+        const countsRow = document.getElementById("counts-row");
         const counts = document.getElementById("counts");
+        const pager = document.getElementById("pager");
+        const pagerStatus = document.getElementById("pager-status");
+        const pagePrevButtons = Array.from(
+          document.querySelectorAll("[data-page-prev]")
+        );
+        const pageNextButtons = Array.from(
+          document.querySelectorAll("[data-page-next]")
+        );
+        const sortButtons = Array.from(
+          document.querySelectorAll(".col-sort[data-sort]")
+        );
         const clearButtons = Array.from(
           document.querySelectorAll("[data-clear]")
         );
-        const totalGroups = counts
-          ? Number(counts.getAttribute("data-total-groups") || 0)
+        const totalGroups = countsRow
+          ? Number(countsRow.getAttribute("data-total-groups") || 0)
           : 0;
-        const totalCredentials = counts
-          ? Number(counts.getAttribute("data-total-credentials") || 0)
-          : 0;
+        const PAGE_SIZE = 10;
+        let currentPage = 1;
+        let sortKey = "";
+        let sortDir = "asc";
 
         function announce(msg) {
           if (live) live.textContent = msg;
@@ -1007,9 +1240,150 @@
         }
 
         function setOpen(group, open) {
+          if (open) {
+            groups.forEach(function (other) {
+              if (other === group) return;
+              other.classList.remove("is-open");
+              const otherToggle = other.querySelector("[data-toggle]");
+              if (otherToggle) otherToggle.setAttribute("aria-expanded", "false");
+            });
+          }
           const toggle = group.querySelector("[data-toggle]");
           group.classList.toggle("is-open", open);
           if (toggle) toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        }
+
+        function matchedGroups() {
+          const query = (q && q.value ? q.value : "").trim().toLowerCase();
+          const typeVal = type ? type.value : "";
+          const statusVal = status ? status.value : "";
+          return groups.filter(function (el) {
+            const search = el.getAttribute("data-search") || "";
+            const okQ = !query || search.indexOf(query) !== -1;
+            const okT = !typeVal || el.getAttribute("data-type") === typeVal;
+            const okS = !statusVal || el.getAttribute("data-status") === statusVal;
+            return okQ && okT && okS;
+          });
+        }
+
+        function sortValue(el, key) {
+          return (el.getAttribute("data-sort-" + key) || "").trim();
+        }
+
+        function updateSortHeaders() {
+          sortButtons.forEach(function (btn) {
+            const key = btn.getAttribute("data-sort") || "";
+            const active = key && key === sortKey;
+            btn.classList.toggle("is-asc", active && sortDir === "asc");
+            btn.classList.toggle("is-desc", active && sortDir === "desc");
+            btn.setAttribute(
+              "aria-sort",
+              active ? (sortDir === "asc" ? "ascending" : "descending") : "none"
+            );
+          });
+        }
+
+        function applySort() {
+          if (!sortKey || !groupsList) {
+            updateSortHeaders();
+            return;
+          }
+          groups.sort(function (a, b) {
+            const av = sortValue(a, sortKey);
+            const bv = sortValue(b, sortKey);
+            const cmp = av.localeCompare(bv, undefined, {
+              numeric: true,
+              sensitivity: "base",
+            });
+            if (cmp !== 0) return sortDir === "asc" ? cmp : -cmp;
+            const ad = sortValue(a, "document");
+            const bd = sortValue(b, "document");
+            return ad.localeCompare(bd, undefined, {
+              numeric: true,
+              sensitivity: "base",
+            });
+          });
+          groups.forEach(function (el) {
+            groupsList.appendChild(el);
+          });
+          updateSortHeaders();
+        }
+
+        function applyFilters(options) {
+          const resetPage = !options || options.resetPage !== false;
+          if (resetPage) currentPage = 1;
+
+          applySort();
+
+          const query = (q && q.value ? q.value : "").trim().toLowerCase();
+          const typeVal = type ? type.value : "";
+          const statusVal = status ? status.value : "";
+          const filtered = Boolean(query || typeVal || statusVal);
+          const matched = matchedGroups();
+          const matchCount = matched.length;
+          const pageCount = Math.max(1, Math.ceil(matchCount / PAGE_SIZE) || 1);
+          if (currentPage > pageCount) currentPage = pageCount;
+          if (currentPage < 1) currentPage = 1;
+
+          const start = (currentPage - 1) * PAGE_SIZE;
+          const end = Math.min(start + PAGE_SIZE, matchCount);
+          const onPage = new Set(matched.slice(start, end));
+
+          groups.forEach(function (el) {
+            el.hidden = !onPage.has(el);
+            if (el.hidden) setOpen(el, false);
+          });
+
+          clearButtons.forEach(function (btn) {
+            if (btn.classList.contains("meta-clear")) btn.hidden = !filtered;
+          });
+
+          const empty = matchCount === 0 && groups.length > 0;
+          if (noMatches) noMatches.hidden = !empty;
+          if (results) results.classList.toggle("is-empty", empty);
+
+          if (counts) {
+            const entries = matchCount === 1 ? "entry" : "entries";
+            if (matchCount === 0) {
+              counts.innerHTML = filtered
+                ? "No matching entries"
+                : "<strong>0</strong> entries";
+            } else if (matchCount <= PAGE_SIZE && !filtered) {
+              counts.innerHTML =
+                "<strong>" + matchCount + "</strong> " + entries;
+            } else {
+              const range =
+                matchCount === 0
+                  ? "0"
+                  : start + 1 === end
+                    ? String(end)
+                    : start + 1 + "–" + end;
+              counts.innerHTML =
+                "Showing <strong>" +
+                range +
+                "</strong> of <strong>" +
+                matchCount +
+                "</strong> " +
+                entries;
+            }
+          }
+
+          const showPager = matchCount > PAGE_SIZE && !empty;
+          if (pager) pager.hidden = !showPager;
+          if (pagerStatus && showPager) {
+            pagerStatus.innerHTML =
+              "Page <strong>" +
+              currentPage +
+              "</strong> of <strong>" +
+              pageCount +
+              "</strong>";
+          }
+          pagePrevButtons.forEach(function (btn) {
+            btn.disabled = currentPage <= 1;
+          });
+          pageNextButtons.forEach(function (btn) {
+            btn.disabled = currentPage >= pageCount;
+          });
         }
 
         document.addEventListener("click", function (ev) {
@@ -1026,6 +1400,33 @@
             if (status) status.value = "";
             applyFilters();
             if (q) q.focus();
+            return;
+          }
+
+          if (ev.target.closest("[data-page-prev]")) {
+            if (currentPage > 1) {
+              currentPage -= 1;
+              applyFilters({ resetPage: false });
+            }
+            return;
+          }
+
+          if (ev.target.closest("[data-page-next]")) {
+            currentPage += 1;
+            applyFilters({ resetPage: false });
+            return;
+          }
+
+          const sortBtn = ev.target.closest(".col-sort[data-sort]");
+          if (sortBtn) {
+            const key = sortBtn.getAttribute("data-sort") || "";
+            if (key === sortKey) {
+              sortDir = sortDir === "asc" ? "desc" : "asc";
+            } else {
+              sortKey = key;
+              sortDir = "asc";
+            }
+            applyFilters();
             return;
           }
 
@@ -1046,48 +1447,10 @@
           if (group) setOpen(group, !group.classList.contains("is-open"));
         });
 
-        function applyFilters() {
-          const query = (q && q.value ? q.value : "").trim().toLowerCase();
-          const typeVal = type ? type.value : "";
-          const statusVal = status ? status.value : "";
-          const filtered = Boolean(query || typeVal || statusVal);
-          let visible = 0;
-
-          groups.forEach(function (el) {
-            const search = el.getAttribute("data-search") || "";
-            const okQ = !query || search.indexOf(query) !== -1;
-            const okT = !typeVal || el.getAttribute("data-type") === typeVal;
-            const okS = !statusVal || el.getAttribute("data-status") === statusVal;
-            const show = okQ && okT && okS;
-            el.hidden = !show;
-            if (show) visible += 1;
-          });
-
-          clearButtons.forEach(function (btn) {
-            if (btn.classList.contains("btn-clear")) btn.hidden = !filtered;
-          });
-
-          const empty = visible === 0 && groups.length > 0;
-          if (noMatches) noMatches.hidden = !empty;
-          if (results) results.classList.toggle("is-empty", empty);
-
-          if (counts) {
-            const entries = totalGroups === 1 ? "entry" : "entries";
-            const shown = filtered
-              ? "Showing " + visible + " of " + totalGroups + " " + entries
-              : totalGroups + " " + entries;
-            counts.textContent =
-              shown +
-              " · " +
-              totalCredentials +
-              " credential" +
-              (totalCredentials === 1 ? "" : "s");
-          }
-        }
-
         if (q) q.addEventListener("input", applyFilters);
         if (type) type.addEventListener("change", applyFilters);
         if (status) status.addEventListener("change", applyFilters);
+        applyFilters();
       })();
     </script>
   </body>

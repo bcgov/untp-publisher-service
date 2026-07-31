@@ -60,7 +60,7 @@ class CredentialStatus(BaseModel):
     id: str = Field(None)
     type: Union[str, List[str]] = Field()
     statusPurpose: str = Field(None)
-    statusListIndex: str = Field(None)
+    statusListIndex: Union[str, int] = Field(None)
     statusListCredential: str = Field(None)
     statusReference: SkipJsonSchema[Union[str, List[str]]] = Field(None)
 

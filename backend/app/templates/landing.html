@@ -6,7 +6,7 @@
     <title>{{ project_title }}</title>
     <link rel="icon" href="/static/admin/images/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/static/css/bc-sans.css" />
-    <link rel="stylesheet" href="/static/css/publisher.css" />
+    <link rel="stylesheet" href="/static/css/publisher.css?v=5" />
     <style>
       :root {
         --primary: {{ primary_color }};
@@ -189,12 +189,8 @@
   <body class="pub-chrome">
     <header class="pub-topbar">
       <a class="pub-topbar-brand" href="/">
-        <img src="{{ logo_url }}" alt="" />
-        <span>{{ project_title }}</span>
+        <img src="{{ logo_url }}" alt="{{ project_title }}" />
       </a>
-      {% if partner_url %}
-      <a href="{{ partner_url }}" rel="noopener noreferrer">{{ partner_label }}</a>
-      {% endif %}
     </header>
 
     <main class="hero-band">
@@ -223,6 +219,12 @@
     </main>
 
     <footer class="pub-footer">
+      <a
+        href="https://github.com/bcgov/untp-publisher-service"
+        rel="noopener noreferrer"
+        target="_blank"
+      >UNTP Publisher Service</a>
+      ·
       <span>{{ project_version }}</span>
       ·
       <a href="/docs">API docs</a>

@@ -22,6 +22,11 @@ CONTEXT_BUNDLE: dict[str, dict[str, str]] = {
         "path": "v0.7.0/contexts/untp.jsonld",
         "digest": "sha256:e99627e9ddd159eb0d80c8bba9634ca9099597cc547a37246ad3a4ee6384687e",
     },
+    # Minimal offline stub so TemplateRenderMethod @context resolves during validation.
+    "https://w3id.org/vc/render-method/v2rc2": {
+        "path": "v0.7.0/contexts/render-method-v2rc2.jsonld",
+        "digest": "sha256:501e49b04a5d4efe5b1096bbbacebefab8d06693260f138bc537a808e494889a",
+    },
 }
 
 

@@ -4,9 +4,13 @@
 Reads a JSON list of ``POST /credentials/publish`` bodies and publishes each
 using the admin ``X-API-Key`` (same value as ``TRACTION_API_KEY``).
 
-Payloads later in the file may reuse the same entity + cardinality (permittee
-+ permit ids) with changed ``data`` so the publisher marks the prior record
-``refresh: true`` and issues a new iteration — useful for Discovery collapse.
+Payloads later in the file may:
+
+- reuse the same entity + cardinality (permittee + permit ids) with changed
+  ``data`` so the publisher marks the prior record ``refresh: true`` and issues
+  a new iteration — useful for Discovery collapse; or
+- reuse the same cardinality (permit id) with a *different* entity (permittee
+  id) so Discovery shows two entries under one permit number.
 
 Example::
 

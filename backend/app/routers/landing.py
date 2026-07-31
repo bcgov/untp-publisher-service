@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.plugins.mongodb import MongoClient
-from app.services.composer import publisher_origin
+from app.services.composer import publisher_origin, credential_download_filename
 from config import settings
 
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -41,6 +41,13 @@ def credential_public_url(credential_id: str) -> str:
     if cid.startswith("http://") or cid.startswith("https://"):
         return cid
     return f"{publisher_origin()}/credentials/{cid}"
+
+
+def credential_download_url(credential_id: str) -> str:
+    """Same as :func:`credential_public_url` with ``download=true``."""
+    base = credential_public_url(credential_id)
+    sep = "&" if "?" in base else "?"
+    return f"{base}{sep}download=true"
 
 
 def _status_label(record: dict[str, Any]) -> str:
@@ -83,6 +90,48 @@ def format_proof_created(raw: str) -> str:
         return value
 
 
+def entity_name_from_record(record: dict[str, Any]) -> str:
+    """Org / party display name from the issued VC when present."""
+    vc = record.get("vc")
+    if not isinstance(vc, dict):
+        return ""
+    subject = vc.get("credentialSubject")
+    if isinstance(subject, list):
+        subject = subject[0] if subject else None
+    if not isinstance(subject, dict):
+        return ""
+    party = subject.get("issuedToParty")
+    if isinstance(party, dict):
+        name = str(party.get("name") or "").strip()
+        if name:
+            return name
+    return ""
+
+
+def issuer_from_record(record: dict[str, Any]) -> tuple[str, str]:
+    """Return ``(issuer_name, issuer_did)`` from the issued VC when present."""
+    vc = record.get("vc")
+    if not isinstance(vc, dict):
+        return "", ""
+    issuer = vc.get("issuer")
+    if isinstance(issuer, str):
+        did = issuer.strip()
+        return "", did
+    if isinstance(issuer, dict):
+        did = str(issuer.get("id") or "").strip()
+        name = str(issuer.get("name") or "").strip()
+        return name, did
+    return "", ""
+
+
+def issuer_resolve_url(did: str) -> str:
+    """Universal Resolver deep link: ``https://uniresolver.io/#{did}``."""
+    value = (did or "").strip()
+    if not value:
+        return ""
+    return f"https://uniresolver.io/#{value}"
+
+
 def group_credential_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Collapse records by ``(entity_id, cardinality_id)``.
 
@@ -103,17 +152,27 @@ def group_credential_records(records: list[dict[str, Any]]) -> list[dict[str, An
             key = (cred_id or f"anon-{len(order)}", cred_id or f"anon-{len(order)}")
 
         url = credential_public_url(cred_id)
+        download_url = credential_download_url(cred_id)
         created_raw = proof_created_raw(record)
+        download_name = credential_download_filename(record)
+        entity_name = entity_name_from_record(record)
+        issuer_name, issuer_did = issuer_from_record(record)
         iteration = {
             "id": cred_id,
             "type": record.get("type") or "",
             "entity_id": entity,
+            "entity_name": entity_name,
             "cardinality_id": cardinality,
+            "issuer_name": issuer_name,
+            "issuer_did": issuer_did,
+            "issuer_resolve_url": issuer_resolve_url(issuer_did),
             "revocation": bool(record.get("revocation")),
             "suspension": bool(record.get("suspension")),
             "refresh": bool(record.get("refresh")),
             "status": _status_label(record),
             "url": url,
+            "download_url": download_url,
+            "download_name": download_name,
             "created": created_raw,
             "created_display": format_proof_created(created_raw),
         }
@@ -121,10 +180,16 @@ def group_credential_records(records: list[dict[str, Any]]) -> list[dict[str, An
         if key not in groups:
             groups[key] = {
                 "entity_id": entity or iteration["entity_id"],
+                "entity_name": entity_name,
                 "cardinality_id": cardinality or iteration["cardinality_id"],
+                "issuer_name": issuer_name,
+                "issuer_did": issuer_did,
+                "issuer_resolve_url": iteration["issuer_resolve_url"],
                 "type": iteration["type"],
                 "status": iteration["status"],
                 "url": url,
+                "download_url": download_url,
+                "download_name": download_name,
                 "id": cred_id,
                 "iterations": [iteration],
             }
@@ -142,6 +207,14 @@ def group_credential_records(records: list[dict[str, Any]]) -> list[dict[str, An
         group["type"] = face["type"]
         group["status"] = face["status"]
         group["url"] = face["url"]
+        group["download_url"] = face["download_url"]
+        group["download_name"] = face["download_name"]
+        group["entity_name"] = face.get("entity_name") or group.get("entity_name") or ""
+        group["issuer_name"] = face.get("issuer_name") or group.get("issuer_name") or ""
+        group["issuer_did"] = face.get("issuer_did") or group.get("issuer_did") or ""
+        group["issuer_resolve_url"] = (
+            face.get("issuer_resolve_url") or group.get("issuer_resolve_url") or ""
+        )
         group["iteration_count"] = len(iterations)
         result.append(group)
     return result

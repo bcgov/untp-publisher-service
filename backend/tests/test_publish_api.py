@@ -77,6 +77,8 @@ class _PublishMongo:
             ISSUER_ID: {"id": ISSUER_ID, "name": "Chief Permitting Officer"},
         }
         self.credentials: list[dict] = []
+        self.status_lists: list[dict] = []
+        self.status_bit_updates: list[dict] = []
         self._status_i = 0
 
     def find_one(self, collection, query):
@@ -84,6 +86,7 @@ class _PublishMongo:
             "CredentialTemplateRecord": self.templates,
             "IssuerInstanceRecord": list(self.issuers.values()),
             "CredentialRecord": self.credentials,
+            "StatusListRecord": self.status_lists,
         }[collection]
         for record in rows:
             if all(record.get(key) == value for key, value in query.items()):
@@ -106,10 +109,13 @@ class _PublishMongo:
         self.credentials.append(copy.deepcopy(item))
 
     def replace(self, collection, query, new_item):
-        assert collection == "CredentialRecord"
-        for i, record in enumerate(self.credentials):
+        rows = {
+            "CredentialRecord": self.credentials,
+            "StatusListRecord": self.status_lists,
+        }[collection]
+        for i, record in enumerate(rows):
             if all(record.get(key) == value for key, value in query.items()):
-                self.credentials[i] = copy.deepcopy(new_item)
+                rows[i] = copy.deepcopy(new_item)
                 return
         raise AssertionError(f"replace miss: {query}")
 
@@ -123,11 +129,49 @@ class _PublishMongo:
 
     def claim_status_list_index(self, *, issuer_id: str, purpose: str):
         self._status_i += 1
+        endpoint = f"https://publisher.test/status-lists/list-{purpose}"
+        if not any(r.get("endpoint") == endpoint for r in self.status_lists):
+            from app.plugins.status_list import BitstringStatusList
+
+            encoded = BitstringStatusList().generate("0" * 64)
+            self.status_lists.append(
+                {
+                    "id": f"list-{purpose}",
+                    "issuer": issuer_id,
+                    "purpose": purpose,
+                    "active": True,
+                    "endpoint": endpoint,
+                    "indexes": [],
+                    "credential": {
+                        "credentialSubject": {
+                            "type": "BitstringStatusList",
+                            "statusPurpose": purpose,
+                            "encodedList": encoded,
+                        }
+                    },
+                }
+            )
         return {
             "index": self._status_i,
-            "endpoint": f"https://publisher.test/status/{purpose}",
+            "endpoint": endpoint,
             "id": f"list-{purpose}",
         }
+
+    def set_status_list_bit(self, *, endpoint: str, index: int, value: bool = True):
+        from app.plugins.mongodb import MongoClient
+
+        # Delegate to the real helper logic against this fake's collections.
+        real = MongoClient.__new__(MongoClient)
+        real.find_one = self.find_one
+        real.replace = self.replace
+        ok = MongoClient.set_status_list_bit(
+            real, endpoint=endpoint, index=index, value=value
+        )
+        if ok:
+            self.status_bit_updates.append(
+                {"endpoint": endpoint, "index": index, "value": value}
+            )
+        return ok
 
 
 @pytest.fixture
@@ -192,15 +236,9 @@ def test_publish_first_issue_with_api_key(publish_env):
     traction.issue_vc.assert_called_once()
     issued = traction.issue_vc.call_args.args[0]
     assert "refreshService" not in issued
-    refresh_status = next(
-        s for s in issued["credentialStatus"] if s["statusPurpose"] == "refresh"
-    )
-    assert refresh_status["statusReference"] == (
-        "https://publisher.test/credentials/refresh"
-        "?type=BCMinesActPermitCredential"
-        f"&entity={SAMPLE_DATA['permittee']['identifier']}"
-        f"&cardinality={SAMPLE_DATA['permit']['identifier']}"
-    )
+    assert isinstance(issued["credentialStatus"], dict)
+    assert issued["credentialStatus"]["statusPurpose"] == "revocation"
+    assert isinstance(issued["credentialStatus"]["statusListIndex"], int)
     assert RENDER_METHOD_CONTEXT_URL in issued["@context"]
     assert not any(
         isinstance(c, str) and c.endswith("/contexts/publisher/v1")
@@ -261,6 +299,9 @@ def test_publish_reissue_on_data_change_reclaims_credential_id(publish_env):
         data=changed["data"],
     )
     assert traction.issue_vc.call_count == 2
+    # BUG: refresh status entry not on credential (UNTP single-object credentialStatus);
+    # reissue still marks Mongo refresh=true but does not flip a refresh bitstring bit.
+    assert mongo.status_bit_updates == []
 
 
 def test_publish_reject_foreign_credential_id(publish_env):
