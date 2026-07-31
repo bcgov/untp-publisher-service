@@ -7,6 +7,9 @@
 ##
 ## Pre-create Traction Secret untp-publisher-service-traction-tenant-info
 ## (keys: traction_tenant_id, traction_api_key) — see backend.traction.existingSecret.
+##
+## Image: landing + Discovery UI build (feat/landing-discovery-ui → ghcr …:dev-0.0.4).
+## test/prod overlays stay on their own tags until that rollout is approved.
 
 ingress:
   annotations:
@@ -22,7 +25,7 @@ backend:
   testSuite: false
   image:
     repository: ghcr.io/bcgov/untp-publisher-service
-    tag: dev-0.0.3
+    tag: dev-0.0.4
     pullPolicy: Always
   # Hostname only (sets Ingress rule + pod PUBLISHER_DOMAIN).
   # Public origin: https://untp-publisher-api-dev.apps.gold.devops.gov.bc.ca
@@ -34,6 +37,13 @@ backend:
     webvhServerUrl: "https://registry-dev.digitaltrust.gov.bc.ca"
     # Same witness as backend/tests/test_did_key.py (multikey → did:key).
     publisherWitnessId: "did:key:z6MkekByGjKYvP6dpMBJEHt5UN72rKPVoDgzcS9Hoq6bjfr1"
+    projectTitle: "UNTP Publisher"
+    projectVersion: "v0"
+    landingTagline: "Publish UNTP-aligned verifiable credentials through BC Traction."
+    landingDescription: "Discover issued credentials, copy public URLs, and open verifiable credentials from this publisher."
+    landingLogoUrl: "https://mines.nrs.gov.bc.ca/assets/images/bcgov-mineinfo-horiz-LG.png"
+    landingPrimaryColor: "#013366"
+    landingSecondaryColor: "#FCBA19"
   resources:
     limits:
       cpu: 300m
