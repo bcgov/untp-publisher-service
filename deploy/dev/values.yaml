@@ -48,16 +48,36 @@ mongodb:
     existingSecret: untp-publisher-service-mongodb-custom-user-secret
   targetPlatform: openshift
   # MongoDB 8 needs ~500Mi free disk; a 512Mi volume fails once journal/FTDC grow.
-  # 1Gi on netapp-block-standard (namespace also has 1Gi netapp-file-standard).
+  # 1Gi on netapp-block-standard (volumeClaimTemplates are immutable — keep in sync with live PVC).
   persistence:
     storageClass: netapp-block-standard
     size: 1Gi
+  # mongo:8 + mongosh probes OOMed at 384Mi (exit 137). Limit 768Mi stays within
+  # request quota (requests are what the namespace counts). Cap WiredTiger cache.
   resources:
     limits:
-      memory: 384Mi
+      memory: 768Mi
     requests:
       cpu: 25m
-      memory: 128Mi
+      memory: 256Mi
+  config:
+    content: |
+      systemLog:
+        quiet: true
+        verbosity: 0
+      net:
+        bindIpAll: true
+      storage:
+        wiredTiger:
+          engineConfig:
+            cacheSizeGB: 0.25
+  # mongosh exec probes are memory-heavy; stretch period to reduce OOM pressure.
+  livenessProbe:
+    initialDelaySeconds: 45
+    periodSeconds: 30
+  readinessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 30
   commonLabels:
     backup: "true"
     env: dev

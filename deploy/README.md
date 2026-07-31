@@ -98,3 +98,4 @@ Traction tenant proxies remain on **Silver** even though the publisher Route is 
 
 - **`backend.host`** sets the Ingress host and the pod **`PUBLISHER_DOMAIN`** env var (hostname only, no `https://`; do not set `PUBLISHER_DOMAIN` under `backend.environment`).
 - Overlays omit **HPA / autoscaling** fields from the legacy gitops chart; the current chart uses fixed `backend.replicaCount`.
+- **MongoDB 8 memory:** overlays use a **768Mi** limit / **256Mi** request, WiredTiger `cacheSizeGB: 0.25`, and 30s probe periods. Namespace quotas count **requests** only — this stays well under the 2Gi long-running request quota without a quota increase. Do not drop the limit below ~768Mi without re-validating (384–512Mi has OOMKilled under `mongosh` probes).

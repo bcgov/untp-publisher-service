@@ -52,12 +52,31 @@ mongodb:
   persistence:
     storageClass: netapp-block-standard
     size: 1Gi
+  # 512Mi limit previously OOMKilled under mongosh probes; 768Mi + cache cap is stable
+  # without raising request quota (still 256Mi request).
   resources:
     limits:
-      memory: 512Mi
+      memory: 768Mi
     requests:
       cpu: 25m
       memory: 256Mi
+  config:
+    content: |
+      systemLog:
+        quiet: true
+        verbosity: 0
+      net:
+        bindIpAll: true
+      storage:
+        wiredTiger:
+          engineConfig:
+            cacheSizeGB: 0.25
+  livenessProbe:
+    initialDelaySeconds: 45
+    periodSeconds: 30
+  readinessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 30
   commonLabels:
     backup: "true"
     env: prod
