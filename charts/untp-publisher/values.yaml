@@ -24,16 +24,9 @@ backend:
   # -- Backend hostname used for the Ingress rule and PUBLISHER_DOMAIN env var
   host: ""
 
-  # -- Minimal app: only /server/status and POST /test-suite/validate (no publisher API).
-  # Skips Traction/Mongo startup provision when true.
+  # -- Minimal app: only /server/status and /test-suite/* (no publisher API).
+  # Startup still runs Traction/Mongo provision (main.py); Secret + Mongo must be healthy.
   testSuite: false
-
-  # -- DID WebVH registry (witness endorses issuer DID documents)
-  didwebvh:
-    # -- DID WebVH server base URL. Sets pod env DID_WEB_SERVER_URL.
-    serverUrl: ""
-    # -- Witness public key (multibase). Sets pod env PUBLISHER_MULTIKEY.
-    witnessPublicKeyMultibase: ""
 
   # -- Traction tenant proxy configuration
   traction:
