@@ -14,8 +14,8 @@ Chart **name** and directory changed from `orgbook-publisher` to **`untp-publish
 | --- | --- | --- |
 | Chart path | `./charts/orgbook-publisher` | `./charts/untp-publisher` |
 | Helm chart `name` | `orgbook-publisher` | `untp-publisher` |
-| Default `fullnameOverride` / `nameOverride` | `orgbook-publisher` | `untp-publisher` |
-| Default MongoDB app user & database | `orgbook-publisher` | `untp-publisher` |
+| Default `fullnameOverride` / `nameOverride` | `orgbook-publisher` | `untp-publisher-service` |
+| Default MongoDB app user & database | `orgbook-publisher` | `untp-publisher-service` |
 | Default backend image | `ghcr.io/bcgov/orgbook-publisher-service` | `ghcr.io/bcgov/untp-publisher-service` |
 
 **Upgrading an existing release**
@@ -58,8 +58,8 @@ RELEASE=<your-helm-release-name>
 NAMESPACE=<your-namespace>
 # Application database name on the *old* Bitnami deployment (often orgbook-publisher for older chart defaults)
 SOURCE_DB=orgbook-publisher
-# Application database name on the *new* CloudPirates deployment — must match mongodb.customUser.* in your values (chart default untp-publisher for chart ≥ 0.1.0)
-TARGET_DB=untp-publisher
+# Application database name on the *new* CloudPirates deployment — must match mongodb.customUser.* in your values (chart default untp-publisher-service for chart ≥ 0.1.0)
+TARGET_DB=untp-publisher-service
 ```
 
 - [ ] Confirm the release name and namespace above
