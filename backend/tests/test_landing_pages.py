@@ -1,11 +1,23 @@
 """Smoke tests for public landing and discovery HTML pages."""
 
+import re
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.routers import landing
 from app.routers.landing import safe_asset_url, safe_css_color, safe_http_url
 from config import settings
+
+_PARTNER_HREF_RE = re.compile(
+    rb'class="pub-topbar-partner"[^>]*\bhref="([^"]+)"',
+    re.DOTALL,
+)
+
+
+def _partner_href(html: bytes) -> bytes | None:
+    match = _PARTNER_HREF_RE.search(html)
+    return match.group(1) if match else None
 
 
 class _FakeMongo:
@@ -43,8 +55,7 @@ def test_landing_renders_partner_link(monkeypatch):
     client = TestClient(_app())
     response = client.get("/")
     assert response.status_code == 200
-    assert b'class="pub-topbar-partner"' in response.content
-    assert b"https://mines.nrs.gov.bc.ca/" in response.content
+    assert _partner_href(response.content) == b"https://mines.nrs.gov.bc.ca/"
     assert b"BC Mine Information" in response.content
 
 
@@ -65,8 +76,7 @@ def test_discovery_renders_partner_link(monkeypatch):
     client = TestClient(_app())
     response = client.get("/discovery")
     assert response.status_code == 200
-    assert b'class="pub-topbar-partner"' in response.content
-    assert b"https://example.com/partner" in response.content
+    assert _partner_href(response.content) == b"https://example.com/partner"
     assert b"Partner site" in response.content
 
 
