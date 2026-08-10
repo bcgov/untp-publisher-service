@@ -9,7 +9,7 @@
 ## (keys: traction_tenant_id, traction_api_key) — see backend.traction.existingSecret.
 ##
 ## Image: landing + Discovery UI build (feat/landing-discovery-ui → ghcr …:dev-0.0.4).
-## test/prod overlays use the same image tag and NRS critical-raw-material branding.
+## test/prod overlays use release v0.1.0; all three share NRS critical-raw-material branding.
 
 ingress:
   annotations:

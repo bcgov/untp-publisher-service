@@ -8,7 +8,7 @@
 ## Pre-create Traction Secret untp-publisher-service-traction-tenant-info
 ## (keys: traction_tenant_id, traction_api_key) — see backend.traction.existingSecret.
 ##
-## Image: landing + Discovery UI build (same tag as f890b1-dev until a release tag ships).
+## Image: https://github.com/bcgov/untp-publisher-service/releases/tag/v0.1.0 (Discovery UI).
 
 ingress:
   annotations:
@@ -24,7 +24,7 @@ backend:
   testSuite: false
   image:
     repository: ghcr.io/bcgov/untp-publisher-service
-    tag: dev-0.0.4
+    tag: v0.1.0
     pullPolicy: Always
   # Hostname only (sets Ingress rule + pod PUBLISHER_DOMAIN).
   # Public origin: https://untp-publisher-api.apps.gold.devops.gov.bc.ca
