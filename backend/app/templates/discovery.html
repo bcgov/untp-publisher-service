@@ -844,6 +844,15 @@
       <a class="pub-topbar-brand" href="/">
         <img src="{{ logo_url }}" alt="{{ project_title }}" />
       </a>
+      {% if partner_url %}
+      <a
+        class="pub-topbar-partner"
+        href="{{ partner_url }}"
+        rel="noopener noreferrer"
+        target="_blank"
+        >{{ partner_label }}</a
+      >
+      {% endif %}
     </header>
 
     <main class="wrap">
@@ -859,6 +868,13 @@
 
       {% if load_error %}
       <p class="error" role="alert">{{ load_error }}</p>
+      {% endif %}
+
+      {% if truncated %}
+      <p class="error" role="status">
+        Showing the {{ discovery_max_records }} most recent credential records.
+        Older publications are omitted until server-side pagination is expanded.
+      </p>
       {% endif %}
 
       <div class="toolbar">

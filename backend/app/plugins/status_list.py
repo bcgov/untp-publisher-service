@@ -29,11 +29,17 @@ class BitstringStatusList:
         if raw.startswith("u"):
             raw = raw[1:]
         pad = "=" * ((4 - len(raw) % 4) % 4)
-        statusListCompressed = base64.urlsafe_b64decode(raw + pad)
-        statusListBytes = gzip.decompress(statusListCompressed)
-        statusListBitarray = BitArray(bytes=statusListBytes)
-        statusListBitstring = statusListBitarray.bin
-        return statusListBitstring
+        try:
+            statusListCompressed = base64.urlsafe_b64decode(raw + pad)
+            statusListBytes = gzip.decompress(statusListCompressed)
+            statusListBitarray = BitArray(bytes=statusListBytes)
+            return statusListBitarray.bin
+        except Exception as exc:
+            # Callers (e.g. MongoClient.set_status_list_bit) catch this and
+            # return False; do not let base64/gzip errors crash the request.
+            raise BitstringStatusListError(
+                f"Failed to expand encodedList: {exc}"
+            ) from exc
 
     def set_status_bit(self, encoded_list: str, index: int, value: bool) -> str:
         """Return a new ``encodedList`` with ``index`` set to 1 (True) or 0 (False)."""

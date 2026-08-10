@@ -47,10 +47,11 @@ def mark_refresh_status_bit(mongo: MongoClient, vc: dict) -> None:
                 detail="Failed to update refresh status list bit",
             )
         return
-    # BUG: refresh BitstringStatusListEntry is not attached on issue (UNTP
+    # Refresh BitstringStatusListEntry is not attached on issue (UNTP
     # ConformityCredential.json only allows a single credentialStatus object).
     # Skip bit flip until multi-status / statusReference is schema-valid.
-    settings.LOGGER.warning(
+    # Debug (not warning): this is expected for every re-issue today.
+    settings.LOGGER.debug(
         "No refresh status entry on credential; skipping refresh bit update"
     )
 

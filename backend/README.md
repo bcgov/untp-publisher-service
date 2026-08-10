@@ -67,6 +67,7 @@ The image published to GitHub Container Registry is **`ghcr.io/bcgov/untp-publis
   - **`LANDING_TAGLINE`** / **`LANDING_DESCRIPTION`** — Hero copy (description optional)
   - **`LANDING_LOGO_URL`**, **`LANDING_PRIMARY_COLOR`**, **`LANDING_SECONDARY_COLOR`** — colours must be `#RGB` / `#RRGGBB` / `#RRGGBBAA` (else defaults); logo must be `http(s)` or a same-origin path (`/…`)
   - **`LANDING_PARTNER_URL`** / **`LANDING_PARTNER_LABEL`** — partner link only when URL is non-empty `http(s)`; other schemes are dropped
+  - **`DISCOVERY_MAX_RECORDS`** — max CredentialRecord rows loaded for `/discovery` (default `1000`, newest first)
 - **MongoDB** — either a full URI or separate fields:
   - **`MONGO_URI`** — connection string (overrides host/port/user/password); database selection always uses **`MONGO_DB`**
   - or **`MONGO_HOST`**, **`MONGO_PORT`**, **`MONGO_USER`**, **`MONGO_PASSWORD`**, **`MONGO_DB`**

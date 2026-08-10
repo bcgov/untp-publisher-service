@@ -279,13 +279,21 @@ async def landing(request: Request):
 async def discovery(request: Request):
     records: list[dict[str, Any]] = []
     load_error = ""
+    truncated = False
     try:
         mongo = MongoClient()
         # Newest inserted first. Include refresh=true rows so iteration history
         # can collapse under the same (entity_id, cardinality_id) group.
-        for record in mongo.find("CredentialRecord", {}):
+        # Cap rows to bound memory / response size on this public endpoint.
+        # Fetch limit+1 so we can detect truncation without an extra count query.
+        limit = int(settings.DISCOVERY_MAX_RECORDS)
+        page = mongo.find_page("CredentialRecord", {}, skip=0, limit=limit + 1)
+        for record in page:
             if isinstance(record, dict):
                 records.append(record)
+        truncated = len(records) > limit
+        if truncated:
+            records = records[:limit]
     except Exception:
         settings.LOGGER.exception("Discovery: failed to load published credentials")
         load_error = "Could not load credentials. Check that the database is reachable and retry."
@@ -305,5 +313,7 @@ async def discovery(request: Request):
             "total_credentials": len(records),
             "total_groups": len(groups),
             "load_error": load_error,
+            "truncated": truncated,
+            "discovery_max_records": int(settings.DISCOVERY_MAX_RECORDS),
         },
     )

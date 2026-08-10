@@ -31,3 +31,11 @@ def test_expand_accepts_multibase_u_prefix():
     bits = bst.expand("u" + encoded)
     assert bits[0] == "0"
     assert bits[1] == "1"
+
+
+def test_expand_malformed_raises_bitstring_error():
+    bst = BitstringStatusList()
+    with pytest.raises(BitstringStatusListError):
+        bst.expand("!!!not-valid-base64!!!")
+    with pytest.raises(BitstringStatusListError):
+        bst.expand("dGVzdA")  # valid base64, not gzip

@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     #: Partner header link — rendered only when URL is non-empty.
     LANDING_PARTNER_URL: str = Field(default="")
     LANDING_PARTNER_LABEL: str = Field(default="Partner")
+    #: Cap CredentialRecord rows loaded for ``GET /discovery`` (newest first).
+    DISCOVERY_MAX_RECORDS: int = Field(default=1000, ge=1, le=10000)
 
     #: When ``True``, the app exposes only ``/server/status`` and ``/test-suite/*`` (no auth,
     #: credentials, or publisher API). Use for validator CI / isolated test deployments.

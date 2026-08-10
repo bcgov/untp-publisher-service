@@ -191,6 +191,15 @@
       <a class="pub-topbar-brand" href="/">
         <img src="{{ logo_url }}" alt="{{ project_title }}" />
       </a>
+      {% if partner_url %}
+      <a
+        class="pub-topbar-partner"
+        href="{{ partner_url }}"
+        rel="noopener noreferrer"
+        target="_blank"
+        >{{ partner_label }}</a
+      >
+      {% endif %}
     </header>
 
     <main class="hero-band">
