@@ -77,4 +77,26 @@ entries:
     urls:
     - https://github.com/bcgov/orgbook-publisher-service/releases/download/orgbook-publisher-0.0.1/orgbook-publisher-0.0.1.tgz
     version: 0.0.1
-generated: "2024-11-28T23:09:16.810103569Z"
+  untp-publisher:
+  - apiVersion: v2
+    appVersion: 0.0.5
+    created: "2026-08-10T21:45:03.574435463Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: oci://registry-1.docker.io/cloudpirates
+      version: 0.10.3
+    - name: common
+      repository: https://charts.bitnami.com/bitnami
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: Helm chart for the UNTP Publisher — credential registration API,
+      Traction integration, and optional bundled MongoDB.
+    digest: 1e9c7766b495dd92571046f2b8892e25b92350382ac18e00e33f91012123e2de
+    name: untp-publisher
+    type: application
+    urls:
+    - https://github.com/bcgov/untp-publisher-service/releases/download/untp-publisher-0.1.1/untp-publisher-0.1.1.tgz
+    version: 0.1.1
+generated: "2026-08-10T21:45:03.574448853Z"
