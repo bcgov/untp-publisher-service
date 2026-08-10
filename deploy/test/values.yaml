@@ -1,8 +1,8 @@
-## Development overlay — namespace f890b1-dev.
+## Test overlay — namespace f890b1-test.
 ##   cd charts/untp-publisher && helm dependency update
-##   helm upgrade --install untp-publisher-service . -f ../../deploy/dev/values.yaml -n f890b1-dev
+##   helm upgrade --install untp-publisher-service . -f ../../deploy/test/values.yaml -n f890b1-test
 ##
-## Public URL: standard Gold Route host (*.apps.gold.devops.gov.bc.ca; same edge-TLS pattern as BC-Wallet-Demo on Silver).
+## Public URL: standard Gold Route host (*.apps.gold.devops.gov.bc.ca).
 ## OpenShift edge termination — no ingress.tls / no custom cert Secret.
 ##
 ## Pre-create Traction Secret untp-publisher-service-traction-tenant-info
@@ -11,7 +11,7 @@
 ingress:
   annotations:
     route.openshift.io/termination: edge
-  # No tls: — router terminates HTTPS (see BC-Wallet-Demo deploy/showcase/values-dev.yaml).
+  # No tls: — router terminates HTTPS.
 
 networkPolicy:
   ingress:
@@ -22,38 +22,38 @@ backend:
   testSuite: false
   image:
     repository: ghcr.io/bcgov/untp-publisher-service
+    # Same build as f890b1-dev until a tagged release ships current main.
     tag: dev-0.0.3
     pullPolicy: Always
   # Hostname only (sets Ingress rule + pod PUBLISHER_DOMAIN).
-  # Public origin: https://untp-publisher-api-dev.apps.gold.devops.gov.bc.ca
-  host: untp-publisher-api-dev.apps.gold.devops.gov.bc.ca
+  # Public origin: https://untp-publisher-api-test.apps.gold.devops.gov.bc.ca
+  host: untp-publisher-api-test.apps.gold.devops.gov.bc.ca
   traction:
-    apiUrl: "https://traction-tenant-proxy-dev.apps.silver.devops.gov.bc.ca"
+    apiUrl: "https://traction-tenant-proxy-test.apps.silver.devops.gov.bc.ca"
     existingSecret: untp-publisher-service-traction-tenant-info
   environment:
-    webvhServerUrl: "https://registry-dev.digitaltrust.gov.bc.ca"
-    # Same witness as backend/tests/test_did_key.py (multikey → did:key).
-    publisherWitnessId: "did:key:z6MkekByGjKYvP6dpMBJEHt5UN72rKPVoDgzcS9Hoq6bjfr1"
+    webvhServerUrl: "https://registry-test.digitaltrust.gov.bc.ca"
+    # Witness multikey from former orgbook-publisher test chart → did:key.
+    publisherWitnessId: "did:key:z6MkpiDTaJuPzFZpg8MCYRM4ff7i6hNMQaL7fUP5pHBFo75c"
   resources:
     limits:
       cpu: 300m
-      memory: 384Mi
+      memory: 512Mi
     requests:
-      cpu: 25m
-      memory: 128Mi
+      cpu: 50m
+      memory: 256Mi
 
 mongodb:
   customUser:
     # Must match Helm release name untp-publisher-service (parent-managed secret).
     existingSecret: untp-publisher-service-mongodb-custom-user-secret
   targetPlatform: openshift
-  # MongoDB 8 needs ~500Mi free disk; a 512Mi volume fails once journal/FTDC grow.
-  # 1Gi on netapp-block-standard (volumeClaimTemplates are immutable — keep in sync with live PVC).
+  # Namespace storage quota is 1Gi; MongoDB 8 needs ~500Mi free → use full 1Gi.
   persistence:
     storageClass: netapp-block-standard
     size: 1Gi
-  # mongo:8 + mongosh probes OOMed at 384Mi (exit 137). Limit 768Mi stays within
-  # request quota (requests are what the namespace counts). Cap WiredTiger cache.
+  # 512Mi limit previously OOMKilled under mongosh probes; 768Mi + cache cap is stable
+  # without raising request quota (still 256Mi request).
   resources:
     limits:
       memory: 768Mi
@@ -71,7 +71,6 @@ mongodb:
         wiredTiger:
           engineConfig:
             cacheSizeGB: 0.25
-  # mongosh exec probes are memory-heavy; stretch period to reduce OOM pressure.
   livenessProbe:
     initialDelaySeconds: 45
     periodSeconds: 30
@@ -80,4 +79,4 @@ mongodb:
     periodSeconds: 30
   commonLabels:
     backup: "true"
-    env: dev
+    env: test
