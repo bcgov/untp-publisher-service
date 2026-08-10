@@ -40,7 +40,7 @@ backend:
     projectTitle: "BC NRS Publisher"
     projectVersion: "v0"
     landingTagline: "Verifiable critical raw material provenance for British Columbia's Natural Resource Sector."
-    landingDescription: "Browse UNTP-aligned credentials that attest critical raw material provenance across the Natural Resource Sector—copy public URLs, download VCs, and verify issuance from this publisher."
+    landingDescription: "Browse UNTP-aligned credentials that attest critical raw material provenance across the Natural Resource Sector."
     landingLogoUrl: "/static/admin/images/bcgov-logo.svg"
     landingPrimaryColor: "#013366"
     landingSecondaryColor: "#FCBA19"
