@@ -68,6 +68,14 @@ class _FakeStatusListMongo:
         assert collection == "StatusListRecord"
         self.records.append(item)
 
+    def replace(self, collection, query, new_item):
+        assert collection == "StatusListRecord"
+        for i, record in enumerate(self.records):
+            if all(record.get(key) == value for key, value in query.items()):
+                self.records[i] = new_item
+                return
+        raise AssertionError(f"replace miss: {query}")
+
 
 def test_namespace_from_alias():
     assert (
@@ -156,8 +164,8 @@ def test_ensure_credential_type_creates_once(monkeypatch):
 
 def test_ensure_issuer_status_lists_creates_three_active_lists(monkeypatch):
     monkeypatch.setattr(
-        "app.services.provisioning.publisher_origin",
-        lambda: "https://publisher.example",
+        "app.services.provisioning.status_list_endpoint",
+        lambda list_id: f"https://publisher.example/status-lists/{list_id}",
     )
     mongo = _FakeStatusListMongo()
     issuer_id = "did:web:example:issuer"
@@ -177,3 +185,26 @@ def test_ensure_issuer_status_lists_creates_three_active_lists(monkeypatch):
     assert len(second) == 3
     assert len(mongo.records) == 3
     assert {item["id"] for item in second} == {item["id"] for item in first}
+
+
+def test_ensure_issuer_status_lists_rewrites_stale_endpoint(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.provisioning.status_list_endpoint",
+        lambda list_id: f"https://old.example/status-lists/{list_id}",
+    )
+    mongo = _FakeStatusListMongo()
+    issuer_id = "did:web:example:issuer"
+    first = asyncio.run(ensure_issuer_status_lists(issuer_id, mongo=mongo))
+    assert all(r["endpoint"].startswith("https://old.example/") for r in first)
+
+    monkeypatch.setattr(
+        "app.services.provisioning.status_list_endpoint",
+        lambda list_id: f"http://localhost:8000/status-lists/{list_id}",
+    )
+    second = asyncio.run(ensure_issuer_status_lists(issuer_id, mongo=mongo))
+    assert len(mongo.records) == 3
+    assert {item["id"] for item in second} == {item["id"] for item in first}
+    for item in second:
+        expected = f"http://localhost:8000/status-lists/{item['id']}"
+        assert item["endpoint"] == expected
+        assert item["credential"]["id"] == expected

@@ -360,14 +360,6 @@ def load_credential_template(credential_type: str) -> dict[str, Any]:
     )
 
 
-def load_publisher_extension_context() -> dict[str, Any]:
-    """JSON-LD document for publisher terms (``SimpleRefreshQuery``, ``OCABundle``)."""
-    path = config_root() / "contexts" / "publisher-v1.jsonld"
-    if not path.is_file():
-        raise FileNotFoundError(f"Publisher extension context missing at {path}")
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
 def resolve_config_path(relative_path: str) -> Path:
     """Resolve a path relative to ``config_root()`` (e.g. ``credentials/…``)."""
     path = _path_under(config_root(), relative_path.strip())

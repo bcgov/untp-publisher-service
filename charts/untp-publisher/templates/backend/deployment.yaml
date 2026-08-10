@@ -47,6 +47,20 @@ spec:
               value: {{ .Values.backend.environment.projectTitle | quote }}
             - name: PROJECT_VERSION
               value: {{ .Values.backend.environment.projectVersion | quote }}
+            - name: LANDING_TAGLINE
+              value: {{ .Values.backend.environment.landingTagline | quote }}
+            - name: LANDING_DESCRIPTION
+              value: {{ .Values.backend.environment.landingDescription | quote }}
+            - name: LANDING_LOGO_URL
+              value: {{ .Values.backend.environment.landingLogoUrl | quote }}
+            - name: LANDING_PRIMARY_COLOR
+              value: {{ .Values.backend.environment.landingPrimaryColor | quote }}
+            - name: LANDING_SECONDARY_COLOR
+              value: {{ .Values.backend.environment.landingSecondaryColor | quote }}
+            - name: LANDING_PARTNER_URL
+              value: {{ .Values.backend.environment.landingPartnerUrl | quote }}
+            - name: LANDING_PARTNER_LABEL
+              value: {{ .Values.backend.environment.landingPartnerLabel | quote }}
             - name: OCA_DIGEST
               value: {{ .Values.backend.environment.ocaDigest | quote }}
 

@@ -154,8 +154,11 @@ def test_compose_credential(publication_payload, type_record, issuer, monkeypatc
     assert assessment["assessedProduct"][0]["product"]["id"] == (
         "urn:ca:bcgov:mines-act:permit:Q-20:commodity:construction-aggregate"
     )
-    assert credential["renderMethod"][0]["type"] == "OCABundle"
-    assert "digestMultibase" not in credential["renderMethod"][0]
+    rm = credential["renderMethod"][0]
+    assert rm["type"] == "TemplateRenderMethod"
+    assert rm["renderSuite"] == "oca-bundle"
+    assert rm["name"] == "Overlay Capture Architecture Bundle"
+    assert "digestMultibase" not in rm
 
 
 def test_oca_render_method_includes_digest_when_enabled(monkeypatch):
@@ -169,5 +172,7 @@ def test_oca_render_method_includes_digest_when_enabled(monkeypatch):
         credential_type=CREDENTIAL_TYPE,
         version="v1.1",
     )
+    assert methods[0]["type"] == "TemplateRenderMethod"
+    assert methods[0]["renderSuite"] == "oca-bundle"
     assert methods[0]["digestMultibase"].startswith("z")
     assert methods[0]["id"].endswith("/oca.json")

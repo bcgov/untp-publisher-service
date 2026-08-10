@@ -32,6 +32,22 @@ class Settings(BaseSettings):
     PROJECT_TITLE: str = "UNTP Publisher"
     PROJECT_VERSION: str = "v0"
 
+    #: Landing / discovery HTML chrome (ignored in TEST_SUITE mode).
+    LANDING_TAGLINE: str = Field(
+        default="Publish UNTP-aligned verifiable credentials through BC Traction."
+    )
+    LANDING_DESCRIPTION: str = Field(default="")
+    LANDING_LOGO_URL: str = Field(
+        default="https://mines.nrs.gov.bc.ca/assets/images/bcgov-mineinfo-horiz-LG.png"
+    )
+    LANDING_PRIMARY_COLOR: str = Field(default="#013366")
+    LANDING_SECONDARY_COLOR: str = Field(default="#FCBA19")
+    #: Partner header link — rendered only when URL is non-empty.
+    LANDING_PARTNER_URL: str = Field(default="")
+    LANDING_PARTNER_LABEL: str = Field(default="Partner")
+    #: Cap CredentialRecord rows loaded for ``GET /discovery`` (newest first).
+    DISCOVERY_MAX_RECORDS: int = Field(default=1000, ge=1, le=10000)
+
     #: When ``True``, the app exposes only ``/server/status`` and ``/test-suite/*`` (no auth,
     #: credentials, or publisher API). Use for validator CI / isolated test deployments.
     TEST_SUITE: bool = Field(default=False)

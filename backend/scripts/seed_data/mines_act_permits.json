@@ -1,0 +1,582 @@
+[
+  {
+    "comment": "Initial issue — Q-20 / EXAMPLE MINING CO",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "1999-04-19",
+        "identifier": "Q-20"
+      },
+      "permittee": {
+        "name": "EXAMPLE MINING CO",
+        "identifier": "A0034771"
+      },
+      "mine": {
+        "name": "Kootenay West",
+        "identifier": "0500956",
+        "locationInformation": "https://plus.codes/9526679P+4V"
+      },
+      "commodities": [{ "name": "Construction Aggregate" }]
+    }
+  },
+  {
+    "comment": "Initial issue — C-217 / BASIN COAL",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2015-03-19",
+        "identifier": "C-217"
+      },
+      "permittee": {
+        "name": "BASIN COAL MINE COMPANY",
+        "identifier": "FM0443135"
+      },
+      "mine": {
+        "name": "Basin Coal Mine",
+        "identifier": "1500601",
+        "locationInformation": "https://plus.codes/85PRQX76+22"
+      },
+      "commodities": [{ "name": "Metallurgic" }]
+    }
+  },
+  {
+    "comment": "Initial issue — M-245 / HIGHLAND VALLEY",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2008-11-02",
+        "identifier": "M-245"
+      },
+      "permittee": {
+        "name": "HIGHLAND VALLEY COPPER CORP",
+        "identifier": "BC0876543"
+      },
+      "mine": {
+        "name": "Highland Valley Copper",
+        "identifier": "0100089",
+        "locationInformation": "https://plus.codes/85PR8W2F+5C"
+      },
+      "commodities": [{ "name": "Copper" }, { "name": "Molybdenum" }]
+    }
+  },
+  {
+    "comment": "Initial issue — G-111 / RED CHRIS",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2012-06-15",
+        "identifier": "G-111"
+      },
+      "permittee": {
+        "name": "RED CHRIS DEVELOPMENT COMPANY LTD",
+        "identifier": "BC1122334"
+      },
+      "mine": {
+        "name": "Red Chris",
+        "identifier": "1600001",
+        "locationInformation": "https://plus.codes/94VR2Q2Q+XX"
+      },
+      "commodities": [{ "name": "Gold" }, { "name": "Copper" }]
+    }
+  },
+  {
+    "comment": "Initial issue — P-102 / MOUNT POLLEY",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2001-09-28",
+        "identifier": "P-102"
+      },
+      "permittee": {
+        "name": "MOUNT POLLEY MINING CORPORATION",
+        "identifier": "BC5566778"
+      },
+      "mine": {
+        "name": "Mount Polley",
+        "identifier": "0800012",
+        "locationInformation": "https://plus.codes/85PR9X4X+22"
+      },
+      "commodities": [{ "name": "Copper" }, { "name": "Gold" }]
+    }
+  },
+  {
+    "comment": "Initial issue — Q-88 / QUARRY RIDGE",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2018-01-10",
+        "identifier": "Q-88"
+      },
+      "permittee": {
+        "name": "QUARRY RIDGE AGGREGATES LTD",
+        "identifier": "A0099001"
+      },
+      "mine": {
+        "name": "Quarry Ridge",
+        "identifier": "0700444",
+        "locationInformation": "https://plus.codes/84XVQ2G2+9F"
+      },
+      "commodities": [{ "name": "Construction Aggregate" }]
+    }
+  },
+  {
+    "comment": "Initial issue — C-099 / ELK VALLEY",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "1995-05-04",
+        "identifier": "C-099"
+      },
+      "permittee": {
+        "name": "ELK VALLEY RESOURCES LTD",
+        "identifier": "BC3344556"
+      },
+      "mine": {
+        "name": "Fording River",
+        "identifier": "0200155",
+        "locationInformation": "https://plus.codes/85PQWX88+88"
+      },
+      "commodities": [{ "name": "Metallurgic" }]
+    }
+  },
+  {
+    "comment": "Initial issue — N-501 / NEW AFTON",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2020-07-22",
+        "identifier": "N-501"
+      },
+      "permittee": {
+        "name": "NEW AFTON MINE CORP",
+        "identifier": "BC7788990"
+      },
+      "mine": {
+        "name": "New Afton",
+        "identifier": "0900777",
+        "locationInformation": "https://plus.codes/85PR6V6V+6V"
+      },
+      "commodities": [{ "name": "Copper" }, { "name": "Gold" }]
+    }
+  },
+  {
+    "comment": "Initial issue — M-301 / GIBRALTAR",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2004-03-12",
+        "identifier": "M-301"
+      },
+      "permittee": {
+        "name": "GIBRALTAR MINES LTD",
+        "identifier": "BC2011223"
+      },
+      "mine": {
+        "name": "Gibraltar",
+        "identifier": "0300221",
+        "locationInformation": "https://plus.codes/85PR7H7H+7H"
+      },
+      "commodities": [{ "name": "Copper" }, { "name": "Molybdenum" }]
+    }
+  },
+  {
+    "comment": "Initial issue — G-220 / BRUCEJACK",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2017-06-30",
+        "identifier": "G-220"
+      },
+      "permittee": {
+        "name": "PRETIUM RESOURCES INC",
+        "identifier": "BC4455667"
+      },
+      "mine": {
+        "name": "Brucejack",
+        "identifier": "1600888",
+        "locationInformation": "https://plus.codes/94VQ3R3R+3R"
+      },
+      "commodities": [{ "name": "Gold" }, { "name": "Silver" }]
+    }
+  },
+  {
+    "comment": "Initial issue — P-315 / COPPER MOUNTAIN",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2011-02-14",
+        "identifier": "P-315"
+      },
+      "permittee": {
+        "name": "COPPER MOUNTAIN MINING CORP",
+        "identifier": "BC6677889"
+      },
+      "mine": {
+        "name": "Copper Mountain",
+        "identifier": "0800333",
+        "locationInformation": "https://plus.codes/85PP8J8J+8J"
+      },
+      "commodities": [{ "name": "Copper" }, { "name": "Gold" }]
+    }
+  },
+  {
+    "comment": "Initial issue — Q-45 / OKANAGAN AGGREGATE",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2019-09-05",
+        "identifier": "Q-45"
+      },
+      "permittee": {
+        "name": "OKANAGAN AGGREGATE LTD",
+        "identifier": "A0111222"
+      },
+      "mine": {
+        "name": "Westside Pit",
+        "identifier": "0700555",
+        "locationInformation": "https://plus.codes/84XVQ8Q8+8Q"
+      },
+      "commodities": [{ "name": "Sand and Gravel" }]
+    }
+  },
+  {
+    "comment": "Initial issue — C-180 / LINE CREEK",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "1998-11-20",
+        "identifier": "C-180"
+      },
+      "permittee": {
+        "name": "LINE CREEK RESOURCES LTD",
+        "identifier": "BC8899001"
+      },
+      "mine": {
+        "name": "Line Creek",
+        "identifier": "0200666",
+        "locationInformation": "https://plus.codes/85PQWY9Y+9Y"
+      },
+      "commodities": [{ "name": "Metallurgic" }, { "name": "Thermal Coal" }]
+    }
+  },
+  {
+    "comment": "Initial issue — N-612 / BLACKWATER",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2023-04-18",
+        "identifier": "N-612"
+      },
+      "permittee": {
+        "name": "ARTEMIS GOLD INC",
+        "identifier": "BC9900112"
+      },
+      "mine": {
+        "name": "Blackwater",
+        "identifier": "0900999",
+        "locationInformation": "https://plus.codes/85Q22K2K+2K"
+      },
+      "commodities": [{ "name": "Gold" }, { "name": "Silver" }]
+    }
+  },
+  {
+    "comment": "Initial issue — M-88 / HIGHLAND NORTH",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2006-08-09",
+        "identifier": "M-88"
+      },
+      "permittee": {
+        "name": "THOMPSON CREEK METALS CO",
+        "identifier": "BC1011121"
+      },
+      "mine": {
+        "name": "Endako",
+        "identifier": "0100444",
+        "locationInformation": "https://plus.codes/85Q35M5M+5M"
+      },
+      "commodities": [{ "name": "Molybdenum" }]
+    }
+  },
+  {
+    "comment": "Initial issue — G-55 / KEMESS",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2009-01-27",
+        "identifier": "G-55"
+      },
+      "permittee": {
+        "name": "CENTERRA GOLD INC",
+        "identifier": "BC1213141"
+      },
+      "mine": {
+        "name": "Kemess South",
+        "identifier": "1600111",
+        "locationInformation": "https://plus.codes/94VR4N4N+4N"
+      },
+      "commodities": [{ "name": "Gold" }, { "name": "Copper" }]
+    }
+  },
+  {
+    "comment": "Initial issue — P-77 / Huckleberry",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2013-05-16",
+        "identifier": "P-77"
+      },
+      "permittee": {
+        "name": "HUCKLEBERRY MINES LTD",
+        "identifier": "BC1516171"
+      },
+      "mine": {
+        "name": "Huckleberry",
+        "identifier": "0800777",
+        "locationInformation": "https://plus.codes/85PM6P6P+6P"
+      },
+      "commodities": [{ "name": "Copper" }, { "name": "Molybdenum" }]
+    }
+  },
+  {
+    "comment": "Initial issue — Q-150 / COASTAL QUARRY",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2021-03-03",
+        "identifier": "Q-150"
+      },
+      "permittee": {
+        "name": "COASTAL QUARRY PRODUCTS LTD",
+        "identifier": "A0222333"
+      },
+      "mine": {
+        "name": "Sechelt Aggregates",
+        "identifier": "0700888",
+        "locationInformation": "https://plus.codes/84XV2R2R+2R"
+      },
+      "commodities": [{ "name": "Construction Aggregate" }, { "name": "Sand and Gravel" }]
+    }
+  },
+  {
+    "comment": "Initial issue — C-333 / GREENHILLS",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2002-12-01",
+        "identifier": "C-333"
+      },
+      "permittee": {
+        "name": "GREENHILLS COAL LTD",
+        "identifier": "BC1819202"
+      },
+      "mine": {
+        "name": "Greenhills",
+        "identifier": "0200888",
+        "locationInformation": "https://plus.codes/85PQX1X1+X1"
+      },
+      "commodities": [{ "name": "Metallurgic" }]
+    }
+  },
+  {
+    "comment": "Initial issue — N-900 / CARIBOO GOLD",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2024-01-15",
+        "identifier": "N-900"
+      },
+      "permittee": {
+        "name": "OSISKO DEVELOPMENT CORP",
+        "identifier": "BC2122232"
+      },
+      "mine": {
+        "name": "Cariboo Gold",
+        "identifier": "0900111",
+        "locationInformation": "https://plus.codes/85PR3T3T+3T"
+      },
+      "commodities": [{ "name": "Gold" }]
+    }
+  },
+  {
+    "comment": "Same cardinality M-245, different entity — HIGHLAND JV PARTNER CO",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2008-11-02",
+        "identifier": "M-245"
+      },
+      "permittee": {
+        "name": "HIGHLAND JV PARTNER CO",
+        "identifier": "BC0999888"
+      },
+      "mine": {
+        "name": "Highland Valley Copper",
+        "identifier": "0100089",
+        "locationInformation": "https://plus.codes/85PR8W2F+5C"
+      },
+      "commodities": [{ "name": "Copper" }, { "name": "Molybdenum" }]
+    }
+  },
+  {
+    "comment": "Same cardinality Q-20, different entity — KOOTENAY WEST HOLDINGS",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "1999-04-19",
+        "identifier": "Q-20"
+      },
+      "permittee": {
+        "name": "KOOTENAY WEST HOLDINGS LTD",
+        "identifier": "A0034999"
+      },
+      "mine": {
+        "name": "Kootenay West",
+        "identifier": "0500956",
+        "locationInformation": "https://plus.codes/9526679P+4V"
+      },
+      "commodities": [{ "name": "Construction Aggregate" }]
+    }
+  },
+  {
+    "comment": "Same cardinality C-099, different entity — ELK VALLEY OPERATING CO",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "1995-05-04",
+        "identifier": "C-099"
+      },
+      "permittee": {
+        "name": "ELK VALLEY OPERATING CO",
+        "identifier": "BC3344001"
+      },
+      "mine": {
+        "name": "Fording River",
+        "identifier": "0200155",
+        "locationInformation": "https://plus.codes/85PQWX88+88"
+      },
+      "commodities": [{ "name": "Metallurgic" }]
+    }
+  },
+  {
+    "comment": "Republication 2/3 — Q-20 / EXAMPLE MINING CO (adds Sand and Gravel)",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "1999-04-19",
+        "identifier": "Q-20"
+      },
+      "permittee": {
+        "name": "EXAMPLE MINING CO",
+        "identifier": "A0034771"
+      },
+      "mine": {
+        "name": "Kootenay West",
+        "identifier": "0500956",
+        "locationInformation": "https://plus.codes/9526679P+4V"
+      },
+      "commodities": [
+        { "name": "Construction Aggregate" },
+        { "name": "Sand and Gravel" }
+      ]
+    }
+  },
+  {
+    "comment": "Republication 3/3 — Q-20 / EXAMPLE MINING CO (renamed mine site)",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "1999-04-19",
+        "identifier": "Q-20"
+      },
+      "permittee": {
+        "name": "EXAMPLE MINING CO",
+        "identifier": "A0034771"
+      },
+      "mine": {
+        "name": "Kootenay West Pit",
+        "identifier": "0500956",
+        "locationInformation": "https://plus.codes/9526679P+4V"
+      },
+      "commodities": [
+        { "name": "Construction Aggregate" },
+        { "name": "Sand and Gravel" }
+      ]
+    }
+  },
+  {
+    "comment": "Republication 2/2 — C-217 / BASIN COAL (adds Thermal Coal; later issuanceDate)",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2016-08-01",
+        "identifier": "C-217"
+      },
+      "permittee": {
+        "name": "BASIN COAL MINE COMPANY",
+        "identifier": "FM0443135"
+      },
+      "mine": {
+        "name": "Basin Coal Mine",
+        "identifier": "1500601",
+        "locationInformation": "https://plus.codes/85PRQX76+22"
+      },
+      "commodities": [
+        { "name": "Metallurgic" },
+        { "name": "Thermal Coal" }
+      ]
+    }
+  },
+  {
+    "comment": "Republication 2/2 — M-245 / HIGHLAND VALLEY (adds Gold commodity)",
+    "template": "BCMinesActPermitCredential",
+    "version": "v1.1",
+    "data": {
+      "permit": {
+        "issuanceDate": "2008-11-02",
+        "identifier": "M-245"
+      },
+      "permittee": {
+        "name": "HIGHLAND VALLEY COPPER CORP",
+        "identifier": "BC0876543"
+      },
+      "mine": {
+        "name": "Highland Valley Copper",
+        "identifier": "0100089",
+        "locationInformation": "https://plus.codes/85PR8W2F+5C"
+      },
+      "commodities": [
+        { "name": "Copper" },
+        { "name": "Molybdenum" },
+        { "name": "Gold" }
+      ]
+    }
+  }
+]

@@ -21,6 +21,13 @@ Helm chart for the [UNTP Publisher](https://github.com/bcgov/untp-publisher-serv
 | backend.environment.publisherWitnessId | string | `""` | Witness `did:key` (`PUBLISHER_WITNESS_ID`; multikey derived at runtime) |
 | backend.environment.projectTitle | string | `"UNTP Publisher"` | Brand / OpenAPI title (`PROJECT_TITLE`) |
 | backend.environment.projectVersion | string | `"v0"` | Version string (`PROJECT_VERSION`) |
+| backend.environment.landingTagline | string | `"Publish UNTP-aligned verifiable credentials through BC Traction."` | Landing hero tagline (`LANDING_TAGLINE`) |
+| backend.environment.landingDescription | string | `""` | Optional landing description (`LANDING_DESCRIPTION`) |
+| backend.environment.landingLogoUrl | string | `"/static/admin/images/bcgov-logo.svg"` | Header logo URL (`LANDING_LOGO_URL`); `http(s)` or same-origin path |
+| backend.environment.landingPrimaryColor | string | `"#013366"` | Brand primary / navy (`LANDING_PRIMARY_COLOR`); `#RGB`/`#RRGGBB`/`#RRGGBBAA` only |
+| backend.environment.landingSecondaryColor | string | `"#FCBA19"` | Brand secondary / gold (`LANDING_SECONDARY_COLOR`); hex only |
+| backend.environment.landingPartnerUrl | string | `""` | Partner header link; `http(s)` only, omit chrome when empty (`LANDING_PARTNER_URL`) |
+| backend.environment.landingPartnerLabel | string | `"Partner"` | Partner link label (`LANDING_PARTNER_LABEL`) |
 | backend.environment.ocaDigest | bool | `false` | When true, include `digestMultibase` on OCA `renderMethod` (`OCA_DIGEST`) |
 | backend.traction.apiUrl | string | `""` | Traction tenant proxy base URL (sets `TRACTION_API_URL`) |
 | backend.traction.existingSecret | string | `""` | Pre-created Traction Secret. When empty, Helm manages `{fullname}-traction`. When set, Helm does not create the Secret. |

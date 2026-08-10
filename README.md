@@ -8,6 +8,6 @@ are resolved from ``data`` via ``x-publisher-pointers`` in
 
 The goal is for published data to be queryable and usable by BC-registered organizations in their business processes and transactions.
 
-For operational guides, see the [`docs/`](docs/) directory (admin workflows and client integration). Environment Helm overlays live under [`deploy/`](deploy/).
+For operational guides, see the [`docs/`](docs/) directory (admin workflows, client integration, and [landing/discovery UI design](docs/ui-design-landing-discovery.md)). Environment Helm overlays live under [`deploy/`](deploy/).
 
 Contributions require a [Developer Certificate of Origin](https://developercertificate.org/) sign-off on each commit; see [CONTRIBUTING.md](CONTRIBUTING.md).

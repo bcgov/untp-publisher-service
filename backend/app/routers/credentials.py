@@ -8,7 +8,7 @@ from app.plugins.mongodb import MongoClient, MongoClientError
 from config import settings
 from app.plugins import TractionController
 from app.services.coordinator import PublisherCoordinator
-from app.services.composer import normalize_publication
+from app.services.composer import normalize_publication, credential_download_filename
 from app.security import AuthPrincipal, jwt_or_api_key
 import uuid
 
@@ -167,16 +167,27 @@ async def publish_credential(
     return JSONResponse(status_code=200, content={"credentialId": vc["id"]})
 
 
-def _enveloped_credential_response(credential_record: dict) -> JSONResponse:
+def _enveloped_credential_response(
+    credential_record: dict, *, download: bool = False
+) -> JSONResponse:
     vc_jwt = credential_record.get("vc_jwt")
     if not vc_jwt:
         raise HTTPException(status_code=500, detail="Credential record missing vc_jwt")
     enveloped = TractionController.as_enveloped_vc(vc_jwt)
-    return JSONResponse(headers={"Content-Type": "application/vc"}, content=enveloped)
+    headers = {"Content-Type": "application/vc"}
+    if download:
+        filename = credential_download_filename(credential_record)
+        headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return JSONResponse(headers=headers, content=enveloped)
 
 
 @router.get("/refresh")
-async def refresh_credential(type: str, entity: str, cardinality: str):
+async def refresh_credential(
+    type: str,
+    entity: str,
+    cardinality: str,
+    download: bool = False,
+):
     """Return the active credential as an EnvelopedVerifiableCredential."""
     mongo = MongoClient()
     credential_record = mongo.find_one(
@@ -190,15 +201,16 @@ async def refresh_credential(type: str, entity: str, cardinality: str):
     )
     if not credential_record:
         raise HTTPException(status_code=404, detail="No record found.")
-    return _enveloped_credential_response(credential_record)
+    return _enveloped_credential_response(credential_record, download=download)
 
 
 @router.get("/{credential_id}")
-async def get_credential(credential_id: str):
+async def get_credential(credential_id: str, download: bool = False):
     """Return a published credential as an EnvelopedVerifiableCredential.
 
     Response ``Content-Type`` is ``application/vc`` (VCDM 2.0 envelope wrapping
-    ``data:application/vc+jwt,…``).
+    ``data:application/vc+jwt,…``). Pass ``download=true`` to set
+    ``Content-Disposition: attachment`` with a typed filename.
     """
     mongo = MongoClient()
     credential_record = mongo.find_one("CredentialRecord", {"id": credential_id})
@@ -207,4 +219,4 @@ async def get_credential(credential_id: str):
             status_code=404,
             detail="No record found.",
         )
-    return _enveloped_credential_response(credential_record)
+    return _enveloped_credential_response(credential_record, download=download)

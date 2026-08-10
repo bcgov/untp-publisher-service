@@ -7,6 +7,7 @@ import gzip, base64
 class BitstringStatusListError(Exception):
     """Generic BitstringStatusList Error."""
 
+
 class BitstringStatusList:
     def __init__(self):
         # self.store = AskarStorage()
@@ -23,11 +24,33 @@ class BitstringStatusList:
 
     def expand(self, encoded_list):
         # https://www.w3.org/TR/vc-bitstring-status-list/#bitstring-expansion-algorithm
-        statusListCompressed = base64.urlsafe_b64decode(encoded_list)
-        statusListBytes = gzip.decompress(statusListCompressed)
-        statusListBitarray = BitArray(bytes=statusListBytes)
-        statusListBitstring = statusListBitarray.bin
-        return statusListBitstring
+        raw = (encoded_list or "").strip()
+        # Spec Multibase base64url uses a leading ``u``; our create() path omits it.
+        if raw.startswith("u"):
+            raw = raw[1:]
+        pad = "=" * ((4 - len(raw) % 4) % 4)
+        try:
+            statusListCompressed = base64.urlsafe_b64decode(raw + pad)
+            statusListBytes = gzip.decompress(statusListCompressed)
+            statusListBitarray = BitArray(bytes=statusListBytes)
+            return statusListBitarray.bin
+        except Exception as exc:
+            # Callers (e.g. MongoClient.set_status_list_bit) catch this and
+            # return False; do not let base64/gzip errors crash the request.
+            raise BitstringStatusListError(
+                f"Failed to expand encodedList: {exc}"
+            ) from exc
+
+    def set_status_bit(self, encoded_list: str, index: int, value: bool) -> str:
+        """Return a new ``encodedList`` with ``index`` set to 1 (True) or 0 (False)."""
+        bitstring = self.expand(encoded_list)
+        bits = list(bitstring)
+        if index < 0 or index >= len(bits):
+            raise BitstringStatusListError(
+                f"statusListIndex {index} out of range for list length {len(bits)}"
+            )
+        bits[index] = "1" if value else "0"
+        return self.generate("".join(bits))
 
     async def create(self, id=None, issuer=None, purpose="revocation", length=200000):
         # https://www.w3.org/TR/vc-bitstring-status-list/#example-example-bitstringstatuslistcredential
@@ -62,43 +85,3 @@ class BitstringStatusList:
         statusList = list(statusListBitstring)
         credentialStatusBit = statusList[statusListIndex]
         return True if credentialStatusBit == "1" else False
-
-
-#     async def change_credential_status(self, vc, statusBit, did_label, statusListCredentialId):
-#         statusList_index = vc["credentialStatus"]["statusListIndex"]
-
-#         dataKey = askar.statusCredentialDataKey(did_label, statusListCredentialId)
-#         statusListCredential = await askar.fetch_data(settings.ASKAR_PUBLIC_STORE_KEY, dataKey)
-#         statusListEncoded = statusListCredential["credentialSubject"]["encodedList"]
-#         statusListBitstring = self.expand(statusListEncoded)
-#         statusList = list(statusListBitstring)
-
-#         statusList[statusList_index] = statusBit
-#         statusListBitstring = "".join(statusList)
-#         statusListEncoded = self.generate(statusListBitstring)
-
-#         statusListCredential["credentialSubject"]["encodedList"] = statusListEncoded
-
-#         did = vc["issuer"] if isinstance(vc["issuer"], str) else vc["issuer"]["id"]
-#         verkey = agent.get_verkey(did)
-#         options = {
-#             "verificationMethod": f"{did}#verkey",
-#             "proofPurpose": "AssertionMethod",
-#         }
-#         # Remove old proof
-#         statusListCredential.pop("proof")
-#         statusListCredential = agent.sign_json_ld(statusListCredential, options, verkey)
-
-#         return statusListCredential
-
-
-# async def get_status_list_credential(did_label, statusListCredentialId):
-#     try:
-#         dataKey = askar.statusCredentialDataKey(did_label, statusListCredentialId)
-#         statusListCredential = await askar.fetch_data(settings.ASKAR_PUBLIC_STORE_KEY, dataKey)
-#     except:
-#         return ValidationException(
-#             status_code=404,
-#             content={"message": "Status list not found"},
-#         )
-#     return statusListCredential

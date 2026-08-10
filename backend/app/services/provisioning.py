@@ -16,7 +16,10 @@ from app.models.mongodb import (
 from app.plugins.mongodb import MongoClient, MongoClientError
 from app.plugins.status_list import BitstringStatusList
 from app.repo_configs.loader import load_oca_bundle
-from app.services.composer import oca_render_method, publisher_origin
+from app.services.composer import (
+    oca_render_method,
+    status_list_endpoint,
+)
 from app.services.templates import build_registration_template
 from config import settings
 
@@ -181,16 +184,47 @@ def ensure_credential_type(
     return record
 
 
+def _reconcile_status_list_endpoint(
+    record: dict[str, Any], *, mongo: MongoClient
+) -> dict[str, Any]:
+    """Rewrite stored endpoint / credential id when PUBLISHER_DOMAIN changes."""
+    list_id = (record.get("id") or "").strip()
+    if not list_id:
+        return record
+    expected = status_list_endpoint(list_id)
+    current = (record.get("endpoint") or "").rstrip("/")
+    if current == expected:
+        return record
+
+    settings.LOGGER.info(
+        "Rewriting status list endpoint purpose=%s: %s -> %s",
+        record.get("purpose"),
+        current,
+        expected,
+    )
+    updated = dict(record)
+    updated["endpoint"] = expected
+    credential = updated.get("credential")
+    if isinstance(credential, dict):
+        credential = dict(credential)
+        credential["id"] = expected
+        updated["credential"] = credential
+    updated.pop("_id", None)
+    mongo.replace("StatusListRecord", {"id": list_id}, updated)
+    return updated
+
+
 async def ensure_issuer_status_lists(
     issuer_id: str, *, mongo: MongoClient | None = None
 ) -> list[dict[str, Any]]:
     """
     Ensure the issuer has one active bitstring status list per purpose.
 
-    Idempotent: existing active records for ``issuer`` + ``purpose`` are left unchanged.
+    Idempotent for list identity: existing active records are kept, but their
+    ``endpoint`` (and status-list credential ``id``) are rewritten to the
+    current ``PUBLISHER_DOMAIN`` origin when it changes.
     """
     client = mongo or MongoClient()
-    origin = publisher_origin()
     ensured: list[dict[str, Any]] = []
 
     for purpose in STATUS_PURPOSES:
@@ -199,6 +233,7 @@ async def ensure_issuer_status_lists(
             {"issuer": issuer_id, "purpose": purpose, "active": True},
         )
         if existing:
+            existing = _reconcile_status_list_endpoint(existing, mongo=client)
             settings.LOGGER.info(
                 "Status list OK for %s purpose=%s id=%s",
                 issuer_id,
@@ -209,7 +244,7 @@ async def ensure_issuer_status_lists(
             continue
 
         status_list_id = str(uuid.uuid4())
-        endpoint = f"{origin}/status-lists/{status_list_id}"
+        endpoint = status_list_endpoint(status_list_id)
         indexes = list(range(STATUS_LIST_LENGTH))
         random.shuffle(indexes)
 

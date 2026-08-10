@@ -1,0 +1,17 @@
+{
+  "@context": {
+    "@protected": true,
+    "id": "@id",
+    "type": "@type",
+    "TemplateRenderMethod": "https://w3id.org/vc/render-method#TemplateRenderMethod",
+    "name": "https://schema.org/name",
+    "renderSuite": {
+      "@id": "https://w3id.org/vc/render-method#renderSuite",
+      "@type": "@vocab"
+    },
+    "digestMultibase": {
+      "@id": "https://w3id.org/security#digestMultibase",
+      "@type": "https://w3id.org/security#multibase"
+    }
+  }
+}

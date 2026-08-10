@@ -78,8 +78,63 @@ class MongoClient:
         indexes = before.get("indexes") or []
         if not indexes:
             return None
+        list_id = before.get("id")
+        # Always emit URLs for the current PUBLISHER_DOMAIN (stored endpoint may
+        # be stale after a domain change; lookup still works via list id).
+        from app.services.composer import status_list_endpoint
+
+        endpoint = (
+            status_list_endpoint(str(list_id))
+            if list_id
+            else before.get("endpoint")
+        )
         return {
             "index": indexes[-1],
-            "endpoint": before.get("endpoint"),
-            "id": before.get("id"),
+            "endpoint": endpoint,
+            "id": list_id,
         }
+
+    def set_status_list_bit(
+        self, *, endpoint: str, index: int, value: bool = True
+    ) -> bool:
+        """Set one bit on the StatusListCredential ``encodedList`` for ``endpoint``.
+
+        Looks up ``StatusListRecord`` by ``endpoint``, then by trailing path id.
+        Returns ``True`` when the encoded list was updated and persisted.
+        """
+        from app.plugins.status_list import BitstringStatusList, BitstringStatusListError
+
+        endpoint = (endpoint or "").strip()
+        if not endpoint:
+            return False
+
+        record = self.find_one("StatusListRecord", {"endpoint": endpoint})
+        if not record:
+            list_id = endpoint.rstrip("/").rsplit("/", 1)[-1]
+            if list_id:
+                record = self.find_one("StatusListRecord", {"id": list_id})
+        if not record:
+            return False
+
+        credential = record.get("credential")
+        if not isinstance(credential, dict):
+            return False
+        subject = credential.get("credentialSubject")
+        if not isinstance(subject, dict):
+            return False
+        encoded = subject.get("encodedList")
+        if not isinstance(encoded, str) or not encoded:
+            return False
+
+        try:
+            subject["encodedList"] = BitstringStatusList().set_status_bit(
+                encoded, int(index), value
+            )
+        except (BitstringStatusListError, ValueError, TypeError):
+            return False
+
+        credential["credentialSubject"] = subject
+        record["credential"] = credential
+        record.pop("_id", None)
+        self.replace("StatusListRecord", {"id": record["id"]}, record)
+        return True
