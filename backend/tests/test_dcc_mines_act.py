@@ -143,7 +143,7 @@ def test_compose_credential(publication_payload, type_record, issuer, monkeypatc
     assert criteria["id"].endswith("#section10")
     assert criteria["name"] == "Permits"
     assert len(assessment["assessedFacility"]) == 1
-    assert assessment["assessedFacility"][0]["type"] == ["FacilityVerification"]
+    assert "type" not in assessment["assessedFacility"][0]
     facility_obj = assessment["assessedFacility"][0]["facility"]
     assert facility_obj["id"] == "urn:ca:bcgov:mines-act:permit:Q-20:mine:0500956"
     assert facility_obj["locationInformation"]["plusCode"] == (
@@ -155,7 +155,7 @@ def test_compose_credential(publication_payload, type_record, issuer, monkeypatc
         "urn:ca:bcgov:mines-act:permit:Q-20:commodity:construction-aggregate"
     )
     rm = credential["renderMethod"][0]
-    assert rm["type"] == "TemplateRenderMethod"
+    assert rm["type"] == ["TemplateRenderMethod"]
     assert rm["renderSuite"] == "oca-bundle"
     assert rm["name"] == "Overlay Capture Architecture Bundle"
     assert "digestMultibase" not in rm
@@ -172,7 +172,7 @@ def test_oca_render_method_includes_digest_when_enabled(monkeypatch):
         credential_type=CREDENTIAL_TYPE,
         version="v1.1",
     )
-    assert methods[0]["type"] == "TemplateRenderMethod"
+    assert methods[0]["type"] == ["TemplateRenderMethod"]
     assert methods[0]["renderSuite"] == "oca-bundle"
     assert methods[0]["digestMultibase"].startswith("z")
     assert methods[0]["id"].endswith("/oca.json")

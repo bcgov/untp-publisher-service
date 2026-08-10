@@ -738,7 +738,7 @@ class ConformityAssessment(BaseModel):
     evidence: list[Link] | None = Field(
         default=None, description="Evidence to support this specific assessment."
     )
-    conformityTopic: ConformityTopic = Field(
+    conformityTopic: list[ConformityTopic] = Field(
         ...,
         description="The UNTP conformity topic used to categorise this assessment. Should match the topic defined by the scheme criterion.",
     )

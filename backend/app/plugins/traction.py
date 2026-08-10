@@ -316,7 +316,7 @@ class TractionController:
         return {
             "@context": ["https://www.w3.org/ns/credentials/v2"],
             "id": f"data:application/vc+jwt,{vc_jwt}",
-            "type": ["EnvelopedVerifiableCredential"],
+            "type": "EnvelopedVerifiableCredential",
         }
 
     def issue_vc(self, credential):

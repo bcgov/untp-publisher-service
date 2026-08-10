@@ -576,7 +576,10 @@
           "description": "Evidence to support this specific assessment."
         },
         "conformityTopic": {
-          "$ref": "#/$defs/ConformityTopic",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConformityTopic"
+          },
           "description": "The UNTP conformity topic used to categorise this assessment. Should match the topic defined by the scheme criterion."
         },
         "conformance": {

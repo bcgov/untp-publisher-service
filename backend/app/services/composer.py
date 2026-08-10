@@ -99,8 +99,18 @@ def oca_render_method(
     """Build OCA ``TemplateRenderMethod``; include ``digestMultibase`` only if ``OCA_DIGEST``."""
     cfg = credential_yaml_entry(credential_type)
     ver = (version or cfg.get("version") or "v1.0").strip()
+    # TODO/BUGFIX: UNTP ConformityCredential JSON Schema validation (playground /
+    # UNTP schema) requires ``renderMethod[].type`` to be an *array*
+    # (e.g. ``["TemplateRenderMethod"]``). The W3C VC Render Method spec
+    # (https://w3c-ccg.github.io/vc-render-method/,
+    # ``https://w3id.org/vc/render-method/v2rc2``) models ``type`` like other
+    # VC typed nodes — typically a string (``"TemplateRenderMethod"``) or
+    # string-or-array. Emitting an array satisfies UNTP schema checks today
+    # but diverges from the render-method examples/spec preference for a
+    # single type string. Revisit when UNTP schema aligns with render-method
+    # (or when we drop UNTP-side array enforcement).
     entry: dict[str, Any] = {
-        "type": "TemplateRenderMethod",
+        "type": ["TemplateRenderMethod"],
         "id": f"{publisher_origin()}/templates/{credential_type}/{ver}/oca.json",
         "name": "Overlay Capture Architecture Bundle",
         "renderSuite": "oca-bundle",

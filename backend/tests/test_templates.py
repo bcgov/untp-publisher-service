@@ -157,9 +157,10 @@ def test_materialize_credential_document_from_mines_act_template():
     assessment = credential["credentialSubject"]["conformityAssessment"][0]
     assert assessment["type"] == ["ConformityAssessment"]
     assert len(assessment["assessedFacility"]) == 1
-    assert assessment["assessedFacility"][0]["type"] == ["FacilityVerification"]
+    assert "type" not in assessment["assessedFacility"][0]
     assert assessment["assessedFacility"][0]["facility"]["name"] == "Kootenay West"
     assert len(assessment["assessedProduct"]) == 1
+    assert "type" not in assessment["assessedProduct"][0]
     assert assessment["assessedProduct"][0]["product"]["id"] == (
         "urn:ca:bcgov:mines-act:permit:Q-20:commodity:construction-aggregate"
     )
