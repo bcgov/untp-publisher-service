@@ -36,11 +36,11 @@ backend:
     webvhServerUrl: "https://registry.digitaltrust.gov.bc.ca"
     # Witness multikey from former orgbook-publisher prod chart → did:key.
     publisherWitnessId: "did:key:z6MkpJybUKKTCjrYPL6B6EWw534ESR3oEC6Bo2XSAefeUG7Y"
-    projectTitle: "BC Mines Publisher"
+    projectTitle: "BC NRS Publisher"
     projectVersion: "v0"
-    landingTagline: "Verifiable critical raw material provenance for BC Mine Information."
-    landingDescription: "Browse UNTP-aligned Mines Act credentials that attest mine permits and critical mineral supply-chain provenance—copy public URLs, download VCs, and verify issuance from this publisher."
-    landingLogoUrl: "https://mines.nrs.gov.bc.ca/assets/images/bcgov-mineinfo-horiz-LG.png"
+    landingTagline: "Verifiable critical raw material provenance for British Columbia's Natural Resource Sector."
+    landingDescription: "Browse UNTP-aligned credentials that attest critical raw material provenance across the Natural Resource Sector—copy public URLs, download VCs, and verify issuance from this publisher."
+    landingLogoUrl: "/static/admin/images/bcgov-logo.svg"
     landingPrimaryColor: "#013366"
     landingSecondaryColor: "#FCBA19"
   resources:

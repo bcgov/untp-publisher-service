@@ -12,9 +12,9 @@ helm upgrade --install untp-publisher-service . \
 
 | Overlay | Namespace | Notes |
 |---------|-----------|--------|
-| `deploy/dev/values.yaml` | `f890b1-dev` | Shared with `tests-untp-ri`. Quota: [tests-untp `f890b1-dev-quota.md`](https://github.com/bcgov/tests-untp/blob/charts/deploy/f890b1-dev-quota.md). Image **`dev-0.0.4`** + Mines landing branding. |
-| `deploy/test/values.yaml` | `f890b1-test` | Traction/WebVH **test**. Image **`dev-0.0.4`** + Mines landing branding. |
-| `deploy/prod/values.yaml` | `f890b1-prod` | Traction/WebVH **prod**. Image **`dev-0.0.4`** + Mines landing branding. |
+| `deploy/dev/values.yaml` | `f890b1-dev` | Shared with `tests-untp-ri`. Quota: [tests-untp `f890b1-dev-quota.md`](https://github.com/bcgov/tests-untp/blob/charts/deploy/f890b1-dev-quota.md). Image **`dev-0.0.4`** + NRS CRM landing branding. |
+| `deploy/test/values.yaml` | `f890b1-test` | Traction/WebVH **test**. Image **`dev-0.0.4`** + NRS CRM landing branding. |
+| `deploy/prod/values.yaml` | `f890b1-prod` | Traction/WebVH **prod**. Image **`dev-0.0.4`** + NRS CRM landing branding. |
 
 Use release name **`untp-publisher-service`** (matches `fullnameOverride`, Traction Secret naming, and MongoDB `customUser.existingSecret`). MongoDB Service: `untp-publisher-service-mongodb`.
 
