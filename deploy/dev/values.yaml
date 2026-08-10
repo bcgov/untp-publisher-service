@@ -9,7 +9,7 @@
 ## (keys: traction_tenant_id, traction_api_key) — see backend.traction.existingSecret.
 ##
 ## Image: landing + Discovery UI build (feat/landing-discovery-ui → ghcr …:dev-0.0.4).
-## test/prod overlays stay on their own tags until that rollout is approved.
+## test/prod overlays use the same image tag and Mines landing branding.
 
 ingress:
   annotations:

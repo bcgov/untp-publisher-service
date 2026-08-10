@@ -7,6 +7,8 @@
 ##
 ## Pre-create Traction Secret untp-publisher-service-traction-tenant-info
 ## (keys: traction_tenant_id, traction_api_key) — see backend.traction.existingSecret.
+##
+## Image: landing + Discovery UI build (same tag as f890b1-dev until a release tag ships).
 
 ingress:
   annotations:
@@ -22,8 +24,7 @@ backend:
   testSuite: false
   image:
     repository: ghcr.io/bcgov/untp-publisher-service
-    # Same build as f890b1-dev/test until a tagged release ships current main.
-    tag: dev-0.0.3
+    tag: dev-0.0.4
     pullPolicy: Always
   # Hostname only (sets Ingress rule + pod PUBLISHER_DOMAIN).
   # Public origin: https://untp-publisher-api.apps.gold.devops.gov.bc.ca
@@ -35,6 +36,13 @@ backend:
     webvhServerUrl: "https://registry.digitaltrust.gov.bc.ca"
     # Witness multikey from former orgbook-publisher prod chart → did:key.
     publisherWitnessId: "did:key:z6MkpJybUKKTCjrYPL6B6EWw534ESR3oEC6Bo2XSAefeUG7Y"
+    projectTitle: "BC Mines Publisher"
+    projectVersion: "v0"
+    landingTagline: "Verifiable critical raw material provenance for BC Mine Information."
+    landingDescription: "Browse UNTP-aligned Mines Act credentials that attest mine permits and critical mineral supply-chain provenance—copy public URLs, download VCs, and verify issuance from this publisher."
+    landingLogoUrl: "https://mines.nrs.gov.bc.ca/assets/images/bcgov-mineinfo-horiz-LG.png"
+    landingPrimaryColor: "#013366"
+    landingSecondaryColor: "#FCBA19"
   resources:
     limits:
       cpu: 300m
