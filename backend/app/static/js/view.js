@@ -37,6 +37,53 @@
   let jsonLastFocus = null;
   let metaLastFocus = null;
 
+  function focusEl(el) {
+    if (!el || typeof el.focus !== "function") return;
+    try {
+      el.focus();
+    } catch (err) {
+      /* ignore */
+    }
+  }
+
+  function setDialogOpen(cfg, open) {
+    const panel = cfg.panel;
+    const toggle = cfg.toggle;
+    if (!panel || !toggle) return;
+    const willOpen = !!open;
+    if (willOpen) {
+      cfg.setLastFocus(document.activeElement);
+      if (typeof cfg.onOpen === "function") cfg.onOpen();
+      if (typeof cfg.closeOther === "function") cfg.closeOther();
+    }
+    panel.hidden = !willOpen;
+    document.body.classList.toggle(cfg.bodyClass, willOpen);
+    toggle.classList.toggle("is-active", willOpen);
+    toggle.setAttribute("aria-expanded", willOpen ? "true" : "false");
+    if (cfg.ariaControls) {
+      toggle.setAttribute("aria-controls", cfg.ariaControls);
+    }
+    if (willOpen) {
+      focusEl(panel.querySelector(cfg.focusSelector || ".view-json-close"));
+    } else {
+      focusEl(cfg.getLastFocus());
+      cfg.setLastFocus(null);
+    }
+  }
+
+  function onDialogKeydown(evt) {
+    if (evt.key !== "Escape") return;
+    if (jsonPanel && !jsonPanel.hidden) {
+      evt.preventDefault();
+      setJsonPanelOpen(false);
+      return;
+    }
+    if (metaPanel && !metaPanel.hidden) {
+      evt.preventDefault();
+      setMetaPanelOpen(false);
+    }
+  }
+
   const CHECK_ORDER = [
     "envelope",
     "vcdm",
@@ -455,35 +502,28 @@
   }
 
   function setJsonPanelOpen(open) {
-    if (!jsonPanel || !jsonToggle) return;
-    const willOpen = !!open;
-    if (willOpen) {
-      jsonLastFocus = document.activeElement;
-      applyJsonMode(jsonMode);
-      if (metaPanel && !metaPanel.hidden) setMetaPanelOpen(false);
-    }
-    jsonPanel.hidden = !willOpen;
-    document.body.classList.toggle("is-json-modal-open", willOpen);
-    jsonToggle.classList.toggle("is-active", willOpen);
-    jsonToggle.setAttribute("aria-expanded", willOpen ? "true" : "false");
-    jsonToggle.setAttribute("aria-controls", "view-json-modal");
-    if (willOpen) {
-      const closeBtn = jsonPanel.querySelector(".view-json-close");
-      if (closeBtn) {
-        try {
-          closeBtn.focus();
-        } catch (err) {
-          /* ignore */
-        }
-      }
-    } else if (jsonLastFocus && typeof jsonLastFocus.focus === "function") {
-      try {
-        jsonLastFocus.focus();
-      } catch (err) {
-        /* ignore */
-      }
-      jsonLastFocus = null;
-    }
+    setDialogOpen(
+      {
+        panel: jsonPanel,
+        toggle: jsonToggle,
+        bodyClass: "is-json-modal-open",
+        ariaControls: "view-json-modal",
+        focusSelector: ".view-json-close",
+        getLastFocus: function () {
+          return jsonLastFocus;
+        },
+        setLastFocus: function (el) {
+          jsonLastFocus = el;
+        },
+        onOpen: function () {
+          applyJsonMode(jsonMode);
+        },
+        closeOther: function () {
+          if (metaPanel && !metaPanel.hidden) setMetaPanelOpen(false);
+        },
+      },
+      open
+    );
   }
 
   function setJsonNodesOpen(open) {
@@ -491,14 +531,6 @@
     jsonTree.querySelectorAll("details.jtree-node").forEach(function (node) {
       node.open = !!open;
     });
-  }
-
-  function onJsonKeydown(evt) {
-    if (!jsonPanel || jsonPanel.hidden) return;
-    if (evt.key === "Escape") {
-      evt.preventDefault();
-      setJsonPanelOpen(false);
-    }
   }
 
   function applyCheck(data) {
@@ -805,42 +837,28 @@
   }
 
   function setMetaPanelOpen(open) {
-    if (!metaPanel || !metaToggle) return;
-    const willOpen = !!open;
-    if (willOpen) {
-      metaLastFocus = document.activeElement;
-      renderMetadataCard();
-      if (jsonPanel && !jsonPanel.hidden) setJsonPanelOpen(false);
-    }
-    metaPanel.hidden = !willOpen;
-    document.body.classList.toggle("is-meta-modal-open", willOpen);
-    metaToggle.classList.toggle("is-active", willOpen);
-    metaToggle.setAttribute("aria-expanded", willOpen ? "true" : "false");
-    if (willOpen) {
-      const closeBtn = metaPanel.querySelector("[data-meta-close].view-json-close");
-      if (closeBtn) {
-        try {
-          closeBtn.focus();
-        } catch (err) {
-          /* ignore */
-        }
-      }
-    } else if (metaLastFocus && typeof metaLastFocus.focus === "function") {
-      try {
-        metaLastFocus.focus();
-      } catch (err) {
-        /* ignore */
-      }
-      metaLastFocus = null;
-    }
-  }
-
-  function onMetaKeydown(evt) {
-    if (!metaPanel || metaPanel.hidden) return;
-    if (evt.key === "Escape") {
-      evt.preventDefault();
-      setMetaPanelOpen(false);
-    }
+    setDialogOpen(
+      {
+        panel: metaPanel,
+        toggle: metaToggle,
+        bodyClass: "is-meta-modal-open",
+        ariaControls: "view-meta-modal",
+        focusSelector: "[data-meta-close].view-json-close",
+        getLastFocus: function () {
+          return metaLastFocus;
+        },
+        setLastFocus: function (el) {
+          metaLastFocus = el;
+        },
+        onOpen: function () {
+          renderMetadataCard();
+        },
+        closeOther: function () {
+          if (jsonPanel && !jsonPanel.hidden) setJsonPanelOpen(false);
+        },
+      },
+      open
+    );
   }
 
   function bindMetaPanel() {
@@ -860,8 +878,13 @@
           setMetaPanelOpen(false);
         });
       });
-      document.addEventListener("keydown", onMetaKeydown);
     }
+  }
+
+  function bindDialogKeys() {
+    if (document.documentElement._viewDialogKeysBound) return;
+    document.documentElement._viewDialogKeysBound = true;
+    document.addEventListener("keydown", onDialogKeydown);
   }
 
   function applyContext(data) {
@@ -1030,7 +1053,6 @@
           setJsonPanelOpen(false);
         });
       });
-      document.addEventListener("keydown", onJsonKeydown);
     }
     document.querySelectorAll("[data-json-mode].view-json-mode-btn").forEach(function (btn) {
       if (btn._viewBound) return;
@@ -1281,6 +1303,7 @@
       bindCopy();
       bindMetaPanel();
       bindJsonPanel();
+      bindDialogKeys();
       bindPdf();
       console.info("[view] done");
     }
@@ -1307,5 +1330,6 @@
   bindCopy();
   bindMetaPanel();
   bindJsonPanel();
+  bindDialogKeys();
   bindPdf();
 })();

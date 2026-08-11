@@ -303,6 +303,9 @@ def compose_credential(
     # type array vs string, and id/name/renderSuite are additionalProperties
     # warnings in the playground). Restore via oca_render_method() +
     # ensure_render_method_context() when validation is clean.
+    #
+    # Until restored, /view cannot load OCA from the VC alone: it needs Mongo
+    # CredentialRecord.type as fallback_type (see resolve_render_methods).
     # credential["renderMethod"] = oca_render_method(
     #     credential_type=str(credential_type or ""),
     #     version=type_record.get("version"),

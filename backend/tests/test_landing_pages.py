@@ -28,6 +28,11 @@ from app.routers.landing import (
     unwrap_enveloped_vc,
     validate_enveloped_credential,
 )
+from app.view import checks as view_checks
+from app.view import fetch as view_fetch
+from app.view import oca as view_oca
+from app.view import pipeline as view_pipeline
+from app.view import refs as view_refs
 from config import settings
 
 _PARTNER_HREF_RE = re.compile(
@@ -78,13 +83,24 @@ def _mock_fetch(monkeypatch, envelope: dict | None = None, *, status_code: int =
         def json(self):
             return body
 
-    def _get(url, headers=None, timeout=None):
+    def _get(url, headers=None, timeout=None, allow_redirects=True, **_kwargs):
         assert headers and headers.get("Accept") == "application/vc"
-        _get.last = {"url": url, "headers": headers, "timeout": timeout}
+        assert allow_redirects is False
+        _get.last = {
+            "url": url,
+            "headers": headers,
+            "timeout": timeout,
+            "allow_redirects": allow_redirects,
+        }
         return _Resp()
 
     _get.last = None
-    monkeypatch.setattr(landing.requests, "get", _get)
+    monkeypatch.setattr(view_fetch.requests, "get", _get)
+    monkeypatch.setattr(
+        view_fetch,
+        "assert_view_fetch_host_allowed",
+        lambda _url: None,
+    )
     return _get
 
 
@@ -103,7 +119,7 @@ def _mock_jwt_verify(monkeypatch, *, ok: bool = True, kid: str = "did:web:ex#key
                 "error": "" if ok else "signature mismatch",
             }
 
-    monkeypatch.setattr(landing, "TractionController", _Traction)
+    monkeypatch.setattr(view_checks, "TractionController", _Traction)
 
 
 def _partner_href(html: bytes) -> bytes | None:
@@ -133,6 +149,15 @@ class _FakeMongo:
         return None
 
 
+
+
+def _patch_mongo(monkeypatch, factory):
+    """Patch MongoClient wherever /view and discovery resolve records."""
+    monkeypatch.setattr(landing, "MongoClient", factory)
+    monkeypatch.setattr(view_refs, "MongoClient", factory)
+    monkeypatch.setattr(view_pipeline, "MongoClient", factory)
+    monkeypatch.setattr(view_oca, "MongoClient", factory)
+
 def _app():
     app = FastAPI()
     app.include_router(landing.router)
@@ -159,7 +184,7 @@ def test_landing_renders_partner_link(monkeypatch):
 
 
 def test_discovery_returns_200_when_mongo_empty(monkeypatch):
-    monkeypatch.setattr(landing, "MongoClient", lambda: _FakeMongo([]))
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([]))
     client = TestClient(_app())
     response = client.get("/discovery")
     assert response.status_code == 200
@@ -169,7 +194,7 @@ def test_discovery_returns_200_when_mongo_empty(monkeypatch):
 
 
 def test_discovery_renders_partner_link(monkeypatch):
-    monkeypatch.setattr(landing, "MongoClient", lambda: _FakeMongo([]))
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([]))
     monkeypatch.setattr(settings, "LANDING_PARTNER_URL", "https://example.com/partner")
     monkeypatch.setattr(settings, "LANDING_PARTNER_LABEL", "Partner site")
     client = TestClient(_app())
@@ -190,7 +215,7 @@ def test_discovery_caps_records_via_find_page(monkeypatch):
         for i in range(5)
     ]
     fake = _FakeMongo(records)
-    monkeypatch.setattr(landing, "MongoClient", lambda: fake)
+    _patch_mongo(monkeypatch, lambda: fake)
     monkeypatch.setattr(settings, "DISCOVERY_MAX_RECORDS", 3)
     client = TestClient(_app())
     response = client.get("/discovery")
@@ -204,7 +229,7 @@ def test_discovery_returns_200_when_mongo_raises(monkeypatch):
         def find_page(self, collection, query, *, skip: int = 0, limit: int = 50):
             raise RuntimeError("db down")
 
-    monkeypatch.setattr(landing, "MongoClient", lambda: _Boom())
+    _patch_mongo(monkeypatch, lambda: _Boom())
     client = TestClient(_app())
     response = client.get("/discovery")
     assert response.status_code == 200
@@ -224,7 +249,7 @@ def test_discovery_open_links_to_view(monkeypatch):
         "vc": _SAMPLE_VC,
         "vc_jwt": "eyJ.e30.sig",
     }
-    monkeypatch.setattr(landing, "MongoClient", lambda: _FakeMongo([record]))
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([record]))
     client = TestClient(_app())
     response = client.get("/discovery")
     assert response.status_code == 200
@@ -267,7 +292,7 @@ def test_parse_credential_ref_and_resolve_latest(monkeypatch):
         "cardinality_id": "M-1",
         "refresh": True,
     }
-    monkeypatch.setattr(landing, "MongoClient", lambda: _FakeMongo([stale, active]))
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([stale, active]))
     url, error = landing.resolve_view_target(
         credential="BCMinesActPermitCredential:M-1:BC1333706"
     )
@@ -284,7 +309,7 @@ def test_view_with_credential_ref_returns_loading_shell(monkeypatch):
         "cardinality_id": "M-1231411",
         "refresh": False,
     }
-    monkeypatch.setattr(landing, "MongoClient", lambda: _FakeMongo([record]))
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([record]))
     mocked = _mock_fetch(monkeypatch)
     client = TestClient(_app())
     response = client.get(
@@ -302,7 +327,7 @@ def test_view_with_credential_ref_returns_loading_shell(monkeypatch):
 
 def test_view_credential_ref_not_found(monkeypatch):
     monkeypatch.setattr(settings, "PUBLISHER_DOMAIN", "https://publisher.test")
-    monkeypatch.setattr(landing, "MongoClient", lambda: _FakeMongo([]))
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([]))
     client = TestClient(_app())
     response = client.get(
         "/view",
@@ -337,7 +362,7 @@ def _sse_check(events, check_id):
 
 def test_view_without_url_redirects_to_discovery_in_safe_mode(monkeypatch):
     monkeypatch.setattr(settings, "VIEW_UNSAFE_MODE", False)
-    monkeypatch.setattr(landing, "MongoClient", lambda: _FakeMongo([]))
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([]))
     client = TestClient(_app())
     response = client.get("/view", follow_redirects=False)
     assert response.status_code == 302
@@ -346,7 +371,7 @@ def test_view_without_url_redirects_to_discovery_in_safe_mode(monkeypatch):
 
 def test_view_without_url_shows_resolver_in_unsafe_mode(monkeypatch):
     monkeypatch.setattr(settings, "VIEW_UNSAFE_MODE", True)
-    monkeypatch.setattr(landing, "MongoClient", lambda: _FakeMongo([]))
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([]))
     client = TestClient(_app())
     response = client.get("/view", follow_redirects=False)
     assert response.status_code == 200
@@ -359,7 +384,7 @@ def test_view_without_url_shows_resolver_in_unsafe_mode(monkeypatch):
 def test_view_error_keeps_url_form(monkeypatch):
     monkeypatch.setattr(settings, "PUBLISHER_DOMAIN", "https://publisher.test")
     monkeypatch.setattr(settings, "VIEW_UNSAFE_MODE", False)
-    monkeypatch.setattr(landing, "MongoClient", lambda: _FakeMongo([]))
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([]))
     client = TestClient(_app())
     response = client.get(
         "/view",
@@ -409,7 +434,7 @@ def test_view_unsafe_mode_shell_allows_remote_url(monkeypatch):
 def test_view_unsafe_mode_still_rejects_bad_path(monkeypatch):
     monkeypatch.setattr(settings, "PUBLISHER_DOMAIN", "https://publisher.test")
     monkeypatch.setattr(settings, "VIEW_UNSAFE_MODE", True)
-    monkeypatch.setattr(landing, "MongoClient", lambda: _FakeMongo([]))
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([]))
     client = TestClient(_app())
     response = client.get(
         "/view",
@@ -433,7 +458,7 @@ def test_view_stream_runs_pipeline(monkeypatch):
         "vc": _SAMPLE_VC,
         "vc_jwt": "eyJ.e30.sig",
     }
-    monkeypatch.setattr(landing, "MongoClient", lambda: _FakeMongo([record]))
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([record]))
     mocked = _mock_fetch(monkeypatch)
     _mock_jwt_verify(monkeypatch, ok=True, kid="did:web:publisher.test#key-01-jwk")
     client = TestClient(_app())
@@ -511,7 +536,7 @@ def test_view_stream_unsafe_mode_fetches_remote(monkeypatch):
         "vc": _SAMPLE_VC,
         "vc_jwt": "eyJ.e30.sig",
     }
-    monkeypatch.setattr(landing, "MongoClient", lambda: _FakeMongo([record]))
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([record]))
     mocked = _mock_fetch(monkeypatch)
     _mock_jwt_verify(monkeypatch, ok=True, kid="did:web:remote.test#key-01-jwk")
     client = TestClient(_app())
@@ -536,7 +561,7 @@ def test_view_stream_shows_invalid_jwt(monkeypatch):
         "vc": _SAMPLE_VC,
         "vc_jwt": "eyJ.e30.sig",
     }
-    monkeypatch.setattr(landing, "MongoClient", lambda: _FakeMongo([record]))
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([record]))
     _mock_fetch(monkeypatch)
     _mock_jwt_verify(monkeypatch, ok=False)
     client = TestClient(_app())
@@ -553,7 +578,7 @@ def test_view_stream_shows_invalid_jwt(monkeypatch):
 
 def test_view_stream_fetch_404_shows_error(monkeypatch):
     monkeypatch.setattr(settings, "PUBLISHER_DOMAIN", "https://publisher.test")
-    monkeypatch.setattr(landing, "MongoClient", lambda: _FakeMongo([]))
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([]))
     _mock_fetch(monkeypatch, status_code=404)
     client = TestClient(_app())
     events = _collect_sse_events(
@@ -567,7 +592,7 @@ def test_view_stream_fetch_404_shows_error(monkeypatch):
 
 def test_view_stream_rejects_invalid_envelope(monkeypatch):
     monkeypatch.setattr(settings, "PUBLISHER_DOMAIN", "https://publisher.test")
-    monkeypatch.setattr(landing, "MongoClient", lambda: _FakeMongo([]))
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([]))
     bad = {
         "@context": ["https://www.w3.org/ns/credentials/v2"],
         "id": "data:application/vc+jwt,not-a-jwt",
@@ -734,14 +759,34 @@ def test_resolve_credential_statuses_allows_remote_in_unsafe_mode(monkeypatch):
             "type": "BitstringStatusListEntry",
             "statusPurpose": "revocation",
             "statusListIndex": 0,
-            "statusListCredential": "https://evil.example/anything/status.json",
+            "statusListCredential": "https://evil.example/status-lists/list-1",
         },
     }
     result = resolve_credential_statuses(vc)
     assert result["present"] is True
     assert result["ok"] is True
     assert result["entries"][0]["label"] == "not revoked"
-    assert mocked.last["url"] == "https://evil.example/anything/status.json"
+    assert mocked.last["url"] == "https://evil.example/status-lists/list-1"
+
+
+def test_resolve_credential_statuses_rejects_arbitrary_path_in_unsafe_mode(monkeypatch):
+    from app.routers.landing import resolve_credential_statuses
+
+    monkeypatch.setattr(settings, "PUBLISHER_DOMAIN", "https://publisher.test")
+    monkeypatch.setattr(settings, "VIEW_UNSAFE_MODE", True)
+    vc = {
+        **_SAMPLE_VC,
+        "credentialStatus": {
+            "type": "BitstringStatusListEntry",
+            "statusPurpose": "revocation",
+            "statusListIndex": 0,
+            "statusListCredential": "https://evil.example/anything/status.json",
+        },
+    }
+    result = resolve_credential_statuses(vc)
+    assert result["present"] is True
+    assert result["ok"] is False
+    assert "/status-lists/" in result["entries"][0]["error"]
 
 
 def test_validate_vcdm_and_untp_helpers():
@@ -827,6 +872,25 @@ def test_resolve_render_methods_none_falls_back_to_type():
     assert "attributes" in result["bundle"]
 
 
+def test_resolve_render_methods_vc_only_without_render_method_fails():
+    """Contract: no renderMethod + no Mongo fallback_type → no OCA.
+
+    Sample Mines Act VCs are typed DigitalConformityCredential, which has no
+    publisher OCA bundle. View must pass CredentialRecord.type as fallback_type
+    (or restore renderMethod on publish).
+    """
+    from app.routers.landing import resolve_render_methods
+
+    vc = {k: v for k, v in _SAMPLE_VC.items() if k != "renderMethod"}
+    assert "renderMethod" not in vc
+    result = resolve_render_methods(vc)
+    assert result["present"] is False
+    assert result["ok"] is False
+    assert result["bundle"] is None
+    assert result["source"] == ""
+    assert "no oca" in result["error"].lower()
+
+
 def test_resolve_render_methods_uses_local_oca(monkeypatch):
     from app.routers.landing import resolve_render_methods
 
@@ -835,7 +899,7 @@ def test_resolve_render_methods_uses_local_oca(monkeypatch):
     def _get(*_args, **_kwargs):
         raise AssertionError("internal /templates/.../oca.json must not HTTP-fetch")
 
-    monkeypatch.setattr(landing.requests, "get", _get)
+    monkeypatch.setattr(view_fetch.requests, "get", _get)
 
     vc = {
         **_SAMPLE_VC,
@@ -865,6 +929,7 @@ def test_resolve_render_methods_fetches_when_type_unknown(monkeypatch):
     from app.routers.landing import resolve_render_methods
 
     monkeypatch.setattr(settings, "PUBLISHER_DOMAIN", "https://publisher.test")
+    monkeypatch.setattr(view_fetch, "assert_view_fetch_host_allowed", lambda _url: None)
 
     class _Resp:
         status_code = 200
@@ -873,12 +938,13 @@ def test_resolve_render_methods_fetches_when_type_unknown(monkeypatch):
         def json(self):
             return _SAMPLE_OCA
 
-    def _get(url, headers=None, timeout=None):
+    def _get(url, headers=None, timeout=None, allow_redirects=True, **_kwargs):
         assert url.endswith("/UnknownOcaType/v9/oca.json")
         assert headers and headers.get("Accept") == "application/json"
+        assert allow_redirects is False
         return _Resp()
 
-    monkeypatch.setattr(landing.requests, "get", _get)
+    monkeypatch.setattr(view_fetch.requests, "get", _get)
 
     vc = {
         **_SAMPLE_VC,
@@ -900,6 +966,87 @@ def test_resolve_render_methods_fetches_when_type_unknown(monkeypatch):
     assert result["bundle"] == _SAMPLE_OCA
 
 
+def test_safe_view_get_blocks_private_remote_ip(monkeypatch):
+    from app.routers.landing import ViewFetchError, safe_view_get
+
+    monkeypatch.setattr(settings, "PUBLISHER_DOMAIN", "https://publisher.test")
+    monkeypatch.setattr(settings, "VIEW_UNSAFE_MODE", True)
+    monkeypatch.setattr(
+        view_fetch,
+        "resolve_view_fetch_host_ips",
+        lambda _host: ["10.0.0.5"],
+    )
+
+    def _get(*_args, **_kwargs):
+        raise AssertionError("must not fetch private remote IP")
+
+    monkeypatch.setattr(view_fetch.requests, "get", _get)
+    try:
+        safe_view_get(
+            "https://evil.example/credentials/cred-1",
+            kind="credential",
+            accept="application/vc",
+        )
+        assert False, "expected ViewFetchError"
+    except ViewFetchError as exc:
+        assert "non-public" in str(exc)
+
+
+def test_safe_view_get_refuses_redirects(monkeypatch):
+    from app.routers.landing import ViewFetchError, safe_view_get
+
+    monkeypatch.setattr(settings, "PUBLISHER_DOMAIN", "https://publisher.test")
+    monkeypatch.setattr(view_fetch, "assert_view_fetch_host_allowed", lambda _url: None)
+
+    class _Resp:
+        status_code = 302
+        ok = False
+
+        def json(self):
+            raise AssertionError("redirect body unused")
+
+    def _get(url, headers=None, timeout=None, allow_redirects=True, **_kwargs):
+        assert allow_redirects is False
+        return _Resp()
+
+    monkeypatch.setattr(view_fetch.requests, "get", _get)
+    try:
+        safe_view_get(
+            "https://publisher.test/credentials/cred-1",
+            kind="credential",
+            accept="application/vc",
+        )
+        assert False, "expected ViewFetchError"
+    except ViewFetchError as exc:
+        assert "redirect" in str(exc).lower()
+
+
+def test_safe_view_get_rejects_userinfo(monkeypatch):
+    from app.routers.landing import ViewFetchError, validate_view_fetch_url
+
+    monkeypatch.setattr(settings, "PUBLISHER_DOMAIN", "https://publisher.test")
+    monkeypatch.setattr(settings, "VIEW_UNSAFE_MODE", True)
+    try:
+        validate_view_fetch_url(
+            "https://user:pass@evil.example/credentials/cred-1",
+            kind="credential",
+        )
+        assert False, "expected ViewFetchError"
+    except ViewFetchError as exc:
+        assert "userinfo" in str(exc).lower()
+
+
+def test_ip_is_blocked_for_view_fetch():
+    from app.routers.landing import ip_is_blocked_for_view_fetch
+
+    assert ip_is_blocked_for_view_fetch("127.0.0.1") is True
+    assert ip_is_blocked_for_view_fetch("10.1.2.3") is True
+    assert ip_is_blocked_for_view_fetch("169.254.169.254") is True
+    assert ip_is_blocked_for_view_fetch("::1") is True
+    assert ip_is_blocked_for_view_fetch("8.8.8.8") is False
+    assert ip_is_blocked_for_view_fetch("not-an-ip") is True
+
+
 def test_resolve_render_methods_local_ignores_host(monkeypatch):
     """Published VCs may point at another host; still use our configs when type matches."""
     from app.routers.landing import resolve_render_methods
@@ -910,7 +1057,7 @@ def test_resolve_render_methods_local_ignores_host(monkeypatch):
     def _get(*_args, **_kwargs):
         raise AssertionError("should resolve from local configs")
 
-    monkeypatch.setattr(landing.requests, "get", _get)
+    monkeypatch.setattr(view_fetch.requests, "get", _get)
 
     vc = {
         **_SAMPLE_VC,

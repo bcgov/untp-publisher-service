@@ -122,7 +122,7 @@ def test_missing_entity_falls_back_to_credential_id():
 
 def test_credential_public_url(monkeypatch):
     monkeypatch.setattr(
-        "app.routers.landing.publisher_origin",
+        "app.view.refs.publisher_origin",
         lambda: "https://publisher.example",
     )
     assert (
