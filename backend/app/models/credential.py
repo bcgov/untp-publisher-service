@@ -101,7 +101,9 @@ class Credential(BaseModel):
     ] = Field(None)
     termsOfUse: SkipJsonSchema[Union[List[TermsOfUse], TermsOfUse]] = Field(None)
     evidence: SkipJsonSchema[Union[List[Evidence], Evidence]] = Field(None)
-    renderMethod: SkipJsonSchema[Union[List[RenderMethod], RenderMethod]] = Field(None)
+    renderMethod: SkipJsonSchema[
+        Union[List[RenderMethod], RenderMethod] | None
+    ] = Field(None)
     relatedResource: SkipJsonSchema[Union[List[RelatedResource], RelatedResource]] = (
         Field(None)
     )

@@ -148,18 +148,21 @@ class PublisherCoordinator:
                 detail=f"UNTP validation failed: {exc}",
             ) from exc
 
-        credential = Credential(
-            context=credential.get("@context"),
-            type=credential.get("type"),
-            id=credential.get("id"),
-            name=credential.get("name"),
-            issuer=credential.get("issuer"),
-            validFrom=credential.get("validFrom"),
-            validUntil=credential.get("validUntil") or None,
-            credentialSubject=credential.get("credentialSubject"),
-            credentialStatus=credential.get("credentialStatus"),
-            renderMethod=credential.get("renderMethod"),
-        ).model_dump()
+        credential_kwargs = {
+            "context": credential.get("@context"),
+            "type": credential.get("type"),
+            "id": credential.get("id"),
+            "name": credential.get("name"),
+            "issuer": credential.get("issuer"),
+            "validFrom": credential.get("validFrom"),
+            "validUntil": credential.get("validUntil") or None,
+            "credentialSubject": credential.get("credentialSubject"),
+            "credentialStatus": credential.get("credentialStatus"),
+        }
+        # Omit when absent — Credential.renderMethod is not Optional and rejects None.
+        if credential.get("renderMethod") is not None:
+            credential_kwargs["renderMethod"] = credential["renderMethod"]
+        credential = Credential(**credential_kwargs).model_dump()
 
         return credential
 
