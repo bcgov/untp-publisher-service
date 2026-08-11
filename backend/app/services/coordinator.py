@@ -4,7 +4,8 @@ from app.models.credential import Credential
 from app.plugins.mongodb import MongoClient
 from app.services.composer import (
     compose_credential,
-    ensure_render_method_context,
+    # TODO/BUG: restore ensure_render_method_context when renderMethod is re-enabled
+    # ensure_render_method_context,
 )
 from app.validators.untp import UntpValidationError, validate_untp_document
 from base58 import b58encode
@@ -90,8 +91,9 @@ class PublisherCoordinator:
                 detail=f"UNTP validation failed: {exc}",
             ) from exc
 
-        # Append publisher-managed fields, then validate the final document.
-        ensure_render_method_context(credential)
+        # TODO/BUG: skip render-method @context while renderMethod is omitted
+        # (see composer.compose_credential). Restore with renderMethod.
+        # ensure_render_method_context(credential)
 
         issuer_id = credential_registration.get("issuer")
         # TODO: release claimed status-list indexes if Traction issue/sign or

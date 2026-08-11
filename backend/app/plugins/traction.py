@@ -279,9 +279,9 @@ class TractionController:
             if isinstance(document.get("issuer"), str)
             else document.get("issuer").get("id")
         )
-        if did.startswith("did:web:"):
-            verification_method = f"{did}#{self.default_kid}-multikey"
-        elif did.startswith("did:key:"):
+        # Enveloped vc+jwt uses the JWK verification method; Data Integrity
+        # proofs (issue_vc / create_vp) keep using the Multikey fragment.
+        if did.startswith("did:key:"):
             verification_method = did_key_verification_method(did)
         else:
             verification_method = f"{did}#{self.default_kid}-jwk"
@@ -309,6 +309,30 @@ class TractionController:
                 if key in payload and isinstance(payload[key], str):
                     return payload[key]
         raise HTTPException(status_code=502, detail="Traction jwt/sign missing JWT string")
+
+    def verify_jwt(self, jwt_token: str) -> dict:
+        """Verify a compact JWT via Traction ``POST /wallet/jwt/verify``.
+
+        Returns the Traction ``JWSVerifyResponse`` dict (``valid``, ``headers``,
+        ``kid``, ``payload``, optional ``error``).
+        """
+        token = (jwt_token or "").strip()
+        if not token:
+            raise HTTPException(status_code=400, detail="Missing JWT")
+        r = requests.post(
+            f"{self.endpoint}/wallet/jwt/verify",
+            headers=self.headers,
+            json={"jwt": token},
+        )
+        if not r.ok:
+            raise self._traction_error(r, "jwt/verify")
+        try:
+            payload = r.json()
+        except ValueError as err:
+            raise HTTPException(status_code=502, detail="Traction returned non-JSON") from err
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=502, detail="Traction jwt/verify returned non-object")
+        return payload
 
     @staticmethod
     def as_enveloped_vc(vc_jwt: str) -> dict:

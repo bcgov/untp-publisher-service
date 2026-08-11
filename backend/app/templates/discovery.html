@@ -398,12 +398,12 @@
         grid-row: 1;
       }
 
-      .g-issuer-name {
+      .g-org {
         grid-column: 3;
         grid-row: 1;
       }
 
-      .g-org {
+      .g-facility-name {
         grid-column: 2 / -1;
         grid-row: 2;
       }
@@ -413,12 +413,12 @@
         grid-row: 3;
       }
 
-      .g-issuer-resolve {
+      .g-entity {
         grid-column: 3;
         grid-row: 3;
       }
 
-      .g-entity {
+      .g-facility-id {
         grid-column: 2;
         grid-row: 4;
       }
@@ -468,7 +468,7 @@
          identifier makes it unreadable. */
       .g-type,
       .g-org,
-      .g-issuer-name {
+      .g-facility-name {
         font-size: 0.78rem;
         color: color-mix(in srgb, var(--muted) 80%, #fff);
         overflow: hidden;
@@ -478,7 +478,7 @@
       }
 
       .g-org:empty,
-      .g-issuer-name:empty {
+      .g-facility-name:empty {
         display: none;
       }
 
@@ -490,35 +490,12 @@
         overflow-wrap: anywhere;
       }
 
-      .g-entity {
+      .g-entity,
+      .g-facility-id {
         font-size: 0.95rem;
         color: var(--ink);
         font-variant-numeric: tabular-nums;
         overflow-wrap: anywhere;
-      }
-
-      .g-issuer-resolve {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.28rem;
-        font-size: 0.95rem;
-        color: var(--primary);
-        text-decoration: underline;
-        text-underline-offset: 0.12em;
-      }
-
-      .g-issuer-resolve svg {
-        width: 0.85rem;
-        height: 0.85rem;
-        flex-shrink: 0;
-      }
-
-      .g-issuer-resolve:hover {
-        color: var(--ink);
-      }
-
-      .g-issuer-resolve:empty {
-        display: none;
       }
 
       .g-actions {
@@ -767,13 +744,13 @@
           grid-row: 1;
         }
 
-        .g-issuer-name {
+        .g-org {
           grid-column: 3;
           grid-row: 1;
           display: block;
         }
 
-        .g-org {
+        .g-facility-name {
           grid-column: 4;
           grid-row: 1;
           display: block;
@@ -784,12 +761,12 @@
           grid-row: 2;
         }
 
-        .g-issuer-resolve {
+        .g-entity {
           grid-column: 3;
           grid-row: 2;
         }
 
-        .g-entity {
+        .g-facility-id {
           grid-column: 4;
           grid-row: 2;
         }
@@ -861,8 +838,8 @@
         <h1><span class="title-rule">Discovery</span></h1>
         <p class="lede">
           Browse every credential published by this service. Expand an entry to
-          see its iteration history, copy a credential URL, or open the
-          verifiable credential.
+          see its iteration history, copy a credential URL, or view the
+          credential with OCA labels.
         </p>
       </div>
 
@@ -934,11 +911,11 @@
           <button type="button" class="col-sort" data-sort="document">
             Document
           </button>
-          <button type="button" class="col-sort" data-sort="issuer">
-            Issuer
-          </button>
           <button type="button" class="col-sort" data-sort="organisation">
             Organisation
+          </button>
+          <button type="button" class="col-sort" data-sort="facility">
+            Facility
           </button>
           <button type="button" class="col-sort" data-sort="status">
             Status
@@ -953,10 +930,10 @@
             data-type="{{ group.type }}"
             data-status="{{ group.status }}"
             data-sort-document="{{ group.cardinality_id or '' }}"
-            data-sort-issuer="{{ group.issuer_name or group.issuer_did or '' }}"
             data-sort-organisation="{{ group.entity_name or group.entity_id or '' }}"
+            data-sort-facility="{{ group.facility_name or group.facility_id or '' }}"
             data-sort-status="{{ group.status or '' }}"
-            data-search="{{ (group.type ~ ' ' ~ (group.entity_name or '') ~ ' ' ~ group.entity_id ~ ' ' ~ group.cardinality_id ~ ' ' ~ (group.issuer_name or '') ~ ' ' ~ (group.issuer_did or '') ~ ' ' ~ group.id ~ ' ' ~ (group.iterations | map(attribute='id') | join(' '))) | lower }}"
+            data-search="{{ (group.type ~ ' ' ~ (group.entity_name or '') ~ ' ' ~ group.entity_id ~ ' ' ~ group.cardinality_id ~ ' ' ~ (group.facility_name or '') ~ ' ' ~ (group.facility_id or '') ~ ' ' ~ group.id ~ ' ' ~ (group.iterations | map(attribute='id') | join(' '))) | lower }}"
           >
             <div class="group-head">
               <button
@@ -975,41 +952,25 @@
               <p class="g-type" title="{{ group.type or 'Credential' }}">{{ group.type or 'Credential' }}</p>
 
               <p
-                class="g-issuer-name"
-                {% if group.issuer_name %}title="{{ group.issuer_name }}"{% endif %}
-              >{% if group.issuer_name %}{{ group.issuer_name }}{% endif %}</p>
-
-              <p
                 class="g-org"
                 {% if group.entity_name %}title="{{ group.entity_name }}"{% endif %}
               >{% if group.entity_name %}{{ group.entity_name }}{% endif %}</p>
+
+              <p
+                class="g-facility-name"
+                {% if group.facility_name %}title="{{ group.facility_name }}"{% endif %}
+              >{% if group.facility_name %}{{ group.facility_name }}{% endif %}</p>
 
               <p class="cell g-card" data-label="Document">
                 {{ group.cardinality_id or '—' }}
               </p>
 
-              {% if group.issuer_resolve_url %}
-              <a
-                class="g-issuer-resolve"
-                href="{{ group.issuer_resolve_url }}"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Resolve {{ group.issuer_did }} on Universal Resolver"
-              >
-                Resolve
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path
-                    fill="currentColor"
-                    d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7zM5 5v14h14v-7h-2v5H7V7h5V5H5z"
-                  />
-                </svg>
-              </a>
-              {% else %}
-              <span class="g-issuer-resolve"></span>
-              {% endif %}
-
               <p class="cell g-entity" data-label="Organisation">
                 {{ group.entity_id or '—' }}
+              </p>
+
+              <p class="cell g-facility-id" data-label="Facility">
+                {{ group.facility_id or '—' }}
               </p>
 
               <p class="cell g-status" data-label="Status">
@@ -1055,11 +1016,9 @@
                 </a>
                 <a
                   class="btn btn-icon"
-                  href="{{ group.url }}"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Open verifiable credential in a new tab"
-                  title="Open in new tab"
+                  href="{{ group.view_url }}"
+                  aria-label="View credential"
+                  title="View credential"
                 >
                   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path
@@ -1129,11 +1088,9 @@
                     </a>
                     <a
                       class="btn btn-icon"
-                      href="{{ it.url }}"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label="Open verifiable credential in a new tab"
-                      title="Open in new tab"
+                      href="{{ it.view_url }}"
+                      aria-label="View credential"
+                      title="View credential"
                     >
                       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                         <path

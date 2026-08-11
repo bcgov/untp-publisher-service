@@ -298,10 +298,15 @@ def compose_credential(
         "id": issuer["id"],
         "name": issuer["name"],
     }
-    credential["renderMethod"] = oca_render_method(
-        credential_type=str(credential_type or ""),
-        version=type_record.get("version"),
-    )
+    # TODO/BUG: omit renderMethod until UNTP ConformityCredential schema aligns
+    # with W3C TemplateRenderMethod (schema still models RenderTemplate2024;
+    # type array vs string, and id/name/renderSuite are additionalProperties
+    # warnings in the playground). Restore via oca_render_method() +
+    # ensure_render_method_context() when validation is clean.
+    # credential["renderMethod"] = oca_render_method(
+    #     credential_type=str(credential_type or ""),
+    #     version=type_record.get("version"),
+    # )
 
     published_at = format_utc_datetime(datetime.now(timezone.utc))
     credential["id"] = (

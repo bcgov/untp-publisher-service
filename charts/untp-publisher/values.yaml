@@ -65,6 +65,9 @@ backend:
     # -- When true, include digestMultibase on OCA renderMethod (OCA_DIGEST).
     # Keep false unless oca.json for each type/version is immutable.
     ocaDigest: false
+    # -- When true, /view may fetch remote credential / status / OCA URLs (VIEW_UNSAFE_MODE).
+    # SSRF risk — keep false in production.
+    viewUnsafeMode: false
 
   image:
     # -- Backend image repository

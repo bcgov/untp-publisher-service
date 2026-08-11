@@ -7,6 +7,34 @@ from app.routers.landing import (
 )
 
 
+def test_facility_from_record_reads_assessed_facility():
+    from app.routers.landing import facility_from_record
+
+    name, registered_id = facility_from_record(
+        {
+            "vc": {
+                "credentialSubject": {
+                    "conformityAssessment": [
+                        {
+                            "assessedFacility": [
+                                {
+                                    "facility": {
+                                        "name": "Basin Coal Mine",
+                                        "registeredId": "1500601",
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        }
+    )
+    assert name == "Basin Coal Mine"
+    assert registered_id == "1500601"
+    assert facility_from_record({}) == ("", "")
+
+
 def test_group_collapses_same_entity_cardinality():
     records = [
         {
