@@ -279,11 +279,9 @@ class TractionController:
             if isinstance(document.get("issuer"), str)
             else document.get("issuer").get("id")
         )
-        # Use Multikey for did:web JWT signing. Traction ``/wallet/jwt/verify``
-        # currently 500s on ``#key-01-jwk`` kids even when the signature is valid.
-        if did.startswith("did:web:"):
-            verification_method = f"{did}#{self.default_kid}-multikey"
-        elif did.startswith("did:key:"):
+        # Enveloped vc+jwt (credential + status list) uses the JWK verification
+        # method fragment for did:web.
+        if did.startswith("did:key:"):
             verification_method = did_key_verification_method(did)
         else:
             verification_method = f"{did}#{self.default_kid}-jwk"
