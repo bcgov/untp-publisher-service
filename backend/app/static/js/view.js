@@ -740,7 +740,7 @@
     return "is-muted";
   }
 
-  function overallMetaSummary() {
+  function overallMetaCounts() {
     let passed = 0;
     let failed = 0;
     let warned = 0;
@@ -758,25 +758,62 @@
       else if (entry.kind === "is-muted") muted += 1;
       else pending += 1;
     });
+    return {
+      passed: passed,
+      failed: failed,
+      warned: warned,
+      muted: muted,
+      pending: pending,
+    };
+  }
+
+  function overallMetaSummaryText() {
+    const c = overallMetaCounts();
     const bits = [];
-    if (passed) bits.push(passed + " passed");
-    if (warned) bits.push(warned + " warning" + (warned === 1 ? "" : "s"));
-    if (failed) bits.push(failed + " failed");
-    if (muted) bits.push(muted + " n/a");
-    if (pending) bits.push(pending + " pending");
+    if (c.passed) bits.push(c.passed + " passed");
+    if (c.warned) bits.push(c.warned + " warning" + (c.warned === 1 ? "" : "s"));
+    if (c.failed) bits.push(c.failed + " failed");
+    if (c.muted) bits.push(c.muted + " n/a");
+    if (c.pending) bits.push(c.pending + " pending");
     if (!bits.length) return "No verification checks yet.";
-    if (failed === 0 && warned === 0 && pending === 0) {
-      return "<strong>All checks passed</strong> · " + passed + " validations";
+    if (c.failed === 0 && c.warned === 0 && c.pending === 0) {
+      return "All checks passed · " + c.passed + " validations";
     }
-    return "<strong>Verification complete</strong> · " + bits.join(" · ");
+    return "Verification complete · " + bits.join(" · ");
+  }
+
+  function fillMetaSummary() {
+    if (!metaSummary) return;
+    const kind = overallMetaKind();
+    metaSummary.className = "view-meta-summary " + kind;
+    metaSummary.textContent = "";
+    const c = overallMetaCounts();
+    if (!c.passed && !c.failed && !c.warned && !c.muted && !c.pending) {
+      metaSummary.textContent = "No verification checks yet.";
+      return;
+    }
+    const lead = document.createElement("strong");
+    if (c.failed === 0 && c.warned === 0 && c.pending === 0) {
+      lead.textContent = "All checks passed";
+      metaSummary.appendChild(lead);
+      metaSummary.appendChild(
+        document.createTextNode(" · " + c.passed + " validations")
+      );
+      return;
+    }
+    lead.textContent = "Verification complete";
+    metaSummary.appendChild(lead);
+    const bits = [];
+    if (c.passed) bits.push(c.passed + " passed");
+    if (c.warned) bits.push(c.warned + " warning" + (c.warned === 1 ? "" : "s"));
+    if (c.failed) bits.push(c.failed + " failed");
+    if (c.muted) bits.push(c.muted + " n/a");
+    if (c.pending) bits.push(c.pending + " pending");
+    metaSummary.appendChild(document.createTextNode(" · " + bits.join(" · ")));
   }
 
   function renderMetadataCard() {
-    if (metaSummary) {
-      const kind = overallMetaKind();
-      metaSummary.className = "view-meta-summary " + kind;
-      metaSummary.innerHTML = overallMetaSummary();
-    }
+    fillMetaSummary();
     if (!metaBody) return;
     metaBody.innerHTML = CHECK_ORDER.map(function (id) {
       const entry = checkResults[id] || {
@@ -816,12 +853,7 @@
     metaBadge.hidden = false;
     metaBadge.className = "meta-badge " + kind;
     metaToggle.classList.add("has-meta-badge");
-    metaToggle.title =
-      "Verification metadata · " +
-      String(overallMetaSummary())
-        .replace(/<[^>]+>/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
+    metaToggle.title = "Verification metadata · " + overallMetaSummaryText();
   }
 
   function settleVerification() {
@@ -1141,7 +1173,7 @@
     }
   }
 
-  function buildOcaPrintHtml(sourceDoc) {
+  function prepareOcaPrintClone(sourceDoc) {
     const clone = sourceDoc.cloneNode(true);
     clone
       .querySelectorAll(
@@ -1168,37 +1200,36 @@
       printedMeta.hidden = false;
       printedMeta.removeAttribute("hidden");
     }
+    return clone;
+  }
 
-    const headBits = [];
+  function populatePrintWindow(printWin, sourceDoc) {
+    const printDoc = printWin.document;
+    printDoc.title = pdfDocumentTitle();
+    printDoc.documentElement.lang = document.documentElement.lang || "en";
+
     document.querySelectorAll('link[rel="stylesheet"]').forEach(function (link) {
-      headBits.push(
-        '<link rel="stylesheet" href="' +
-          link.href.replace(/"/g, "&quot;") +
-          '" />'
-      );
+      const el = printDoc.createElement("link");
+      el.rel = "stylesheet";
+      el.href = link.href;
+      printDoc.head.appendChild(el);
     });
     document.querySelectorAll("style").forEach(function (style) {
-      headBits.push("<style>" + style.textContent + "</style>");
+      const el = printDoc.createElement("style");
+      el.textContent = style.textContent || "";
+      printDoc.head.appendChild(el);
     });
-    headBits.push(
-      "<style>" +
-        "@page{size:letter;margin:0.4in}" +
-        "html,body{margin:0!important;padding:0!important;background:#fff!important}" +
-        "body{print-color-adjust:exact;-webkit-print-color-adjust:exact}" +
-        ".oca-doc{margin:0!important;max-width:none!important;box-shadow:none!important;border:0!important;border-radius:0!important}" +
-        "</style>"
-    );
+    const printCss = printDoc.createElement("style");
+    printCss.textContent =
+      "@page{size:letter;margin:0.4in}" +
+      "html,body{margin:0!important;padding:0!important;background:#fff!important}" +
+      "body{print-color-adjust:exact;-webkit-print-color-adjust:exact}" +
+      ".oca-doc{margin:0!important;max-width:none!important;box-shadow:none!important;border:0!important;border-radius:0!important}";
+    printDoc.head.appendChild(printCss);
 
-    return (
-      "<!DOCTYPE html><html lang=\"" +
-      (document.documentElement.lang || "en") +
-      "\"><head><meta charset=\"utf-8\" /><title>" +
-      escapeHtml(pdfDocumentTitle()) +
-      "</title>" +
-      headBits.join("") +
-      "</head><body class=\"pub-chrome is-printing-oca\">" +
-      clone.outerHTML +
-      "</body></html>"
+    printDoc.body.className = "pub-chrome is-printing-oca";
+    printDoc.body.appendChild(
+      printDoc.importNode(prepareOcaPrintClone(sourceDoc), true)
     );
   }
 
@@ -1222,10 +1253,9 @@
         return;
       }
 
-      const html = buildOcaPrintHtml(doc);
-      printWin.document.open();
-      printWin.document.write(html);
-      printWin.document.close();
+      // Build the print document with DOM APIs (importNode) — avoid
+      // serializing live DOM to HTML and document.write (CodeQL xss-through-dom).
+      populatePrintWindow(printWin, doc);
 
       const runPrint = function () {
         try {
