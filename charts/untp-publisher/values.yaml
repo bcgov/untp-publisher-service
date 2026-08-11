@@ -70,7 +70,7 @@ backend:
     # -- Backend image repository
     repository: ghcr.io/bcgov/untp-publisher-service
     # -- Backend image tag
-    tag: v0.0.2
+    tag: v0.1.0
     # -- Backend image pull policy
     pullPolicy: IfNotPresent
     # -- Backend image pull secrets
