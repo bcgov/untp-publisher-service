@@ -413,6 +413,8 @@ def test_view_with_url_returns_loading_shell(monkeypatch):
     assert b"/static/js/view.js" in response.content
     assert b"Permit number" not in response.content
     assert b'id="view-oca-slot"' in response.content
+    assert b'id="view-oca-frame"' in response.content
+    assert b'sandbox="allow-same-origin"' in response.content
     assert b'data-check="envelope"' in response.content
 
 
@@ -427,7 +429,8 @@ def test_view_unsafe_mode_shell_allows_remote_url(monkeypatch):
     assert response.status_code == 200
     assert b"Unsafe mode is on" in response.content
     assert b"Credential View" in response.content
-    assert b"same-origin" not in response.content
+    assert b"must be a same-origin" not in response.content
+    assert b'id="view-app"' in response.content
     assert b"/view/stream?url=" in response.content
 
 

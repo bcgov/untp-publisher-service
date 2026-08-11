@@ -9,7 +9,7 @@
     <link rel="icon" href="/static/admin/images/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/static/css/bc-sans.css" />
     <link rel="stylesheet" href="/static/css/publisher.css?v=5" />
-    <link rel="stylesheet" href="/static/css/view.css?v=1" />
+    <link rel="stylesheet" href="/static/css/view.css?v=2" />
     <style>
       :root {
         --primary: {{ primary_color }};
@@ -370,7 +370,15 @@
 
       {% if loading %}
       <div id="view-oca-host">
-        <div id="view-oca-slot" hidden></div>
+        <div id="view-oca-slot" hidden>
+          <iframe
+            id="view-oca-frame"
+            class="view-oca-frame"
+            title="Credential document"
+            sandbox="allow-same-origin"
+            referrerpolicy="no-referrer"
+          ></iframe>
+        </div>
       </div>
       {% endif %}
     </main>
@@ -502,7 +510,7 @@
     </footer>
 
     {% if loading %}
-    <script src="/static/js/view.js?v=47"></script>
+    <script src="/static/js/view.js?v=48"></script>
     {% else %}
     <script>
       (function () {

@@ -1053,6 +1053,24 @@ body.is-json-modal-open {
   border-top: none;
 }
 
+/* Sandboxed OCA host — HTML is mounted via iframe srcdoc (no scripts). */
+#view-oca-host {
+  width: 100%;
+}
+
+#view-oca-slot {
+  width: 100%;
+}
+
+.view-oca-frame {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  min-height: 20rem;
+  /* Height is synced from the framed document via ResizeObserver. */
+}
+
 /* OCA credential document (inspired by discovery-permit-ui) */
 .oca-doc {
   position: relative;
@@ -2438,7 +2456,8 @@ body.is-view-welcome .view-util {
 
   .wrap,
   #view-oca-host,
-  #view-oca-slot {
+  #view-oca-slot,
+  .view-oca-frame {
     display: block !important;
     position: static !important;
     margin: 0 !important;

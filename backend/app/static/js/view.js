@@ -20,6 +20,7 @@
   const checksBar = document.getElementById("view-checks");
   const actions = document.getElementById("view-actions");
   const ocaSlot = document.getElementById("view-oca-slot");
+  const ocaFrame = document.getElementById("view-oca-frame");
   const jsonPanel = document.getElementById("view-json-modal");
   const jsonBody = document.getElementById("view-json-body");
   const jsonTree = document.getElementById("view-json-tree");
@@ -120,6 +121,129 @@
   let checksSettled = false;
   let langSwitchBusy = false;
   let ocaInfoOpen = root.getAttribute("data-debug") === "1";
+  let ocaFrameResizeObserver = null;
+
+  function getOcaDocument() {
+    if (!ocaFrame) return null;
+    try {
+      return ocaFrame.contentDocument;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function getOcaRoot() {
+    const doc = getOcaDocument();
+    return doc ? doc.querySelector(".oca-doc") : null;
+  }
+
+  function brandRootCssText() {
+    const styles = document.querySelectorAll("head style");
+    for (let i = 0; i < styles.length; i += 1) {
+      const text = styles[i].textContent || "";
+      if (text.indexOf("--primary") !== -1) return text;
+    }
+    return "";
+  }
+
+  function buildOcaSrcdoc(fragmentHtml) {
+    const lang = escapeHtml(document.documentElement.lang || "en");
+    const sheets = Array.prototype.map
+      .call(document.querySelectorAll('link[rel="stylesheet"]'), function (link) {
+        const href = String(link.href || "").replace(/"/g, "");
+        if (!href) return "";
+        return '<link rel="stylesheet" href="' + href + '" />';
+      })
+      .join("");
+    return (
+      "<!DOCTYPE html><html lang=\"" +
+      lang +
+      "\"><head><meta charset=\"utf-8\" />" +
+      sheets +
+      "<style>" +
+      brandRootCssText() +
+      "html,body{margin:0;padding:0;background:transparent}" +
+      "body{overflow:hidden}" +
+      ".oca-doc{margin-top:0!important}" +
+      "</style></head><body class=\"pub-chrome\">" +
+      fragmentHtml +
+      "</body></html>"
+    );
+  }
+
+  function watchOcaFrameSize() {
+    const doc = getOcaDocument();
+    if (!ocaFrame || !doc || !doc.body) return;
+    const sync = function () {
+      try {
+        const height = Math.ceil(
+          Math.max(
+            doc.body.scrollHeight,
+            doc.documentElement ? doc.documentElement.scrollHeight : 0,
+            1
+          )
+        );
+        ocaFrame.style.height = height + "px";
+      } catch (err) {
+        /* ignore */
+      }
+    };
+    if (ocaFrameResizeObserver) {
+      try {
+        ocaFrameResizeObserver.disconnect();
+      } catch (err) {
+        /* ignore */
+      }
+      ocaFrameResizeObserver = null;
+    }
+    sync();
+    if (typeof ResizeObserver !== "undefined") {
+      ocaFrameResizeObserver = new ResizeObserver(sync);
+      ocaFrameResizeObserver.observe(doc.body);
+      const rootEl = doc.querySelector(".oca-doc");
+      if (rootEl) ocaFrameResizeObserver.observe(rootEl);
+    }
+    // Stylesheets may settle after first paint.
+    window.setTimeout(sync, 50);
+    window.setTimeout(sync, 250);
+  }
+
+  function mountOcaHtml(html) {
+    return new Promise(function (resolve) {
+      if (!ocaSlot || !ocaFrame) {
+        resolve();
+        return;
+      }
+      ocaSlot.hidden = false;
+      ocaFrame.removeAttribute("hidden");
+      const onLoad = function () {
+        ocaFrame.removeEventListener("load", onLoad);
+        bindOcaControls();
+        setOcaInfoOpen(ocaInfoOpen);
+        watchOcaFrameSize();
+        resolve();
+      };
+      ocaFrame.addEventListener("load", onLoad);
+      ocaFrame.srcdoc = buildOcaSrcdoc(html);
+    });
+  }
+
+  function clearOcaFrame() {
+    if (ocaFrameResizeObserver) {
+      try {
+        ocaFrameResizeObserver.disconnect();
+      } catch (err) {
+        /* ignore */
+      }
+      ocaFrameResizeObserver = null;
+    }
+    if (ocaFrame) {
+      ocaFrame.removeAttribute("srcdoc");
+      ocaFrame.src = "about:blank";
+      ocaFrame.style.height = "";
+    }
+    if (ocaSlot) ocaSlot.hidden = true;
+  }
 
   function logCheck(data) {
     const label = "[view] " + (data.id || "check");
@@ -925,25 +1049,24 @@
     if (data && data.credential) {
       setDecodedCredential(data.credential);
     }
-    if (!ocaSlot) return;
+    if (!ocaSlot || !ocaFrame) return Promise.resolve();
     if (data.html) {
-      ocaSlot.innerHTML = data.html;
-      ocaSlot.hidden = false;
-      bindOcaControls();
-      setOcaInfoOpen(ocaInfoOpen);
-      return;
+      // Mount inside a sandboxed iframe (allow-same-origin, no scripts) so
+      // credential/OCA markup cannot run script in the parent page.
+      return mountOcaHtml(data.html);
     }
-    ocaSlot.hidden = true;
-    ocaSlot.innerHTML = "";
+    clearOcaFrame();
+    return Promise.resolve();
   }
 
   function setOcaInfoOpen(open) {
     ocaInfoOpen = !!open;
-    if (!ocaSlot) return;
-    const doc = ocaSlot.querySelector(".oca-doc");
-    const panel = ocaSlot.querySelector(".oca-overlays, .oca-all-fields");
-    const btn = ocaSlot.querySelector("[data-oca-info-toggle]");
-    if (doc) doc.classList.toggle("is-show-info", ocaInfoOpen);
+    const doc = getOcaDocument();
+    if (!doc) return;
+    const rootDoc = doc.querySelector(".oca-doc");
+    const panel = doc.querySelector(".oca-overlays, .oca-all-fields");
+    const btn = doc.querySelector("[data-oca-info-toggle]");
+    if (rootDoc) rootDoc.classList.toggle("is-show-info", ocaInfoOpen);
     if (panel) {
       if (ocaInfoOpen) {
         panel.removeAttribute("hidden");
@@ -951,6 +1074,7 @@
         panel.classList.add("is-open");
         try {
           panel.scrollIntoView({ behavior: "smooth", block: "start" });
+          watchOcaFrameSize();
         } catch (err) {
           /* ignore */
         }
@@ -958,6 +1082,7 @@
         panel.setAttribute("hidden", "");
         panel.hidden = true;
         panel.classList.remove("is-open");
+        watchOcaFrameSize();
       }
     }
     if (btn) {
@@ -967,9 +1092,10 @@
   }
 
   function bindOcaControls() {
-    if (!ocaSlot) return;
+    const doc = getOcaDocument();
+    if (!doc) return;
 
-    const infoBtn = ocaSlot.querySelector("[data-oca-info-toggle]");
+    const infoBtn = doc.querySelector("[data-oca-info-toggle]");
     if (infoBtn) {
       infoBtn.onclick = function (evt) {
         evt.preventDefault();
@@ -978,14 +1104,14 @@
       };
     }
 
-    if (ocaSlot._langBound) return;
-    ocaSlot._langBound = true;
-    ocaSlot.addEventListener("click", function (evt) {
+    if (doc.documentElement._ocaLangBound) return;
+    doc.documentElement._ocaLangBound = true;
+    doc.addEventListener("click", function (evt) {
       const btn =
         evt.target && evt.target.closest
           ? evt.target.closest("[data-oca-lang]")
           : null;
-      if (!btn || !ocaSlot.contains(btn)) return;
+      if (!btn || !doc.documentElement.contains(btn)) return;
       const code = (btn.getAttribute("data-oca-lang") || "").trim().toLowerCase();
       const credUrl =
         btn.getAttribute("data-oca-url") ||
@@ -999,9 +1125,8 @@
 
   async function switchOcaLanguage(credUrl, code) {
     langSwitchBusy = true;
-    const buttons = ocaSlot
-      ? ocaSlot.querySelectorAll("[data-oca-lang]")
-      : [];
+    const doc = getOcaDocument();
+    const buttons = doc ? doc.querySelectorAll("[data-oca-lang]") : [];
     buttons.forEach(function (btn) {
       btn.disabled = true;
     });
@@ -1018,9 +1143,12 @@
       const data = await res.json();
       if (!res.ok || !data || data.type === "error" || !data.html) {
         console.warn("[view] language switch failed", data);
+        buttons.forEach(function (btn) {
+          btn.disabled = false;
+        });
         return;
       }
-      applyContext(data);
+      await applyContext(data);
       try {
         const next = new URL(window.location.href);
         next.searchParams.set("url", credUrl);
@@ -1037,14 +1165,11 @@
       }
     } catch (err) {
       console.warn("[view] language switch error", err);
-    } finally {
-      langSwitchBusy = false;
-      const fresh = ocaSlot
-        ? ocaSlot.querySelectorAll("[data-oca-lang]")
-        : [];
-      fresh.forEach(function (btn) {
+      buttons.forEach(function (btn) {
         btn.disabled = false;
       });
+    } finally {
+      langSwitchBusy = false;
     }
   }
 
@@ -1237,7 +1362,7 @@
     if (!pdfBtn || pdfBtn._viewBound) return;
     pdfBtn._viewBound = true;
     pdfBtn.addEventListener("click", function () {
-      const doc = ocaSlot && ocaSlot.querySelector(".oca-doc");
+      const doc = getOcaRoot();
       if (!doc) return;
 
       // Print from about:blank so browser footer is not the long /view?url=… link.
