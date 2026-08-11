@@ -279,9 +279,11 @@ class TractionController:
             if isinstance(document.get("issuer"), str)
             else document.get("issuer").get("id")
         )
-        # Enveloped vc+jwt uses the JWK verification method; Data Integrity
-        # proofs (issue_vc / create_vp) keep using the Multikey fragment.
-        if did.startswith("did:key:"):
+        # Use Multikey for did:web JWT signing. Traction ``/wallet/jwt/verify``
+        # currently 500s on ``#key-01-jwk`` kids even when the signature is valid.
+        if did.startswith("did:web:"):
+            verification_method = f"{did}#{self.default_kid}-multikey"
+        elif did.startswith("did:key:"):
             verification_method = did_key_verification_method(did)
         else:
             verification_method = f"{did}#{self.default_kid}-jwk"
