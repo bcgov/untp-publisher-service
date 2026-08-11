@@ -985,18 +985,43 @@
     if (entry.id === "credentialStatus") {
       return summary || (d.present ? "present" : "none");
     }
-    if (d.error) return String(d.error);
+    if (entry.id === "untp") {
+      if (d.ok) {
+        return d.kind_label ? String(d.kind_label) : "valid";
+      }
+      const parts = [];
+      if (d.kind_label) parts.push(String(d.kind_label));
+      if (d.failed_check) {
+        parts.push(String(d.failed_check).replace(/_/g, " "));
+      } else if (summary) {
+        parts.push(summary);
+      }
+      return parts.join(" · ") || "invalid";
+    }
+    if (d.error) return String(d.error).split("\n")[0];
     return summary || "—";
   }
 
   function checkNoteText(entry) {
     const d = entry.data || {};
-    if (d.error) return String(d.error);
+    if (entry.id === "untp") {
+      // Long schema/model errors go here once (not also in the detail line).
+      if (d.ok) return "";
+      return d.error ? String(d.error) : "";
+    }
     if (entry.id === "issuer" && d.did && d.name) return String(d.did);
     if (entry.id === "validity" && d.summary) {
       return "Status: " + String(d.summary);
     }
     if (entry.id === "envelope" && d.verification) return "";
+    // Avoid duplicating the same error string in detail + note.
+    if (d.error) {
+      const detail = checkDetailText(entry);
+      if (String(d.error) === detail || String(d.error).split("\n")[0] === detail) {
+        return "";
+      }
+      return String(d.error);
+    }
     return "";
   }
 

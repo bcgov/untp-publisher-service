@@ -156,12 +156,47 @@ def _validator_for_kind(kind: UntpArtefactKind) -> Draft202012Validator:
     return _validators[kind]
 
 
+def format_json_schema_validation_error(exc: JsonSchemaValidationError) -> str:
+    """Human-readable JSON Schema failure (no full schema dump)."""
+    path_parts: list[str] = []
+    for part in exc.absolute_path:
+        if isinstance(part, int):
+            if path_parts:
+                path_parts[-1] = f"{path_parts[-1]}[{part}]"
+            else:
+                path_parts.append(f"[{part}]")
+        else:
+            path_parts.append(str(part))
+    path = ".".join(path_parts) if path_parts else "(root)"
+
+    instance = exc.instance
+    if isinstance(instance, (dict, list)):
+        instance_text = json.dumps(instance, ensure_ascii=False, separators=(", ", ": "))
+    else:
+        instance_text = repr(instance)
+    if len(instance_text) > 240:
+        instance_text = instance_text[:237] + "..."
+
+    lines = [
+        f"JSON Schema validation failed at {path}",
+        f"Issue: {exc.message}",
+        f"Got: {instance_text}",
+    ]
+    # Hint when UNTP renderMethod schema rejects modern TemplateRenderMethod fields.
+    if path.startswith("renderMethod") and exc.validator == "additionalProperties":
+        lines.append(
+            "Hint: UNTP 0.7.0 ConformityCredential expects RenderTemplate2024 "
+            "(url, name, …) — not TemplateRenderMethod id/renderSuite."
+        )
+    return "\n".join(lines)
+
+
 def validate_untp_json_schema(data: Mapping[str, Any], kind: UntpArtefactKind) -> None:
     """Validate ``data`` against the bundled UNTP JSON Schema for ``kind``."""
     try:
         _validator_for_kind(kind).validate(data)
     except JsonSchemaValidationError as e:
-        raise UntpValidationError("JSON Schema validation failed") from e
+        raise UntpValidationError(format_json_schema_validation_error(e)) from e
 
 
 def validate_untp_json_ld(data: Mapping[str, Any]) -> str:

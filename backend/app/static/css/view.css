@@ -614,7 +614,8 @@ h1 {
   font-size: 0.68rem;
   color: var(--muted);
   word-break: break-word;
-  line-height: 1.35;
+  line-height: 1.45;
+  white-space: pre-wrap;
 }
 
 .view-meta-pill {

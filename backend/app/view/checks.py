@@ -9,6 +9,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from pydantic import ValidationError as PydanticValidationError
+from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 
 from app.discovery.groups import (
     did_method_prefix,
@@ -328,10 +329,16 @@ def validate_untp_payload(vc: dict[str, Any]) -> dict[str, Any]:
     error = ""
     if not run.success:
         if run.raising is not None:
+            # Prefer the human-readable UntpValidationError message. Do not append
+            # raw jsonschema ValidationError dumps (they repeat the full schema).
             error = str(run.raising)
             cause = run.raising.__cause__
-            if cause is not None:
-                error = f"{error}: {cause}"
+            if cause is not None and not isinstance(
+                cause, (JsonSchemaValidationError, PydanticValidationError)
+            ):
+                cause_text = str(cause).strip()
+                if cause_text and cause_text not in error:
+                    error = f"{error}: {cause_text}"
         elif failed:
             error = str(failed[1].get("error") or failed[0])
         else:

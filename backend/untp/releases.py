@@ -20,7 +20,7 @@ CONTEXT_BUNDLE: dict[str, dict[str, str]] = {
     },
     "https://vocabulary.uncefact.org/untp/0.7.0/context/": {
         "path": "v0.7.0/contexts/untp.jsonld",
-        "digest": "sha256:e99627e9ddd159eb0d80c8bba9634ca9099597cc547a37246ad3a4ee6384687e",
+        "digest": "sha256:fbd4824e30d3cfc5cba949e1efe19b4c9ebaee056abe7aaf1c6b139a7bf91b0c",
     },
     # Minimal offline stub so TemplateRenderMethod @context resolves during validation.
     "https://w3id.org/vc/render-method/v2rc2": {
