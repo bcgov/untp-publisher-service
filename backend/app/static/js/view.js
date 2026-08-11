@@ -20,7 +20,12 @@
   const checksBar = document.getElementById("view-checks");
   const actions = document.getElementById("view-actions");
   const ocaSlot = document.getElementById("view-oca-slot");
-  const ocaFrame = document.getElementById("view-oca-frame");
+  let ocaHost = null;
+  let ocaShadow = null;
+  let ocaLanguages = [];
+  let ocaLanguage = (document.documentElement.lang || "en").toLowerCase();
+  let ocaCredentialUrl = root.getAttribute("data-page-url") || "";
+  let ocaOverlaysI18n = null;
   const jsonPanel = document.getElementById("view-json-modal");
   const jsonBody = document.getElementById("view-json-body");
   const jsonTree = document.getElementById("view-json-tree");
@@ -119,22 +124,14 @@
   let downloadName = "";
   let checkResults = {};
   let checksSettled = false;
-  let langSwitchBusy = false;
-  let ocaInfoOpen = root.getAttribute("data-debug") === "1";
   let ocaFrameResizeObserver = null;
 
-  function getOcaDocument() {
-    if (!ocaFrame) return null;
-    try {
-      return ocaFrame.contentDocument;
-    } catch (err) {
-      return null;
-    }
+  function getOcaRoot() {
+    return ocaShadow ? ocaShadow.querySelector(".oca-doc") : null;
   }
 
-  function getOcaRoot() {
-    const doc = getOcaDocument();
-    return doc ? doc.querySelector(".oca-doc") : null;
+  function getOcaBody() {
+    return ocaShadow ? ocaShadow.querySelector(".oca-shadow-body") : null;
   }
 
   function brandRootCssText() {
@@ -146,44 +143,48 @@
     return "";
   }
 
-  function buildOcaSrcdoc(fragmentHtml) {
-    const lang = escapeHtml(document.documentElement.lang || "en");
-    const sheets = Array.prototype.map
-      .call(document.querySelectorAll('link[rel="stylesheet"]'), function (link) {
-        const href = String(link.href || "").replace(/"/g, "");
-        if (!href) return "";
-        return '<link rel="stylesheet" href="' + href + '" />';
-      })
-      .join("");
-    return (
-      "<!DOCTYPE html><html lang=\"" +
-      lang +
-      "\"><head><meta charset=\"utf-8\" />" +
-      sheets +
-      "<style>" +
-      brandRootCssText() +
-      "html,body{margin:0;padding:0;background:transparent}" +
-      "body{overflow:hidden}" +
-      ".oca-doc{margin-top:0!important}" +
-      "</style></head><body class=\"pub-chrome\">" +
-      fragmentHtml +
-      "</body></html>"
+  function sanitizeOcaHtml(fragmentHtml) {
+    // Server HTML is trusted structure; still strip executable hooks from values.
+    const parsed = new DOMParser().parseFromString(
+      "<div id='oca-sanitize-root'>" + String(fragmentHtml || "") + "</div>",
+      "text/html"
     );
+    const rootEl = parsed.getElementById("oca-sanitize-root");
+    if (!rootEl) return "";
+    rootEl
+      .querySelectorAll("script, iframe, object, embed, link[rel='import']")
+      .forEach(function (el) {
+        el.remove();
+      });
+    rootEl.querySelectorAll("*").forEach(function (el) {
+      Array.prototype.slice.call(el.attributes || []).forEach(function (attr) {
+        const name = String(attr.name || "");
+        const value = String(attr.value || "");
+        if (/^on/i.test(name)) {
+          el.removeAttribute(name);
+          return;
+        }
+        if (
+          (name === "href" || name === "xlink:href" || name === "src") &&
+          /^\s*javascript:/i.test(value)
+        ) {
+          el.removeAttribute(name);
+        }
+      });
+    });
+    return rootEl.innerHTML;
   }
 
   function watchOcaFrameSize() {
-    const doc = getOcaDocument();
-    if (!ocaFrame || !doc || !doc.body) return;
+    const body = getOcaBody();
+    const rootEl = getOcaRoot();
+    if (!ocaHost || !body) return;
     const sync = function () {
       try {
         const height = Math.ceil(
-          Math.max(
-            doc.body.scrollHeight,
-            doc.documentElement ? doc.documentElement.scrollHeight : 0,
-            1
-          )
+          Math.max(body.scrollHeight, rootEl ? rootEl.scrollHeight : 0, 1)
         );
-        ocaFrame.style.height = height + "px";
+        ocaHost.style.height = height + "px";
       } catch (err) {
         /* ignore */
       }
@@ -199,36 +200,189 @@
     sync();
     if (typeof ResizeObserver !== "undefined") {
       ocaFrameResizeObserver = new ResizeObserver(sync);
-      ocaFrameResizeObserver.observe(doc.body);
-      const rootEl = doc.querySelector(".oca-doc");
+      ocaFrameResizeObserver.observe(body);
       if (rootEl) ocaFrameResizeObserver.observe(rootEl);
     }
-    // Stylesheets may settle after first paint.
     window.setTimeout(sync, 50);
     window.setTimeout(sync, 250);
   }
 
-  function mountOcaHtml(html) {
-    return new Promise(function (resolve) {
-      if (!ocaSlot || !ocaFrame) {
-        resolve();
-        return;
+  function readOverlaysI18nFromShadow() {
+    if (!ocaShadow) return null;
+    const el = ocaShadow.querySelector("#oca-overlay-i18n");
+    if (!el) return null;
+    try {
+      const parsed = JSON.parse(el.textContent || "{}");
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function applyOverlayLanguage(code) {
+    const next = String(code || "").trim().toLowerCase();
+    if (!next || !ocaShadow) return false;
+    const packRoot = ocaOverlaysI18n || readOverlaysI18nFromShadow();
+    if (!packRoot || !packRoot[next]) return false;
+    const pack = packRoot[next];
+    const labels = pack.labels || {};
+    const information = pack.information || {};
+    const ui = pack.ui || {};
+
+    ocaShadow.querySelectorAll("[data-oca-pointer]").forEach(function (el) {
+      const pointer = el.getAttribute("data-oca-pointer") || "";
+      if (!pointer) return;
+      const kind = el.getAttribute("data-oca-overlay") || "";
+      if (kind === "label" && Object.prototype.hasOwnProperty.call(labels, pointer)) {
+        el.textContent = labels[pointer];
       }
-      ocaSlot.hidden = false;
-      ocaFrame.removeAttribute("hidden");
-      const onLoad = function () {
-        ocaFrame.removeEventListener("load", onLoad);
-        bindOcaControls();
-        setOcaInfoOpen(ocaInfoOpen);
-        watchOcaFrameSize();
-        resolve();
-      };
-      ocaFrame.addEventListener("load", onLoad);
-      ocaFrame.srcdoc = buildOcaSrcdoc(html);
+      if (
+        kind === "information" &&
+        Object.prototype.hasOwnProperty.call(information, pointer)
+      ) {
+        const text = information[pointer];
+        el.textContent = text;
+        el.hidden = !text;
+      }
+      if (el.hasAttribute("data-oca-info")) {
+        if (Object.prototype.hasOwnProperty.call(information, pointer)) {
+          el.setAttribute("title", information[pointer]);
+        }
+      }
+    });
+
+    ocaShadow.querySelectorAll("[data-oca-ui]").forEach(function (el) {
+      const key = el.getAttribute("data-oca-ui") || "";
+      if (!key || !Object.prototype.hasOwnProperty.call(ui, key)) return;
+      const text = ui[key];
+      const attrs = (el.getAttribute("data-oca-ui-attr") || "")
+        .split(/\s+/)
+        .filter(Boolean);
+      if (attrs.length) {
+        attrs.forEach(function (attr) {
+          el.setAttribute(attr, text);
+        });
+      } else {
+        el.textContent = text;
+      }
+    });
+
+    const docEl = ocaShadow.querySelector(".oca-doc");
+    if (docEl) docEl.setAttribute("data-oca-lang", next);
+    ocaLanguage = next;
+    document.documentElement.lang = next;
+    return true;
+  }
+
+  function renderLangToggle() {
+    if (!ocaShadow) return;
+    let langHost = ocaShadow.querySelector(".oca-lang");
+    const langs = Array.isArray(ocaLanguages)
+      ? ocaLanguages.filter(Boolean)
+      : [];
+    const tools = ocaShadow.querySelector(".oca-ribbon-tools");
+    if (langs.length < 2) {
+      if (langHost) langHost.hidden = true;
+      return;
+    }
+    if (!langHost) {
+      if (!tools) return;
+      langHost = document.createElement("div");
+      langHost.className = "oca-lang";
+      langHost.setAttribute("role", "group");
+      langHost.setAttribute("aria-label", "Language");
+      const ocaBtn = tools.querySelector(".oca-info-btn");
+      if (ocaBtn) tools.insertBefore(langHost, ocaBtn);
+      else tools.appendChild(langHost);
+    }
+    langHost.hidden = false;
+    langHost.replaceChildren();
+    langs.forEach(function (code) {
+      const normalized = String(code || "").trim().toLowerCase();
+      if (!normalized) return;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "oca-lang-btn" + (normalized === ocaLanguage ? " is-active" : "");
+      btn.textContent = normalized.toUpperCase();
+      btn.setAttribute("hreflang", normalized);
+      btn.setAttribute("data-oca-lang-switch", normalized);
+      btn.setAttribute(
+        "aria-pressed",
+        normalized === ocaLanguage ? "true" : "false"
+      );
+      if (normalized !== ocaLanguage) {
+        btn.addEventListener("click", function () {
+          switchOcaLanguage(normalized);
+        });
+      }
+      langHost.appendChild(btn);
     });
   }
 
-  function clearOcaFrame() {
+  function switchOcaLanguage(code) {
+    const next = String(code || "").trim().toLowerCase();
+    if (!next || next === ocaLanguage) return;
+    if (!applyOverlayLanguage(next)) {
+      console.warn("[view] overlay language pack missing for", next);
+      return;
+    }
+    renderLangToggle();
+  }
+
+  function mountOcaHtml(html) {
+    return new Promise(function (resolve) {
+      if (!ocaSlot) {
+        resolve();
+        return;
+      }
+      clearOcaFrame({ keepSlotVisible: true });
+
+      const host = document.createElement("div");
+      host.id = "view-oca-frame";
+      host.className = "view-oca-frame";
+      host.setAttribute("role", "document");
+      host.setAttribute("aria-label", "Credential document");
+
+      // Open shadow isolates credential markup without about:srcdoc sandbox warnings.
+      // Scripts/on* handlers are stripped; parent still measures/prints via open mode.
+      const shadow = host.attachShadow({ mode: "open" });
+      document.querySelectorAll('link[rel="stylesheet"]').forEach(function (link) {
+        const href = String(link.href || "");
+        if (!href) return;
+        const el = document.createElement("link");
+        el.rel = "stylesheet";
+        el.href = href;
+        shadow.appendChild(el);
+      });
+      const style = document.createElement("style");
+      style.textContent =
+        brandRootCssText() +
+        ":host{display:block;background:transparent}" +
+        ".oca-shadow-body{margin:0;padding:0;background:transparent;overflow:hidden}" +
+        ".oca-doc{margin-top:0!important}";
+      shadow.appendChild(style);
+
+      const body = document.createElement("div");
+      body.className = "pub-chrome oca-shadow-body";
+      body.innerHTML = sanitizeOcaHtml(html);
+      shadow.appendChild(body);
+
+      ocaHost = host;
+      ocaShadow = shadow;
+      ocaSlot.hidden = false;
+      ocaSlot.appendChild(host);
+      watchOcaFrameSize();
+      // Stylesheets in shadow may settle after first paint.
+      window.setTimeout(function () {
+        watchOcaFrameSize();
+        resolve();
+      }, 0);
+    });
+  }
+
+  function clearOcaFrame(opts) {
+    const keepSlotVisible = !!(opts && opts.keepSlotVisible);
     if (ocaFrameResizeObserver) {
       try {
         ocaFrameResizeObserver.disconnect();
@@ -237,12 +391,19 @@
       }
       ocaFrameResizeObserver = null;
     }
-    if (ocaFrame) {
-      ocaFrame.removeAttribute("srcdoc");
-      ocaFrame.src = "about:blank";
-      ocaFrame.style.height = "";
+    if (ocaHost) {
+      try {
+        ocaHost.remove();
+      } catch (err) {
+        /* ignore */
+      }
+      ocaHost = null;
+      ocaShadow = null;
     }
-    if (ocaSlot) ocaSlot.hidden = true;
+    if (ocaSlot) {
+      ocaSlot.replaceChildren();
+      if (!keepSlotVisible) ocaSlot.hidden = true;
+    }
   }
 
   function logCheck(data) {
@@ -1049,128 +1210,37 @@
     if (data && data.credential) {
       setDecodedCredential(data.credential);
     }
-    if (!ocaSlot || !ocaFrame) return Promise.resolve();
+    if (data && data.url) {
+      ocaCredentialUrl = String(data.url || "").trim() || ocaCredentialUrl;
+    }
+    if (data && data.overlays_i18n && typeof data.overlays_i18n === "object") {
+      ocaOverlaysI18n = data.overlays_i18n;
+    }
+    if (data && Array.isArray(data.languages) && data.languages.length) {
+      ocaLanguages = data.languages.map(function (code) {
+        return String(code || "").trim().toLowerCase();
+      }).filter(Boolean);
+    } else if (ocaOverlaysI18n) {
+      ocaLanguages = Object.keys(ocaOverlaysI18n);
+    }
+    if (data && data.language) {
+      ocaLanguage = String(data.language || "en").trim().toLowerCase() || "en";
+    }
+    renderLangToggle();
+    if (!ocaSlot) return Promise.resolve();
     if (data.html) {
-      // Mount inside a sandboxed iframe (allow-same-origin, no scripts) so
-      // credential/OCA markup cannot run script in the parent page.
-      return mountOcaHtml(data.html);
+      // Mount OCA HTML in an open shadow root (no iframe/srcdoc sandbox warnings).
+      // Executable markup is stripped; parent measures height and prints from the shadow.
+      return mountOcaHtml(data.html).then(function () {
+        if (!ocaOverlaysI18n) {
+          ocaOverlaysI18n = readOverlaysI18nFromShadow();
+        }
+        applyOverlayLanguage(ocaLanguage);
+        renderLangToggle();
+      });
     }
     clearOcaFrame();
     return Promise.resolve();
-  }
-
-  function setOcaInfoOpen(open) {
-    ocaInfoOpen = !!open;
-    const doc = getOcaDocument();
-    if (!doc) return;
-    const rootDoc = doc.querySelector(".oca-doc");
-    const panel = doc.querySelector(".oca-overlays, .oca-all-fields");
-    const btn = doc.querySelector("[data-oca-info-toggle]");
-    if (rootDoc) rootDoc.classList.toggle("is-show-info", ocaInfoOpen);
-    if (panel) {
-      if (ocaInfoOpen) {
-        panel.removeAttribute("hidden");
-        panel.hidden = false;
-        panel.classList.add("is-open");
-        try {
-          panel.scrollIntoView({ behavior: "smooth", block: "start" });
-          watchOcaFrameSize();
-        } catch (err) {
-          /* ignore */
-        }
-      } else {
-        panel.setAttribute("hidden", "");
-        panel.hidden = true;
-        panel.classList.remove("is-open");
-        watchOcaFrameSize();
-      }
-    }
-    if (btn) {
-      btn.classList.toggle("is-active", ocaInfoOpen);
-      btn.setAttribute("aria-pressed", ocaInfoOpen ? "true" : "false");
-    }
-  }
-
-  function bindOcaControls() {
-    const doc = getOcaDocument();
-    if (!doc) return;
-
-    const infoBtn = doc.querySelector("[data-oca-info-toggle]");
-    if (infoBtn) {
-      infoBtn.onclick = function (evt) {
-        evt.preventDefault();
-        evt.stopPropagation();
-        setOcaInfoOpen(!ocaInfoOpen);
-      };
-    }
-
-    if (doc.documentElement._ocaLangBound) return;
-    doc.documentElement._ocaLangBound = true;
-    doc.addEventListener("click", function (evt) {
-      const btn =
-        evt.target && evt.target.closest
-          ? evt.target.closest("[data-oca-lang]")
-          : null;
-      if (!btn || !doc.documentElement.contains(btn)) return;
-      const code = (btn.getAttribute("data-oca-lang") || "").trim().toLowerCase();
-      const credUrl =
-        btn.getAttribute("data-oca-url") ||
-        root.getAttribute("data-page-url") ||
-        "";
-      if (!code || !credUrl || langSwitchBusy) return;
-      if (btn.classList.contains("is-active")) return;
-      switchOcaLanguage(credUrl, code);
-    });
-  }
-
-  async function switchOcaLanguage(credUrl, code) {
-    langSwitchBusy = true;
-    const doc = getOcaDocument();
-    const buttons = doc ? doc.querySelectorAll("[data-oca-lang]") : [];
-    buttons.forEach(function (btn) {
-      btn.disabled = true;
-    });
-    try {
-      const endpoint =
-        "/view/oca?url=" +
-        encodeURIComponent(credUrl) +
-        "&lang=" +
-        encodeURIComponent(code) +
-        (root.getAttribute("data-debug") === "1" ? "&debug=1" : "");
-      const res = await fetch(endpoint, {
-        headers: { Accept: "application/json" },
-      });
-      const data = await res.json();
-      if (!res.ok || !data || data.type === "error" || !data.html) {
-        console.warn("[view] language switch failed", data);
-        buttons.forEach(function (btn) {
-          btn.disabled = false;
-        });
-        return;
-      }
-      await applyContext(data);
-      try {
-        const next = new URL(window.location.href);
-        next.searchParams.set("url", credUrl);
-        next.searchParams.set("lang", code);
-        if (root.getAttribute("data-debug") === "1") {
-          next.searchParams.set("debug", "1");
-        } else {
-          next.searchParams.delete("debug");
-        }
-        window.history.replaceState({}, "", next.toString());
-        document.documentElement.lang = code;
-      } catch (err) {
-        /* ignore history failures */
-      }
-    } catch (err) {
-      console.warn("[view] language switch error", err);
-      buttons.forEach(function (btn) {
-        btn.disabled = false;
-      });
-    } finally {
-      langSwitchBusy = false;
-    }
   }
 
   function bindCopy() {
@@ -1264,7 +1334,7 @@
   }
 
   function formatPrintedAt(date) {
-    // Match server Rendered stamp: "10 Aug 2026, 23:43:07 UTC"
+    // Match server Generated stamp: "10 Aug 2026, 23:43:07 UTC"
     const months = [
       "Jan",
       "Feb",
@@ -1302,7 +1372,7 @@
     const clone = sourceDoc.cloneNode(true);
     clone
       .querySelectorAll(
-        ".oca-overlays, .oca-all-fields, .oca-ribbon-tools, .oca-lang, .oca-info-btn"
+        ".oca-overlays, .oca-all-fields, .oca-ribbon-tools, .oca-lang, .oca-info-btn, .oca-overlays-toggle, #oca-overlay-i18n"
       )
       .forEach(function (el) {
         el.remove();

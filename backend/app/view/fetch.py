@@ -10,6 +10,7 @@ import requests
 from urllib.parse import urlparse
 
 from app.services.composer import publisher_origin
+from app.plugins.mongodb import MongoClient
 from config import settings
 
 ViewFetchKind = Literal["credential", "status", "oca"]
@@ -332,6 +333,42 @@ def fetch_application_vc(
     if not isinstance(payload, dict):
         raise RuntimeError("Credential response was not a JSON object")
     return payload
+
+
+def load_publisher_enveloped_vc(credential_id: str) -> dict[str, Any] | None:
+    """Return an enveloped VC from Mongo when ``credential_id`` is published here.
+
+    Avoids HTTP self-fetch to ``PUBLISHER_DOMAIN`` (e.g. ``localhost`` vs
+    ``127.0.0.1`` hang/timeout when the viewer re-requests the credential).
+    """
+    cid = (credential_id or "").strip()
+    if not cid:
+        return None
+    from app.plugins.traction import TractionController
+
+    try:
+        record = MongoClient().find_one("CredentialRecord", {"id": cid})
+    except Exception:
+        settings.LOGGER.exception(
+            "View: Mongo load failed for credential %s", cid
+        )
+        return None
+    if not isinstance(record, dict):
+        return None
+    vc_jwt = str(record.get("vc_jwt") or "").strip()
+    if not vc_jwt:
+        return None
+    return TractionController.as_enveloped_vc(vc_jwt)
+
+
+def resolve_application_vc(url: str) -> dict[str, Any]:
+    """Load a credential envelope via Mongo when local, otherwise HTTP fetch."""
+    credential_id = parse_credential_url(url)
+    if credential_id and view_fetch_url_is_publisher(url):
+        local = load_publisher_enveloped_vc(credential_id)
+        if local is not None:
+            return local
+    return fetch_application_vc(url)
 
 
 def resolve_internal_oca_bundle(url: str) -> dict[str, Any] | None:

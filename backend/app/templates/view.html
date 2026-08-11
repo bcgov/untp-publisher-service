@@ -9,7 +9,7 @@
     <link rel="icon" href="/static/admin/images/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/static/css/bc-sans.css" />
     <link rel="stylesheet" href="/static/css/publisher.css?v=5" />
-    <link rel="stylesheet" href="/static/css/view.css?v=2" />
+    <link rel="stylesheet" href="/static/css/view.css?v=20" />
     <style>
       :root {
         --primary: {{ primary_color }};
@@ -333,10 +333,6 @@
                 </div>
               </div>
 
-              {% if lang and lang != 'en' %}
-              <input type="hidden" name="lang" value="{{ lang }}" />
-              {% endif %}
-
               <div class="resolve-examples" aria-label="Examples">
                 <span class="resolve-chip" aria-hidden="true"
                   ><code>/credentials/{id}</code></span
@@ -370,15 +366,8 @@
 
       {% if loading %}
       <div id="view-oca-host">
-        <div id="view-oca-slot" hidden>
-          <iframe
-            id="view-oca-frame"
-            class="view-oca-frame"
-            title="Credential document"
-            sandbox="allow-same-origin"
-            referrerpolicy="no-referrer"
-          ></iframe>
-        </div>
+        {# OCA card is mounted into a shadow root under this slot (see view.js). #}
+        <div id="view-oca-slot" hidden></div>
       </div>
       {% endif %}
     </main>
@@ -510,7 +499,7 @@
     </footer>
 
     {% if loading %}
-    <script src="/static/js/view.js?v=48"></script>
+    <script src="/static/js/view.js?v=59"></script>
     {% else %}
     <script>
       (function () {

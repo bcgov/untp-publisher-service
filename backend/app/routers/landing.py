@@ -75,7 +75,6 @@ from app.view.fetch import (
 from app.view.oca import (
     build_oca_presentation,
     build_oca_template_context,
-    compose_view_oca_payload,
     format_oca_datetime,
     format_oca_value,
     oca_bundle_for_credential_type,
@@ -121,7 +120,6 @@ __all__ = [
     "build_oca_presentation",
     "build_oca_template_context",
     "compact_data_uri_media_type",
-    "compose_view_oca_payload",
     "credential_download_url",
     "credential_public_url",
     "credential_ref_view_url",
@@ -203,16 +201,14 @@ def _view_shell_context(
 ) -> dict[str, Any]:
     stream = ""
     if loading and url:
-        stream = (
-            f"/view/stream?url={quote(url, safe='')}&lang={quote(lang, safe='')}"
-        )
+        stream = f"/view/stream?url={quote(url, safe='')}"
         if debug:
             stream += "&debug=1"
     return {
         **_branding(),
         "url": url,
         "credential": credential,
-        "lang": lang,
+        "lang": "en",
         "welcome": welcome,
         "loading": loading,
         "unsafe_mode": view_allows_remote(),
@@ -331,33 +327,6 @@ async def view_credential_stream(
             "X-Accel-Buffering": "no",
         },
     )
-
-
-@router.get("/view/oca", include_in_schema=False)
-async def view_oca_fragment(
-    url: str = "",
-    credential: str = "",
-    lang: str = "en",
-    debug: str = "",
-):
-    """JSON OCA document fragment for language switching without a full page reload."""
-    target_url, error = resolve_view_target(url=url, credential=credential)
-    if error or not target_url:
-        return JSONResponse(
-            {
-                "type": "error",
-                "message": error
-                or "Provide a credential URL or credential=type:cardinality:entity.",
-            },
-            status_code=400,
-        )
-    payload = compose_view_oca_payload(
-        target_url,
-        (lang or "en").strip().lower() or "en",
-        debug=view_debug_enabled(debug),
-    )
-    status = 200 if payload.get("type") == "context" else 400
-    return JSONResponse(payload, status_code=status)
 
 
 @router.get("/discovery", response_class=HTMLResponse, include_in_schema=False)

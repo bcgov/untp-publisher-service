@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import date
 from enum import StrEnum
 
-from pydantic import AnyUrl, AwareDatetime, Base64Str, BaseModel, ConfigDict, Field
+from pydantic import AnyUrl, AwareDatetime, BaseModel, ConfigDict, Field
 
 
 
@@ -309,7 +309,8 @@ class Image(BaseModel):
         default=None,
         description="The detailed description / supporting information for this image.",
     )
-    imageData: Base64Str = Field(
+    # Plain str (not Base64Str): PNG/etc. decode to binary, and Base64Str requires UTF-8.
+    imageData: str = Field(
         ..., description="The image data encoded as a base64 string."
     )
     mediaType: str = Field(
@@ -814,7 +815,7 @@ class ConformityAttestation(BaseModel):
         default=None,
         description="Auditable evidence supporting this assessment such as raw measurements, supporting documents. This is usually private data and would normally be encrypted.",
     )
-    trustMark: Image | None = Field(
+    trustmark: Image | None = Field(
         default=None,
         description="A trust mark as a small binary image encoded as base64 with a description.  Maye be displayed on the conformity credential rendering.",
     )

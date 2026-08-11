@@ -32,7 +32,7 @@ from app.view.checks import (
     validate_vc_validity,
     verify_vc_jwt,
 )
-from app.view.fetch import fetch_application_vc, parse_credential_url
+from app.view.fetch import parse_credential_url, resolve_application_vc
 from app.view.oca import (
     build_oca_template_context,
     oca_languages,
@@ -93,7 +93,7 @@ def iter_view_pipeline(
     yield _view_progress(0)
     vc_jwt = ""
     try:
-        envelope = fetch_application_vc(credential_url)
+        envelope = resolve_application_vc(credential_url)
         vc_jwt = extract_vc_jwt(envelope)
         try:
             vc = decode_jwt_payload(vc_jwt)
@@ -385,6 +385,7 @@ def iter_view_pipeline(
         "url": credential_url,
         "language": context.get("language") or language,
         "languages": context.get("languages") or languages,
+        "overlays_i18n": context.get("overlays_i18n") or {},
         "capture_base": context.get("capture_base") or "",
         "html": html,
         # Decoded JWT payload (not the opaque application/vc envelope).

@@ -139,6 +139,10 @@ def test_compose_credential(publication_payload, type_record, issuer, monkeypatc
     ref_scheme = credential["credentialSubject"]["referenceScheme"]
     assert ref_scheme["id"].endswith("96293_01")
     assert ref_scheme["name"] == "Mines Act (British Columbia)"
+    trustmark = credential["credentialSubject"]["trustmark"]
+    assert trustmark["name"] == "Verified Mine Permit"
+    assert "BC Mines Act" in trustmark["description"]
+    assert trustmark["mediaType"] == "image/png"
     criteria = assessment["assessmentCriteria"][0]
     assert criteria["id"].endswith("#section10")
     assert criteria["name"] == "Permits"

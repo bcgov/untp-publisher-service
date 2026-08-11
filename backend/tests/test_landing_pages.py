@@ -156,7 +156,7 @@ def _patch_mongo(monkeypatch, factory):
     monkeypatch.setattr(landing, "MongoClient", factory)
     monkeypatch.setattr(view_refs, "MongoClient", factory)
     monkeypatch.setattr(view_pipeline, "MongoClient", factory)
-    monkeypatch.setattr(view_oca, "MongoClient", factory)
+    monkeypatch.setattr(view_fetch, "MongoClient", factory)
 
 def _app():
     app = FastAPI()
@@ -247,7 +247,7 @@ def test_discovery_open_links_to_view(monkeypatch):
         "revocation": False,
         "suspension": False,
         "vc": _SAMPLE_VC,
-        "vc_jwt": "eyJ.e30.sig",
+        "vc_jwt": _fake_vc_jwt(_SAMPLE_VC),
     }
     _patch_mongo(monkeypatch, lambda: _FakeMongo([record]))
     client = TestClient(_app())
@@ -413,9 +413,9 @@ def test_view_with_url_returns_loading_shell(monkeypatch):
     assert b"/static/js/view.js" in response.content
     assert b"Permit number" not in response.content
     assert b'id="view-oca-slot"' in response.content
-    assert b'id="view-oca-frame"' in response.content
-    assert b'sandbox="allow-same-origin"' in response.content
+    assert b'id="view-oca-frame"' not in response.content
     assert b'data-check="envelope"' in response.content
+    assert b"/static/js/view.js" in response.content
 
 
 def test_view_unsafe_mode_shell_allows_remote_url(monkeypatch):
@@ -459,7 +459,7 @@ def test_view_stream_runs_pipeline(monkeypatch):
         "revocation": False,
         "suspension": False,
         "vc": _SAMPLE_VC,
-        "vc_jwt": "eyJ.e30.sig",
+        "vc_jwt": _fake_vc_jwt(_SAMPLE_VC),
     }
     _patch_mongo(monkeypatch, lambda: _FakeMongo([record]))
     mocked = _mock_fetch(monkeypatch)
@@ -468,9 +468,8 @@ def test_view_stream_runs_pipeline(monkeypatch):
     events = _collect_sse_events(
         client, url="https://publisher.test/credentials/cred-1"
     )
-    assert mocked.last is not None
-    assert mocked.last["url"] == "https://publisher.test/credentials/cred-1"
-    assert mocked.last["headers"]["Accept"] == "application/vc"
+    # Publisher-origin credentials load from Mongo (no HTTP self-fetch).
+    assert mocked.last is None
 
     assert _sse_by_type(events, "progress")
     assert _sse_by_type(events, "meta")
@@ -516,10 +515,13 @@ def test_view_stream_runs_pipeline(monkeypatch):
     assert context_events
     ctx = context_events[0]
     assert ctx["language"] == "en"
+    assert "en" in (ctx.get("overlays_i18n") or {})
+    assert "fr" in (ctx.get("overlays_i18n") or {})
     assert "Permit number" in ctx["html"]
     assert "C-217" in ctx["html"]
     assert "BASIN COAL MINE COMPANY" in ctx["html"]
     assert 'class="oca-doc"' in ctx["html"]
+    assert "oca-overlay-i18n" in ctx["html"]
     assert _sse_by_type(events, "done")
     assert not _sse_by_type(events, "error")
     assert not _sse_by_type(events, "fields")
@@ -537,7 +539,7 @@ def test_view_stream_unsafe_mode_fetches_remote(monkeypatch):
         "revocation": False,
         "suspension": False,
         "vc": _SAMPLE_VC,
-        "vc_jwt": "eyJ.e30.sig",
+        "vc_jwt": _fake_vc_jwt(_SAMPLE_VC),
     }
     _patch_mongo(monkeypatch, lambda: _FakeMongo([record]))
     mocked = _mock_fetch(monkeypatch)
@@ -562,7 +564,7 @@ def test_view_stream_shows_invalid_jwt(monkeypatch):
         "revocation": False,
         "suspension": False,
         "vc": _SAMPLE_VC,
-        "vc_jwt": "eyJ.e30.sig",
+        "vc_jwt": _fake_vc_jwt(_SAMPLE_VC),
     }
     _patch_mongo(monkeypatch, lambda: _FakeMongo([record]))
     _mock_fetch(monkeypatch)
@@ -1157,7 +1159,7 @@ def test_soft_resolve_and_oca_fields():
     legacy_subject["name"] = "Mines Act Permit C-217 — BASIN COAL MINE COMPANY"
     legacy["credentialSubject"] = legacy_subject
     legacy_name_ctx = build_oca_template_context(legacy, _SAMPLE_OCA, "en")
-    assert legacy_name_ctx["presentation"]["title"] == "Mines Act Permit C-217"
+    assert legacy_name_ctx["presentation"]["title"] == "Mines Act Permit"
 
     fr = build_oca_template_context(_SAMPLE_VC, _SAMPLE_OCA, "fr")
     assert fr["language"] == "fr"
@@ -1169,32 +1171,104 @@ def test_soft_resolve_and_oca_fields():
     assert "Permit number" in html
     assert "C-217" in html
     assert 'class="oca-doc"' in html
-    assert "hreflang=\"fr\"" in html
-    assert "data-oca-lang=\"fr\"" in html
     assert "oca-title" in html
-    assert 'data-oca-info-toggle' in html
+    assert "oca-lang" in html
+    assert "oca-lang-btn" in html
+    assert 'for="oca-overlays-toggle"' in html
+    assert 'target="_parent"' not in html
+    assert "data-oca-url=" not in html
+    fr_html = render_oca_box_html(
+        build_oca_template_context(_SAMPLE_VC, _SAMPLE_OCA, "fr"),
+        page_url="https://publisher.test/credentials/x",
+    )
+    assert "Site minier" in fr_html
+    assert "Substances" in fr_html
+    assert 'data-oca-lang="fr"' in fr_html
+    assert "oca-overlay-i18n" in fr_html
+    en_ctx = build_oca_template_context(_SAMPLE_VC, _SAMPLE_OCA, "en")
+    assert "en" in en_ctx["overlays_i18n"]
+    assert "fr" in en_ctx["overlays_i18n"]
+    assert (
+        en_ctx["overlays_i18n"]["fr"]["labels"][
+            "/credentialSubject/conformityAssessment/0/assessedProduct/0/product/name"
+        ]
+        == "Substances"
+    )
+    assert en_ctx["overlays_i18n"]["fr"]["ui"]["generated_prefix"] == "Généré"
+    assert en_ctx["overlays_i18n"]["fr"]["ui"]["verified"] == "Vérifié"
+    assert en_ctx["overlays_i18n"]["fr"]["ui"]["unverified"] == "Non vérifié"
+    assert "Gouvernance" in fr_html
+    assert "Titulaire" in fr_html
+    assert "Généré" in fr_html
+    assert "Vérifié" in fr_html
+    assert 'data-oca-ui="generated_prefix"' in html
+    assert 'data-oca-ui="verified"' in html
+    attestation_for_pointer = next(
+        s for s in context["presentation"]["sections"] if s.get("id") == "attestation"
+    )
+    assert (
+        attestation_for_pointer.get("title_pointer")
+        == "/credentialSubject/referenceProfile/name"
+    )
+    assert 'data-oca-pointer="/credentialSubject/referenceProfile/name"' in html
+    assert 'id="oca-overlays-toggle"' in html
     assert 'id="oca-overlays"' in html
-    assert "Semantic overlays" in html
     assert "oca-lexicon" in html
     assert 'class="oca-footer"' in html
-    assert "Rendered" in html
     assert "UTC" in html
-    # Default view keeps the overlays lexicon collapsed.
-    assert 'id="oca-overlays"' in html and "hidden" in html.split('id="oca-overlays"', 1)[1][:100]
+    assert context["presentation"]["flow"].get("issuer_label") == "Issuer"
+    assert context["presentation"]["flow"].get("assessment_label") == "Permit number"
+    assert context["presentation"]["flow"].get("organisation_label") == "Permittee"
+    assert context["presentation"]["flow"].get("facility_label") == "Mining Site"
+    # Default view keeps the overlays lexicon collapsed (checkbox unchecked).
+    toggle_open = html.split('id="oca-overlays-toggle"', 1)[1].split(">", 1)[0]
+    assert "checked" not in toggle_open
     debug_html = render_oca_box_html(
         context, page_url="https://publisher.test/credentials/x", debug=True
     )
-    assert 'data-oca-info-toggle' in debug_html
-    assert "is-active" in debug_html
-    # debug=True starts with the overlays lexicon visible.
-    debug_chunk = debug_html.split('id="oca-overlays"', 1)[1][:120]
-    assert "hidden" not in debug_chunk.split(">", 1)[0]
+    assert 'id="oca-overlays-toggle"' in debug_html
+    # debug=True starts with the overlays lexicon visible (checkbox checked).
+    debug_toggle_open = debug_html.split('id="oca-overlays-toggle"', 1)[1].split(">", 1)[0]
+    assert "checked" in debug_toggle_open
     assert context["presentation"]["title"]
     assert context["presentation"]["sections"]
+    assert context["presentation"]["stats"] == []
     kinds = {s["kind"] for s in context["presentation"]["sections"]}
-    assert "chips" in kinds or "entity" in kinds or "panel" in kinds
-    assert any(s.get("headline") or s.get("chips") or s.get("facts") for s in context["presentation"]["sections"])
+    assert "links" in kinds or "entity" in kinds or "panel" in kinds or "product" in kinds
+    attestation = next(
+        s for s in context["presentation"]["sections"] if s.get("id") == "attestation"
+    )
+    assert attestation["kind"] == "links"
+    assert attestation["headline"]["value"] == "BC Mines Act Permit Governance"
+    assert attestation["title"] == "Governance"
+    assert any(b.get("value") == "certification" for b in attestation.get("badges") or [])
+    assert any(b.get("value") == "authority-mandate" for b in attestation.get("badges") or [])
+    fact_labels = {f.get("label") for f in attestation.get("facts") or []}
+    assert "Regulation" in fact_labels
+    assert "Criterion" in fact_labels
+    assert "Assessment level" not in fact_labels
+    assert "Assessor level" not in fact_labels
+    assert "oca-stats" not in html
+    assert 'class="oca-chip"' not in html
+    assert "oca-scheme-lead" in html
+    assert "oca-scheme-meta" in html
+    assert "Permit title" not in html.split("oca-overlay-i18n", 1)[0]
+    assert any(
+        s.get("headline") or s.get("chips") or s.get("facts") or s.get("entries")
+        for s in context["presentation"]["sections"]
+    )
+    product_sections = [
+        s for s in context["presentation"]["sections"] if s.get("id") == "product"
+    ]
+    assert len(product_sections) == 1
+    assert len(product_sections[0].get("entries") or []) == 1
+    assert product_sections[0]["title"] == "Commodities"
+    assert product_sections[0]["entries"][0]["headline"]["value"] == "Metallurgic"
+    assert "product" not in (context["presentation"].get("flow") or {})
     assert "oca-card" in html
+    assert "oca-card-item" in html
+    assert "Metallurgic" in html
+    assert html.count("oca-flow-small") == 2
     assert "oca-chip" in html or "oca-card-headline" in html
 
     fields = oca_fields_for_vc(_SAMPLE_VC, _SAMPLE_OCA, "en")
@@ -1207,6 +1281,88 @@ def test_soft_resolve_and_oca_fields():
     holder_row = by_pointer["/credentialSubject/issuedToParty/name"]
     assert holder_row["label"] == "Permittee"
     assert holder_row["value"] == "BASIN COAL MINE COMPANY"
+    name_pointer = (
+        "/credentialSubject/conformityAssessment/0/assessedProduct/0/product/name"
+    )
+    assert name_pointer in by_pointer
+    assert by_pointer[name_pointer]["label"] == "Commodities"
+    assert by_pointer[name_pointer]["value"] == "Metallurgic"
+    assert (
+        "/credentialSubject/conformityAssessment/0/assessedProduct"
+        not in by_pointer
+    )
+    assert (
+        "/credentialSubject/conformityAssessment/0/assessedProduct/*/product/name"
+        not in by_pointer
+    )
+
+
+def test_oca_array_star_expands_multiple_commodities():
+    from copy import deepcopy
+
+    from app.routers.landing import build_oca_template_context, render_oca_box_html
+    from app.view.oca import expand_oca_array_attributes
+
+    vc = deepcopy(_SAMPLE_VC)
+    products = vc["credentialSubject"]["conformityAssessment"][0]["assessedProduct"]
+    products.append(
+        {
+            "product": {
+                "type": ["Product"],
+                "id": "urn:ca:bcgov:mines-act:permit:C-217:commodity:copper",
+                "name": "Copper",
+            },
+            "idVerifiedByCAB": True,
+        }
+    )
+
+    array_root = "/credentialSubject/conformityAssessment/0/assessedProduct"
+    star_name = f"{array_root}/*/product/name"
+    expanded, labels, _info, _flagged, order = expand_oca_array_attributes(
+        {
+            array_root: "Array",
+            star_name: "Text",
+            f"{array_root}/*/product/id": "Text",
+        },
+        {star_name: "Commodities"},
+        {},
+        [],
+        vc,
+    )
+    assert array_root not in expanded
+    assert star_name not in expanded
+    assert f"{array_root}/0/product/name" in expanded
+    assert f"{array_root}/1/product/name" in expanded
+    assert f"{array_root}/0/product/name" in order
+    assert f"{array_root}/1/product/name" in order
+    assert labels[f"{array_root}/1/product/name"] == "Commodities"
+
+    context = build_oca_template_context(vc, _SAMPLE_OCA, "en")
+    assert context["error"] == ""
+    product = next(
+        s for s in context["presentation"]["sections"] if s.get("id") == "product"
+    )
+    assert product["title"] == "Commodities"
+    assert len(product["entries"]) == 2
+    names = [item["headline"]["value"] for item in product["entries"]]
+    assert names == ["Metallurgic", "Copper"]
+    assert "product" not in context["presentation"]["flow"]
+
+    html = render_oca_box_html(
+        context, page_url="https://publisher.test/credentials/x"
+    )
+    assert "Metallurgic" in html
+    assert "Copper" in html
+    assert html.count('class="oca-card-item"') == 2
+    assert html.count("oca-flow-small") == 2
+    assert "Commodities" in html
+
+    fr = build_oca_template_context(vc, _SAMPLE_OCA, "fr")
+    fr_product = next(
+        s for s in fr["presentation"]["sections"] if s.get("id") == "product"
+    )
+    assert fr_product["title"] == "Substances"
+    assert len(fr_product["entries"]) == 2
 
 
 def test_safe_css_color_allows_hex_only():

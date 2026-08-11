@@ -674,6 +674,51 @@ body.is-json-modal-open {
   gap: 0.3rem;
 }
 
+.view-lang {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 0.3rem;
+  overflow: hidden;
+  background: #fff;
+}
+
+.view-lang[hidden] {
+  display: none;
+}
+
+.view-lang-btn {
+  display: inline-block;
+  padding: 0.28rem 0.55rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.view-lang-btn + .view-lang-btn {
+  border-left: 1px solid var(--line);
+}
+
+.view-lang-btn.is-active {
+  background: var(--primary);
+  color: #fff;
+  cursor: default;
+}
+
+.view-lang-btn:hover:not(.is-active):not(:disabled) {
+  background: var(--primary-soft);
+}
+
+.view-lang-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -1053,7 +1098,7 @@ body.is-json-modal-open {
   border-top: none;
 }
 
-/* Sandboxed OCA host — HTML is mounted via iframe srcdoc (no scripts). */
+/* OCA host — credential HTML is mounted in a shadow root under #view-oca-slot. */
 #view-oca-host {
   width: 100%;
 }
@@ -1067,8 +1112,9 @@ body.is-json-modal-open {
   width: 100%;
   border: 0;
   background: transparent;
+  overflow: hidden;
   min-height: 20rem;
-  /* Height is synced from the framed document via ResizeObserver. */
+  /* Height is synced from the shadow content via ResizeObserver. */
 }
 
 /* OCA credential document (inspired by discovery-permit-ui) */
@@ -1229,6 +1275,7 @@ body.is-json-modal-open {
   background: transparent;
   cursor: pointer;
   line-height: 1.2;
+  text-decoration: none;
 }
 
 .oca-lang-btn + .oca-lang-btn {
@@ -1238,39 +1285,57 @@ body.is-json-modal-open {
 .oca-lang-btn.is-active {
   background: var(--primary);
   color: #fff;
+  cursor: default;
 }
 
 .oca-lang-btn:hover:not(.is-active) {
   background: color-mix(in srgb, var(--primary) 8%, #fff);
 }
 
-.oca-lang-btn:disabled {
-  opacity: 0.55;
-  cursor: wait;
-}
-
 .oca-info-btn {
-  display: inline-block;
-  padding: 0.28rem 0.55rem;
-  font: inherit;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
   color: var(--primary);
   border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
   border-radius: 0.3rem;
   background: #fff;
   cursor: pointer;
-  line-height: 1.2;
+  line-height: 0;
 }
 
-.oca-info-btn.is-active {
+.oca-info-btn svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.oca-overlays-toggle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.oca-doc:has(.oca-overlays-toggle:checked) .oca-info-btn {
   background: var(--primary);
   color: #fff;
 }
 
-.oca-info-btn:hover:not(.is-active) {
+.oca-info-btn:hover {
   background: color-mix(in srgb, var(--primary) 8%, #fff);
+}
+
+.oca-doc:has(.oca-overlays-toggle:checked) .oca-info-btn:hover {
+  background: var(--primary);
+  color: #fff;
 }
 
 .oca-seal-ring {
@@ -1286,6 +1351,33 @@ body.is-json-modal-open {
   color: var(--primary);
   background: radial-gradient(circle at 30% 30%, #f8fbff, #eef4fa);
   box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+.oca-seal-trustmark {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 7rem;
+}
+
+.oca-seal-img {
+  display: block;
+  width: 5.5rem;
+  height: auto;
+  object-fit: contain;
+}
+
+.oca-seal-caption {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--primary);
+  line-height: 1.25;
 }
 
 .oca-seal-top,
@@ -1305,7 +1397,14 @@ body.is-json-modal-open {
 
 .oca-title-block {
   text-align: center;
-  padding: 1.5rem 1.75rem 1rem;
+  padding: 1.75rem 1.75rem 0.35rem;
+}
+
+.oca-title-block .oca-brand-mark {
+  display: block;
+  width: 72px;
+  height: auto;
+  margin: 0 auto 1rem;
 }
 
 .oca-scheme {
@@ -1341,7 +1440,7 @@ body.is-json-modal-open {
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin: 0 1.75rem 1.25rem;
+  margin: 1.25rem 1.75rem 1.25rem;
   padding: 1rem 1.15rem;
   background: #fafbfc;
   border: 1px dashed var(--line);
@@ -1376,8 +1475,19 @@ body.is-json-modal-open {
 .oca-flow-group {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
   flex: 1 1 12rem;
+}
+
+.oca-flow-join {
+  flex: 0 0 auto;
+  align-self: center;
+  padding-top: 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1;
+  color: color-mix(in srgb, var(--primary) 45%, var(--muted));
 }
 
 .oca-flow-label {
@@ -1416,11 +1526,25 @@ a.oca-flow-link:focus-visible {
 }
 
 .oca-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
   margin: 0 1.75rem 1.25rem;
   padding: 1.25rem 1.5rem;
   background: linear-gradient(135deg, #f7f9fc 0%, #eef4fa 100%);
   border: 2px solid var(--primary);
   border-radius: 4px;
+}
+
+.oca-hero-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.oca-hero-trustmark {
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
 }
 
 .oca-hero-kicker {
@@ -1625,6 +1749,17 @@ a.oca-stat-link:focus-visible {
   background: #f3e5d8;
 }
 
+.oca-verify.is-type {
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, #fff);
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.22rem 0.55rem;
+}
+
 .oca-chip-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
@@ -1782,6 +1917,72 @@ a.oca-link-value:focus-visible {
 .oca-card-attestation {
   background: linear-gradient(135deg, #fbfcfe 0%, #f3f7fb 100%);
   border-color: color-mix(in srgb, var(--primary) 18%, var(--line));
+  padding: 1.15rem 1.25rem 1.25rem;
+}
+
+.oca-card-attestation .oca-card-head {
+  margin-bottom: 0.45rem;
+  align-items: center;
+}
+
+.oca-card-attestation .oca-card-headline {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  margin: 0 0 1rem;
+  max-width: 42rem;
+}
+
+.oca-card-attestation .oca-card-headline a.oca-stat-link {
+  color: inherit;
+  text-decoration-color: color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+.oca-scheme-lead {
+  padding: 0.9rem 1rem;
+  margin: 0 0 0.85rem;
+  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--primary) 12%, var(--line));
+  border-left: 3px solid var(--secondary);
+  border-radius: 4px;
+}
+
+.oca-scheme-lead .oca-fact-label {
+  margin-bottom: 0.3rem;
+}
+
+.oca-scheme-lead .oca-fact-value {
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--primary);
+}
+
+.oca-scheme-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.65rem;
+}
+
+.oca-scheme-meta .oca-fact {
+  padding: 0.7rem 0.8rem;
+  background: #fff;
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  min-width: 0;
+}
+
+.oca-scheme-meta .oca-fact-value {
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+@media (max-width: 720px) {
+  .oca-scheme-meta {
+    grid-template-columns: 1fr;
+  }
 }
 
 .oca-card-facility {
@@ -1797,6 +1998,62 @@ a.oca-link-value:focus-visible {
   background: #fafbfc;
 }
 
+.oca-card-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.oca-card-product .oca-card-items {
+  gap: 0.55rem;
+}
+
+.oca-card-item + .oca-card-item {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--primary) 12%, var(--line));
+}
+
+.oca-card-product .oca-card-item + .oca-card-item {
+  margin-top: 0;
+  padding-top: 0.55rem;
+  border-top: 1px solid color-mix(in srgb, var(--primary) 10%, var(--line));
+}
+
+.oca-card-item-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  flex-wrap: wrap;
+}
+
+.oca-card-item-row .oca-card-headline {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.95rem;
+  line-height: 1.25;
+}
+
+.oca-card-item-badges {
+  margin-bottom: 0.5rem;
+}
+
+.oca-card-item-row .oca-card-item-badges {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.oca-card-product .oca-card-entity-id {
+  margin-top: 0.15rem;
+}
+
+.oca-card-product .oca-card-entity-id code {
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
 .oca-card-criteria .oca-card-headline {
   font-size: 1.15rem;
 }
@@ -1809,6 +2066,7 @@ a.oca-link-value:focus-visible {
 
 .oca-overlays,
 .oca-all-fields {
+  display: none !important;
   margin: 0.85rem 1.75rem 1.5rem;
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--line));
@@ -1822,16 +2080,14 @@ a.oca-link-value:focus-visible {
   overflow: hidden;
 }
 
-.oca-overlays[hidden],
-.oca-overlays:not(.is-open),
-.oca-all-fields[hidden],
-.oca-all-fields:not(.is-open) {
+.oca-doc:has(.oca-overlays-toggle:checked) .oca-credential-view {
   display: none !important;
 }
 
-.oca-overlays.is-open,
-.oca-all-fields.is-open {
+.oca-doc:has(.oca-overlays-toggle:checked) .oca-overlays,
+.oca-doc:has(.oca-overlays-toggle:checked) .oca-all-fields {
   display: block !important;
+  margin: 0.5rem 1.25rem 1.25rem;
 }
 
 .oca-lexicon-head {
@@ -2072,6 +2328,15 @@ a.oca-link-value:focus-visible {
 
   .oca-brand-row {
     flex-direction: column;
+  }
+
+  .oca-hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .oca-hero-trustmark {
+    align-self: flex-end;
   }
 
   .oca-ribbon-tools,
@@ -2450,7 +2715,9 @@ body.is-view-welcome .view-util {
   .oca-lang,
   .oca-info-btn,
   .oca-overlays,
-  .oca-all-fields {
+  .oca-all-fields,
+  #oca-overlay-i18n,
+  .oca-overlays-toggle {
     display: none !important;
   }
 
@@ -2511,10 +2778,52 @@ body.is-view-welcome .view-util {
     border-bottom: 1px solid #e6ebf0 !important;
   }
 
+  .oca-title-block .oca-brand-mark {
+    width: 48px !important;
+    margin: 0 auto 0.45rem !important;
+  }
+
   .oca-hero {
     border-left: 3px solid var(--primary) !important;
     padding-left: 0.65rem !important;
     background: transparent !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
+  }
+
+  .oca-hero-main {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  .oca-hero-trustmark {
+    flex: 0 0 auto !important;
+    max-width: 3.8rem !important;
+  }
+
+  .oca-scheme-lead,
+  .oca-scheme-meta .oca-fact {
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0.2rem 0 !important;
+  }
+
+  .oca-scheme-lead {
+    border-left: 2px solid var(--secondary) !important;
+    padding-left: 0.55rem !important;
+    margin: 0.35rem 0 0.45rem !important;
+  }
+
+  .oca-scheme-meta {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.35rem 0.75rem !important;
+  }
+
+  .oca-scheme-lead .oca-fact-value {
+    font-size: 9pt !important;
   }
 
   .oca-stat {
@@ -2589,6 +2898,14 @@ body.is-view-welcome .view-util {
     height: 3.6rem !important;
     border-width: 2px !important;
     box-shadow: none !important;
+  }
+
+  .oca-seal-img {
+    width: 3.6rem !important;
+  }
+
+  .oca-seal-caption {
+    font-size: 6pt !important;
   }
 
   .oca-seal-top,
@@ -2718,6 +3035,13 @@ body.is-view-welcome .view-util {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
+  .oca-card-attestation,
+  .oca-card-assessment,
+  .oca-card-product,
+  .oca-card-criteria {
+    grid-column: 1 / -1 !important;
+  }
+
   .oca-card {
     padding: 0.45rem 0.15rem 0.4rem !important;
     box-shadow: none !important;
@@ -2773,6 +3097,14 @@ body.is-view-welcome .view-util {
 
   .oca-footer-time {
     font-size: 8pt !important;
+  }
+
+  .oca-card-attestation,
+  .oca-card-product,
+  .oca-scheme-lead,
+  .oca-scheme-meta {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .oca-ribbon,
