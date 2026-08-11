@@ -6,7 +6,7 @@
     <title>Discovery — {{ project_title }}</title>
     <link rel="icon" href="/static/admin/images/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/static/css/bc-sans.css" />
-    <link rel="stylesheet" href="/static/css/publisher.css?v=5" />
+    <link rel="stylesheet" href="/static/css/publisher.css?v=6" />
     <style>
       :root {
         --primary: {{ primary_color }};
@@ -43,6 +43,7 @@
         font-family: var(--font);
         color: var(--ink);
         background: var(--surface);
+        overflow-x: clip;
       }
 
       .wrap {
@@ -500,9 +501,9 @@
 
       .g-actions {
         display: flex;
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         gap: 0.4rem;
-        min-width: max-content;
+        min-width: 0;
       }
 
       /* small labels shown when columns stack */
@@ -587,9 +588,9 @@
 
       .iter-actions {
         display: flex;
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         gap: 0.4rem;
-        min-width: max-content;
+        min-width: 0;
       }
 
       /* ---------- status pill ---------- */
@@ -813,6 +814,84 @@
         overflow: hidden;
         clip: rect(0, 0, 0, 0);
         border: 0;
+      }
+
+      /* Phones: single-column card fields, larger tap targets. */
+      @media (max-width: 40rem) {
+        .wrap {
+          padding: 1.15rem 0.85rem 2.5rem;
+        }
+
+        .toolbar {
+          padding: 0.85rem;
+          gap: 0.7rem;
+        }
+
+        .group-head {
+          grid-template-columns: 1.75rem minmax(0, 1fr);
+          gap: 0.55rem 0.75rem;
+          padding: 0.85rem;
+        }
+
+        .g-type,
+        .g-org,
+        .g-facility-name,
+        .g-card,
+        .g-entity,
+        .g-facility-id,
+        .g-status,
+        .g-actions {
+          grid-column: 2;
+        }
+
+        .g-type {
+          grid-row: 1;
+        }
+
+        .g-org {
+          grid-row: 2;
+        }
+
+        .g-facility-name {
+          grid-row: 3;
+        }
+
+        .g-card {
+          grid-row: 4;
+        }
+
+        .g-entity {
+          grid-row: 5;
+        }
+
+        .g-facility-id {
+          grid-row: 6;
+        }
+
+        .g-status {
+          grid-row: 7;
+        }
+
+        .g-actions {
+          grid-row: 8;
+        }
+
+        .g-type,
+        .g-org,
+        .g-facility-name {
+          white-space: normal;
+          overflow: visible;
+          text-overflow: unset;
+        }
+
+        .btn {
+          min-height: 2.45rem;
+          padding: 0.55rem 0.75rem;
+        }
+
+        .iters {
+          padding: 0.75rem 0.85rem 0.65rem;
+        }
       }
     </style>
   </head>

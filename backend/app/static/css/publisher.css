@@ -15,9 +15,14 @@
   --pub-topbar-offset: 5.75rem;
 }
 
+html {
+  overflow-x: clip;
+}
+
 .pub-chrome {
   font-family: var(--font);
   color: var(--ink);
+  overflow-x: clip;
 }
 
 .pub-topbar {
@@ -29,6 +34,9 @@
   align-items: center;
   gap: 0.75rem 1.25rem;
   padding: 0.4rem clamp(1rem, 4vw, 2rem);
+  padding-top: max(0.4rem, env(safe-area-inset-top));
+  padding-left: max(clamp(1rem, 4vw, 2rem), env(safe-area-inset-left));
+  padding-right: max(clamp(1rem, 4vw, 2rem), env(safe-area-inset-right));
   background: var(--primary);
   color: var(--on-primary);
   border-bottom: 2px solid var(--secondary);
@@ -79,6 +87,7 @@
 .pub-footer {
   margin-top: auto;
   padding: 1rem clamp(1.25rem, 5vw, 2.5rem);
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
   font-size: 0.85rem;
   color: var(--muted);
   border-top: 1px solid color-mix(in srgb, var(--primary) 12%, white);
@@ -106,6 +115,50 @@
   display: inline-block;
   border-bottom: 2px solid var(--secondary);
   padding-bottom: 0.15rem;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --pub-topbar-offset: 4.75rem;
+  }
+
+  .pub-topbar {
+    gap: 0.45rem 0.85rem;
+    padding-top: max(0.35rem, env(safe-area-inset-top));
+    padding-bottom: 0.35rem;
+  }
+
+  .pub-topbar-brand img {
+    width: min(18rem, 70vw);
+    max-height: 3.35rem;
+  }
+
+  .pub-topbar-partner {
+    font-size: 0.8rem;
+    white-space: normal;
+    line-height: 1.25;
+    max-width: min(11rem, 42vw);
+    text-align: right;
+  }
+
+  .pub-footer {
+    padding: 0.85rem 1rem;
+    padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 400px) {
+  :root {
+    --pub-topbar-offset: 6.25rem;
+  }
+
+  .pub-topbar-partner {
+    flex: 1 0 100%;
+    margin-left: 0;
+    max-width: none;
+    text-align: left;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
