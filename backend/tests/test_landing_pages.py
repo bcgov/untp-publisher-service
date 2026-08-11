@@ -473,6 +473,11 @@ def test_view_stream_runs_pipeline(monkeypatch):
 
     assert _sse_by_type(events, "progress")
     assert _sse_by_type(events, "meta")
+    metas = _sse_by_type(events, "meta")
+    assert metas[-1]["latest_view_url"] == (
+        "/view?credential="
+        + quote("BCMinesActPermitCredential:C-217:urn:entity", safe="")
+    )
     check_ids = [
         e["id"] for e in events if e.get("type") == "check"
     ]

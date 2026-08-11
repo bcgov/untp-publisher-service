@@ -42,6 +42,7 @@ from app.view.oca import (
 from app.view.refs import (
     _view_parse_error,
     credential_download_url,
+    credential_ref_view_url,
     credential_view_url,
 )
 from config import settings
@@ -147,6 +148,7 @@ def iter_view_pipeline(
         "valid_from": valid_from,
         "valid_from_display": format_proof_created(valid_from) if valid_from else "—",
         "status": "",
+        "latest_view_url": "",
     }
 
     jwt_verified: bool | None = None
@@ -340,6 +342,14 @@ def iter_view_pipeline(
         if status_check.get("present")
         else (_status_label(record) if record else "")
     )
+    cred_type = fallback_type
+    cardinality_id = str((record or {}).get("cardinality_id") or "").strip()
+    entity_id = str((record or {}).get("entity_id") or "").strip()
+    latest_view_url = (
+        credential_ref_view_url(cred_type, cardinality_id, entity_id)
+        if cred_type and cardinality_id and entity_id
+        else ""
+    )
     yield {
         "type": "meta",
         "credential_url": credential_url,
@@ -354,6 +364,7 @@ def iter_view_pipeline(
             }
         ),
         "view_url": credential_view_url(credential_url),
+        "latest_view_url": latest_view_url,
         "issuer_name": issuer_name,
         "issuer_did": issuer_did,
         "issuer_resolve_url": issuer_resolve_url(issuer_did),

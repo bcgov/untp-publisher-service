@@ -552,6 +552,7 @@
     if (actions) {
       const copyBtn = actions.querySelector("[data-copy-url]");
       const download = actions.querySelector("[data-download]");
+      const latestBtn = actions.querySelector("[data-latest-view]");
       if (copyBtn && data.credential_url) {
         copyBtn.setAttribute("data-copy-url", data.credential_url);
       }
@@ -561,6 +562,19 @@
           downloadName = String(data.download_name);
           download.setAttribute("download", downloadName);
           download.setAttribute("title", "Download " + downloadName);
+        }
+      }
+      if (latestBtn) {
+        const latest = String(data.latest_view_url || "").trim();
+        const params = new URLSearchParams(window.location.search || "");
+        // Hide when already on /view?credential=… (that mode always resolves latest).
+        const onCredentialMode = params.has("credential");
+        if (latest && !onCredentialMode) {
+          latestBtn.hidden = false;
+          latestBtn.setAttribute("href", latest);
+        } else {
+          latestBtn.hidden = true;
+          latestBtn.setAttribute("href", "#");
         }
       }
     }
