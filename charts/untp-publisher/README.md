@@ -1,6 +1,6 @@
 # untp-publisher
 
-![Version: 0.1.1](https://img.shields.io/badge/Version-0.1.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.0.5](https://img.shields.io/badge/AppVersion-0.0.5-informational?style=flat-square)
+![Version: 0.1.2](https://img.shields.io/badge/Version-0.1.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.0](https://img.shields.io/badge/AppVersion-0.1.0-informational?style=flat-square)
 
 Helm chart for the [UNTP Publisher](https://github.com/bcgov/untp-publisher-service) — credential type registration, issuance via Traction, optional read-only entity lookup, and optional bundled MongoDB.
 
@@ -38,7 +38,7 @@ Helm chart for the [UNTP Publisher](https://github.com/bcgov/untp-publisher-serv
 | backend.image.pullPolicy | string | `"IfNotPresent"` | Backend image pull policy |
 | backend.image.pullSecrets | list | `[]` | Backend image pull secrets |
 | backend.image.repository | string | `"ghcr.io/bcgov/untp-publisher-service"` | Backend image repository |
-| backend.image.tag | string | `"v0.0.2"` | Backend image tag |
+| backend.image.tag | string | `"v0.1.0"` | Backend image tag |
 | backend.networkPolicy.ingress.podSelector | object | `{}` | Pod selector labels for the backend ingress network policy |
 | backend.podAnnotations | object | `{}` | Annotations for backend pods |
 | backend.podSecurityContext | object | `{}` | Security context for backend pods |

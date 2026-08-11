@@ -7,6 +7,8 @@
 ##
 ## Pre-create Traction Secret untp-publisher-service-traction-tenant-info
 ## (keys: traction_tenant_id, traction_api_key) — see backend.traction.existingSecret.
+##
+## Image: https://github.com/bcgov/untp-publisher-service/releases/tag/v0.1.0 (Discovery UI).
 
 ingress:
   annotations:
@@ -22,8 +24,7 @@ backend:
   testSuite: false
   image:
     repository: ghcr.io/bcgov/untp-publisher-service
-    # Same build as f890b1-dev until a tagged release ships current main.
-    tag: dev-0.0.3
+    tag: v0.1.0
     pullPolicy: Always
   # Hostname only (sets Ingress rule + pod PUBLISHER_DOMAIN).
   # Public origin: https://untp-publisher-api-test.apps.gold.devops.gov.bc.ca
@@ -35,6 +36,13 @@ backend:
     webvhServerUrl: "https://registry-test.digitaltrust.gov.bc.ca"
     # Witness multikey from former orgbook-publisher test chart → did:key.
     publisherWitnessId: "did:key:z6MkpiDTaJuPzFZpg8MCYRM4ff7i6hNMQaL7fUP5pHBFo75c"
+    projectTitle: "BC NRS Publisher"
+    projectVersion: "v0"
+    landingTagline: "Verifiable critical raw material provenance for British Columbia's Natural Resource Sector."
+    landingDescription: "Browse UNTP-aligned credentials that attest critical raw material provenance across the Natural Resource Sector."
+    landingLogoUrl: "/static/admin/images/bcgov-logo.svg"
+    landingPrimaryColor: "#013366"
+    landingSecondaryColor: "#FCBA19"
   resources:
     limits:
       cpu: 300m
