@@ -305,15 +305,6 @@
             </div>
             {% endif %}
           </div>
-          {% if item.entity_id %}
-          <p
-            class="oca-card-entity-id"
-            {% if item.entity_id.pointer %}data-oca-pointer="{{ item.entity_id.pointer }}" data-oca-info="1"{% endif %}
-            {% if item.entity_id.information %}title="{{ item.entity_id.information }}"{% endif %}
-          >
-            <code>{{ item.entity_id.value }}</code>
-          </p>
-          {% endif %}
           {% if item.facts or item.metrics %}
           <div class="oca-card-facts">
             {% for fact in item.facts %}
@@ -402,15 +393,7 @@
         {% endif %}
       </p>
       {% endif %}
-      {% if section.entity_id %}
-      <p
-        class="oca-card-entity-id"
-        {% if section.entity_id.pointer %}data-oca-pointer="{{ section.entity_id.pointer }}" data-oca-info="1"{% endif %}
-        {% if section.entity_id.information %}title="{{ section.entity_id.information }}"{% endif %}
-      >
-        <code>{{ section.entity_id.value }}</code>
-      </p>
-      {% elif section.scheme %}
+      {% if section.scheme %}
       <p class="oca-card-scheme">
         <span
           {% if section.scheme.pointer %}data-oca-pointer="{{ section.scheme.pointer }}" data-oca-overlay="label"{% endif %}

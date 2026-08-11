@@ -666,7 +666,6 @@ def _build_oca_product_item(
 ) -> dict[str, Any] | None:
     """Build one commodity block from pointers for a single assessedProduct index."""
     headline: dict[str, Any] | None = None
-    entity_id: dict[str, Any] | None = None
     badges: list[dict[str, Any]] = []
     facts: list[dict[str, Any]] = []
     metrics: list[dict[str, Any]] = []
@@ -683,14 +682,10 @@ def _build_oca_product_item(
             seen.add(pointer)
         break
 
+    # Subject URNs are kept in the VC / overlays, not on the card face.
     for pointer in pointers:
-        if not pointer.endswith("/product/id"):
-            continue
-        entry = _oca_attr(attrs, pointer)
-        if entry and not entry.get("missing") and entry.get("value") not in (None, ""):
-            entity_id = _oca_field_payload(pointer, entry)
+        if pointer.endswith("/product/id"):
             seen.add(pointer)
-        break
 
     for pointer in pointers:
         if pointer in seen:
@@ -716,11 +711,11 @@ def _build_oca_product_item(
         else:
             facts.append(payload)
 
-    if not any([headline, entity_id, badges, facts, metrics, links, ids]):
+    if not any([headline, badges, facts, metrics, links, ids]):
         return None
     return {
         "headline": headline,
-        "entity_id": entity_id,
+        "entity_id": None,
         "badges": badges,
         "facts": facts,
         "metrics": metrics,
@@ -850,8 +845,8 @@ def _build_oca_section_card(
         scheme, links, facts, ids, attrs
     )
 
-    # Entity cards: show the subject URN under the name (not "ID scheme · …").
-    entity_id: dict[str, Any] | None = None
+    # Entity cards: hide subject URNs on the card face (still in overlays / JSON).
+    had_subject_urn = False
     if section_id in {"facility", "organisation", "holder", "product"}:
         kept_ids: list[dict[str, Any]] = []
         for payload in ids:
@@ -864,12 +859,11 @@ def _build_oca_section_card(
                     "/product/id",
                 )
             ):
-                if entity_id is None:
-                    entity_id = payload
+                had_subject_urn = True
                 continue
             kept_ids.append(payload)
         ids = kept_ids
-        if entity_id is not None:
+        if had_subject_urn:
             scheme = None
 
     if section_id == "assessment":
@@ -882,7 +876,7 @@ def _build_oca_section_card(
 
     # UNTP assessedOrganisation is a Party (no idVerifiedByCAB); still show Verified
     # when the organisation is identified.
-    if section_id == "organisation" and not badges and (headline or entity_id):
+    if section_id == "organisation" and not badges and (headline or had_subject_urn):
         badges.append(
             {
                 "pointer": "",
@@ -897,7 +891,7 @@ def _build_oca_section_card(
         )
 
     if not any(
-        [headline, scheme, entity_id, badges, facts, metrics, links, ids, chips]
+        [headline, scheme, badges, facts, metrics, links, ids, chips]
     ):
         return None
 
@@ -912,7 +906,7 @@ def _build_oca_section_card(
         "kind": kind,
         "headline": headline,
         "scheme": scheme,
-        "entity_id": entity_id,
+        "entity_id": None,
         "badges": badges,
         "facts": facts,
         "metrics": metrics,
