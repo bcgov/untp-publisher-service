@@ -183,49 +183,51 @@
 
   {% if p.assessment_title or p.assessment_lead or p.id_chips or (p.trustmark and p.trustmark.src) %}
   <section class="oca-hero" aria-label="{{ entity_label or 'summary' }}">
-    <div class="oca-hero-main">
-      {% if entity_label %}
-      <p
-        class="oca-hero-kicker"
-        {% if p.entity_label_pointer %}data-oca-pointer="{{ p.entity_label_pointer }}" data-oca-overlay="label"{% endif %}
-      >{{ entity_label }}</p>
-      {% endif %}
-      {% if p.assessment_title %}
-      <h3 class="oca-hero-name">{{ p.assessment_title }}</h3>
-      {% endif %}
-      {% if p.assessment_lead %}
-      <p class="oca-hero-lead">{{ p.assessment_lead }}</p>
-      {% endif %}
-      {% if p.id_chips %}
-      <div class="oca-id-chips">
-        {% for chip in p.id_chips %}
-        <div class="oca-id-chip">
-          <span
-            class="oca-id-label"
-            {% if chip.pointer %}data-oca-pointer="{{ chip.pointer }}" data-oca-overlay="label"{% endif %}
-            {% if chip.information %}title="{{ chip.information }}" data-oca-info="1"{% endif %}
-            >{{ chip.label }}</span
-          >
-          <span class="oca-id-value">{{ chip.id or chip.value }}</span>
-          {% if chip.name and chip.name != "—" %}
-          <span class="oca-id-name">{{ chip.name }}</span>
-          {% endif %}
-        </div>
-        {% endfor %}
+    <div class="oca-hero-top">
+      <div class="oca-hero-main">
+        {% if entity_label %}
+        <p
+          class="oca-hero-kicker"
+          {% if p.entity_label_pointer %}data-oca-pointer="{{ p.entity_label_pointer }}" data-oca-overlay="label"{% endif %}
+        >{{ entity_label }}</p>
+        {% endif %}
+        {% if p.assessment_title %}
+        <h3 class="oca-hero-name">{{ p.assessment_title }}</h3>
+        {% endif %}
+        {% if p.assessment_lead %}
+        <p class="oca-hero-lead">{{ p.assessment_lead }}</p>
+        {% endif %}
       </div>
+      {% if p.trustmark and p.trustmark.src %}
+      <figure class="oca-seal oca-seal-trustmark oca-hero-trustmark">
+        <img
+          class="oca-seal-img"
+          src="{{ p.trustmark.src }}"
+          alt="{{ p.trustmark.name or '' }}"
+          {% if p.trustmark.description %}title="{{ p.trustmark.description }}"{% endif %}
+          width="96"
+          height="86"
+        />
+      </figure>
       {% endif %}
     </div>
-    {% if p.trustmark and p.trustmark.src %}
-    <figure class="oca-seal oca-seal-trustmark oca-hero-trustmark">
-      <img
-        class="oca-seal-img"
-        src="{{ p.trustmark.src }}"
-        alt="{{ p.trustmark.name or '' }}"
-        {% if p.trustmark.description %}title="{{ p.trustmark.description }}"{% endif %}
-        width="96"
-        height="86"
-      />
-    </figure>
+    {% if p.id_chips %}
+    <div class="oca-id-chips">
+      {% for chip in p.id_chips %}
+      <div class="oca-id-chip">
+        <span
+          class="oca-id-label"
+          {% if chip.pointer %}data-oca-pointer="{{ chip.pointer }}" data-oca-overlay="label"{% endif %}
+          {% if chip.information %}title="{{ chip.information }}" data-oca-info="1"{% endif %}
+          >{{ chip.label }}</span
+        >
+        <span class="oca-id-value">{{ chip.id or chip.value }}</span>
+        {% if chip.name and chip.name != "—" %}
+        <span class="oca-id-name">{{ chip.name }}</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
     {% endif %}
   </section>
   {% endif %}

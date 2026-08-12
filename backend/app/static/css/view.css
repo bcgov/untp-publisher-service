@@ -1530,14 +1530,21 @@ a.oca-flow-link:focus-visible {
 
 .oca-hero {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem 1.5rem;
+  flex-direction: column;
+  gap: 1rem;
   margin: 0 1.75rem 1.25rem;
   padding: 1.25rem 1.5rem;
   background: linear-gradient(135deg, #f7f9fc 0%, #eef4fa 100%);
   border: 2px solid var(--primary);
   border-radius: 4px;
+}
+
+.oca-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  width: 100%;
 }
 
 .oca-hero-main {
@@ -1547,7 +1554,8 @@ a.oca-flow-link:focus-visible {
 
 .oca-hero-trustmark {
   flex: 0 0 auto;
-  margin-top: 0.15rem;
+  margin: 0;
+  align-self: flex-start;
 }
 
 .oca-hero-kicker {
@@ -1576,9 +1584,10 @@ a.oca-flow-link:focus-visible {
 
 .oca-id-chips {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
-  margin-top: 1rem;
+  width: 100%;
+  margin-top: 0;
 }
 
 .oca-id-chip {
@@ -2353,8 +2362,17 @@ a.oca-link-value:focus-visible {
     align-items: stretch;
   }
 
+  .oca-hero-top {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
   .oca-hero-trustmark {
     align-self: flex-start;
+  }
+
+  .oca-id-chips {
+    grid-template-columns: 1fr;
   }
 
   .oca-ribbon {
@@ -2977,8 +2995,17 @@ body.is-view-welcome .view-util {
     padding-left: 0.65rem !important;
     background: transparent !important;
     display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.65rem !important;
+  }
+
+  .oca-hero-top {
+    display: flex !important;
     align-items: flex-start !important;
+    justify-content: space-between !important;
     gap: 0.75rem !important;
+    width: 100% !important;
   }
 
   .oca-hero-main {
@@ -2989,6 +3016,12 @@ body.is-view-welcome .view-util {
   .oca-hero-trustmark {
     flex: 0 0 auto !important;
     max-width: 3.8rem !important;
+  }
+
+  .oca-id-chips {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    margin-top: 0 !important;
   }
 
   .oca-scheme-lead,
