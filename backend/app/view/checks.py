@@ -147,26 +147,40 @@ def validate_jsonld_contexts(vc: dict[str, Any]) -> dict[str, Any]:
 
 
 def decode_jwt_payload(token: str) -> dict[str, Any]:
-    """Decode a compact JWT payload without verifying the signature."""
+    """Decode a compact JWT payload without verifying the signature.
+
+    Always raises ``ValueError`` (or ``json.JSONDecodeError``, a ValueError
+    subclass) on malformed tokens so callers can map failures to
+    ``EnvelopeValidationError`` without leaking generic exceptions.
+    """
     parts = (token or "").split(".")
     if len(parts) != 3 or not parts[1]:
         raise ValueError("Not a compact JWT")
-    padded = parts[1] + ("=" * (-len(parts[1]) % 4))
-    raw = base64.urlsafe_b64decode(padded.encode("ascii"))
-    payload = json.loads(raw.decode("utf-8"))
+    try:
+        padded = parts[1] + ("=" * (-len(parts[1]) % 4))
+        raw = base64.urlsafe_b64decode(padded.encode("ascii"))
+        payload = json.loads(raw.decode("utf-8"))
+    except (ValueError, TypeError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError("JWT payload is not valid base64url JSON") from exc
     if not isinstance(payload, dict):
         raise ValueError("JWT payload is not an object")
     return payload
 
 
 def decode_jwt_header(token: str) -> dict[str, Any]:
-    """Decode a compact JWT header without verifying the signature."""
+    """Decode a compact JWT header without verifying the signature.
+
+    Same error contract as :func:`decode_jwt_payload`.
+    """
     parts = (token or "").split(".")
     if len(parts) != 3 or not parts[0]:
         raise ValueError("Not a compact JWT")
-    padded = parts[0] + ("=" * (-len(parts[0]) % 4))
-    raw = base64.urlsafe_b64decode(padded.encode("ascii"))
-    header = json.loads(raw.decode("utf-8"))
+    try:
+        padded = parts[0] + ("=" * (-len(parts[0]) % 4))
+        raw = base64.urlsafe_b64decode(padded.encode("ascii"))
+        header = json.loads(raw.decode("utf-8"))
+    except (ValueError, TypeError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError("JWT header is not valid base64url JSON") from exc
     if not isinstance(header, dict):
         raise ValueError("JWT header is not an object")
     return header

@@ -71,12 +71,13 @@ def _view_progress(index: int) -> dict[str, Any]:
     }
 
 
-def iter_view_pipeline(
-    url: str, lang: str = "en", *, debug: bool = False
-) -> Iterator[dict[str, Any]]:
-    """Run the credential view pipeline, yielding SSE-ready event dicts."""
+def iter_view_pipeline(url: str, *, debug: bool = False) -> Iterator[dict[str, Any]]:
+    """Run the credential view pipeline, yielding SSE-ready event dicts.
+
+    Initial OCA render language is English; the viewer UI can switch overlays.
+    """
     raw_url = (url or "").strip()
-    language = (lang or "en").strip().lower() or "en"
+    language = "en"
     if not raw_url:
         yield {"type": "error", "message": "Provide a credential URL."}
         return

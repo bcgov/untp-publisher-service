@@ -631,6 +631,11 @@ def test_fetch_and_unwrap_helpers(monkeypatch):
     vc = unwrap_enveloped_vc(envelope)
     assert vc["name"] == _SAMPLE_VC["name"]
     assert decode_jwt_payload(_fake_vc_jwt({"a": 1})) == {"a": 1}
+    try:
+        decode_jwt_payload("a.!!!not-base64!!!.c")
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "base64url" in str(exc)
 
 
 def test_data_uri_media_type():

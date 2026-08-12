@@ -193,7 +193,6 @@ def _view_shell_context(
     *,
     url: str = "",
     credential: str = "",
-    lang: str = "en",
     welcome: bool = False,
     loading: bool = False,
     error: str = "",
@@ -208,7 +207,6 @@ def _view_shell_context(
         **_branding(),
         "url": url,
         "credential": credential,
-        "lang": "en",
         "welcome": welcome,
         "loading": loading,
         "unsafe_mode": view_allows_remote(),
@@ -235,7 +233,6 @@ async def view_credential(
     request: Request,
     url: str = "",
     credential: str = "",
-    lang: str = "en",
     debug: str = "",
 ):
     """OCA-labeled human view of a published credential.
@@ -252,9 +249,11 @@ async def view_credential(
     ``credential`` resolves the latest active publication for that triple
     (same semantics as ``GET /credentials/refresh``).
 
+    Language for the OCA card starts in English; EN/FR (and other OCA
+    overlay languages) are switched in the page UI, not via a ``lang`` query.
+
     Pass ``?debug=1`` to include the technical OCA attribute dump in the document.
     """
-    language = (lang or "en").strip().lower() or "en"
     debug_on = view_debug_enabled(debug)
     target_url, error = resolve_view_target(url=url, credential=credential)
 
@@ -265,7 +264,6 @@ async def view_credential(
             _view_shell_context(
                 url=(url or "").strip(),
                 credential=(credential or "").strip(),
-                lang=language,
                 error=error,
                 debug=debug_on,
             ),
@@ -276,7 +274,7 @@ async def view_credential(
             return templates.TemplateResponse(
                 request,
                 "view.html",
-                _view_shell_context(welcome=True, lang=language, debug=debug_on),
+                _view_shell_context(welcome=True, debug=debug_on),
             )
         # Safe mode: no free-form URL entry — browse Discovery instead.
         return RedirectResponse(url="/discovery", status_code=302)
@@ -284,9 +282,7 @@ async def view_credential(
     return templates.TemplateResponse(
         request,
         "view.html",
-        _view_shell_context(
-            url=target_url, lang=language, loading=True, debug=debug_on
-        ),
+        _view_shell_context(url=target_url, loading=True, debug=debug_on),
     )
 
 
@@ -294,11 +290,9 @@ async def view_credential(
 async def view_credential_stream(
     url: str = "",
     credential: str = "",
-    lang: str = "en",
     debug: str = "",
 ):
     """Server-Sent Events stream of view-pipeline progress and check results."""
-    language = (lang or "en").strip().lower() or "en"
     target_url, error = resolve_view_target(url=url, credential=credential)
     if error:
         iterator = iter([{"type": "error", "message": error}])
@@ -306,7 +300,7 @@ async def view_credential_stream(
         iterator = iter([{"type": "error", "message": "Provide a credential URL or credential=type:cardinality:entity."}])
     else:
         iterator = iter_view_pipeline(
-            target_url, language, debug=view_debug_enabled(debug)
+            target_url, debug=view_debug_enabled(debug)
         )
 
     async def event_publisher():
