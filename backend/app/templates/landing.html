@@ -6,7 +6,7 @@
     <title>{{ project_title }}</title>
     <link rel="icon" href="/static/admin/images/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/static/css/bc-sans.css" />
-    <link rel="stylesheet" href="/static/css/publisher.css?v=5" />
+    <link rel="stylesheet" href="/static/css/publisher.css?v=6" />
     <style>
       :root {
         --primary: {{ primary_color }};
@@ -109,9 +109,12 @@
         color: var(--on-primary-muted);
       }
 
-      /* ---------- sole call to action ---------- */
+      /* ---------- calls to action ---------- */
 
       .cta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
         margin-top: 2rem;
       }
 
@@ -129,7 +132,8 @@
         border: 1px solid color-mix(in srgb, var(--secondary) 72%, #000);
         border-radius: 3px;
         text-decoration: none;
-        transition: background-color 0.12s ease, border-color 0.12s ease;
+        transition: background-color 0.12s ease, border-color 0.12s ease,
+          color 0.12s ease;
       }
 
       .cta a:hover {
@@ -137,10 +141,43 @@
         border-color: color-mix(in srgb, var(--secondary) 55%, #000);
       }
 
+      .cta a.is-secondary {
+        color: var(--on-primary);
+        background: transparent;
+        border-color: color-mix(in srgb, var(--on-primary) 45%, transparent);
+      }
+
+      .cta a.is-secondary:hover {
+        color: var(--on-primary);
+        background: color-mix(in srgb, var(--on-primary) 10%, transparent);
+        border-color: color-mix(in srgb, var(--on-primary) 70%, transparent);
+      }
+
       .cta a svg {
         width: 1rem;
         height: 1rem;
         display: block;
+      }
+
+      @media (max-width: 40rem) {
+        .hero {
+          padding: 2.25rem 1rem 3rem;
+        }
+
+        .hero h1 {
+          font-size: clamp(1.75rem, 8vw, 2.35rem);
+        }
+
+        .cta {
+          flex-direction: column;
+          align-items: stretch;
+          margin-top: 1.65rem;
+        }
+
+        .cta a {
+          width: 100%;
+          justify-content: center;
+        }
       }
 
       @media (prefers-reduced-motion: no-preference) {

@@ -164,4 +164,21 @@ def test_load_oca_bundle():
         ]
         == "Permit number"
     )
-    assert len(en_labels["attribute_labels"]) == len(bundle["attributes"])
+    # Array roots are containers (no display label); leaf / ``*`` fields stay labeled.
+    labeled = set(en_labels["attribute_labels"])
+    array_roots = {
+        pointer
+        for pointer, attr_type in bundle["attributes"].items()
+        if str(attr_type or "").strip().lower() == "array"
+    }
+    assert labeled == set(bundle["attributes"]) - array_roots
+    assert (
+        "/credentialSubject/conformityAssessment/0/assessedProduct"
+        in array_roots
+    )
+    assert (
+        en_labels["attribute_labels"][
+            "/credentialSubject/conformityAssessment/0/assessedProduct/*/product/name"
+        ]
+        == "Commodities"
+    )

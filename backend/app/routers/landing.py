@@ -1,19 +1,107 @@
-"""Branded HTML: landing (`/`) and credential discovery (`/discovery`)."""
+"""Branded HTML: landing (`/`), discovery (`/discovery`), and OCA view (`/view`)."""
 
 from __future__ import annotations
 
-import re
-from datetime import datetime, timezone
+import asyncio
+import json
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import quote
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
+from app.discovery.groups import (
+    did_method_prefix,
+    entity_name_from_record,
+    facility_from_record,
+    format_proof_created,
+    group_credential_records,
+    issuer_from_record,
+    issuer_resolve_url,
+    oca_bundle_for_record,
+    proof_created_raw,
+)
 from app.plugins.mongodb import MongoClient
-from app.services.composer import publisher_origin, credential_download_filename
+from app.view.branding import (
+    _branding,
+    safe_asset_url,
+    safe_css_color,
+    safe_http_url,
+)
+from app.view.checks import (
+    EnvelopeValidationError,
+    compact_data_uri_media_type,
+    credential_type_from_vc,
+    data_uri_media_type,
+    decode_jwt_header,
+    decode_jwt_payload,
+    extract_vc_jwt,
+    resolve_credential_statuses,
+    unwrap_enveloped_vc,
+    validate_enveloped_credential,
+    validate_jsonld_contexts,
+    validate_untp_payload,
+    validate_vcdm20_payload,
+    validate_vc_issuer,
+    validate_vc_proof,
+    validate_vc_validity,
+    verify_vc_jwt,
+)
+from app.view.fetch import (
+    ViewFetchError,
+    ViewFetchKind,
+    assert_view_fetch_host_allowed,
+    fetch_application_vc,
+    fetch_oca_json,
+    ip_is_blocked_for_view_fetch,
+    is_http_url,
+    load_status_list_credential,
+    parse_credential_url,
+    parse_oca_templates_path,
+    parse_oca_url,
+    parse_same_origin_credential_url,
+    parse_same_origin_oca_url,
+    parse_same_origin_status_list_url,
+    parse_status_list_url,
+    resolve_internal_oca_bundle,
+    resolve_view_fetch_host_ips,
+    safe_view_get,
+    validate_view_fetch_url,
+    view_allows_remote,
+    view_fetch_url_is_publisher,
+)
+from app.view.oca import (
+    build_oca_presentation,
+    build_oca_template_context,
+    format_oca_datetime,
+    format_oca_value,
+    oca_bundle_for_credential_type,
+    oca_bundle_for_vc,
+    oca_fields_for_vc,
+    oca_languages,
+    render_method_entries,
+    render_oca_box_html,
+    resolve_render_methods,
+    soft_resolve_json_pointer,
+    view_debug_enabled,
+)
+from app.view.pipeline import (
+    VIEW_PIPELINE_STEPS,
+    _VIEW_STREAM_SENTINEL,
+    _next_view_event,
+    iter_view_pipeline,
+)
+from app.view.refs import (
+    credential_download_url,
+    credential_public_url,
+    credential_ref_view_url,
+    credential_view_url,
+    find_latest_credential_record,
+    parse_credential_ref,
+    resolve_view_target,
+)
 from config import settings
 
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -21,249 +109,114 @@ templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 router = APIRouter()
 
-_HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
-_DEFAULT_PRIMARY = "#013366"
-_DEFAULT_SECONDARY = "#FCBA19"
-_DEFAULT_LOGO = (
-    "https://mines.nrs.gov.bc.ca/assets/images/bcgov-mineinfo-horiz-LG.png"
-)
+# Re-exports for ``from app.routers.landing import …`` and legacy callers.
+__all__ = [
+    "EnvelopeValidationError",
+    "MongoClient",
+    "VIEW_PIPELINE_STEPS",
+    "ViewFetchError",
+    "ViewFetchKind",
+    "assert_view_fetch_host_allowed",
+    "build_oca_presentation",
+    "build_oca_template_context",
+    "compact_data_uri_media_type",
+    "credential_download_url",
+    "credential_public_url",
+    "credential_ref_view_url",
+    "credential_type_from_vc",
+    "credential_view_url",
+    "data_uri_media_type",
+    "decode_jwt_header",
+    "decode_jwt_payload",
+    "did_method_prefix",
+    "entity_name_from_record",
+    "extract_vc_jwt",
+    "facility_from_record",
+    "fetch_application_vc",
+    "fetch_oca_json",
+    "find_latest_credential_record",
+    "format_oca_datetime",
+    "format_oca_value",
+    "format_proof_created",
+    "group_credential_records",
+    "ip_is_blocked_for_view_fetch",
+    "is_http_url",
+    "issuer_from_record",
+    "issuer_resolve_url",
+    "iter_view_pipeline",
+    "load_status_list_credential",
+    "oca_bundle_for_credential_type",
+    "oca_bundle_for_record",
+    "oca_bundle_for_vc",
+    "oca_fields_for_vc",
+    "oca_languages",
+    "parse_credential_ref",
+    "parse_credential_url",
+    "parse_oca_templates_path",
+    "parse_oca_url",
+    "parse_same_origin_credential_url",
+    "parse_same_origin_oca_url",
+    "parse_same_origin_status_list_url",
+    "parse_status_list_url",
+    "proof_created_raw",
+    "render_method_entries",
+    "render_oca_box_html",
+    "resolve_credential_statuses",
+    "resolve_internal_oca_bundle",
+    "resolve_render_methods",
+    "resolve_view_fetch_host_ips",
+    "resolve_view_target",
+    "router",
+    "safe_asset_url",
+    "safe_css_color",
+    "safe_http_url",
+    "safe_view_get",
+    "soft_resolve_json_pointer",
+    "templates",
+    "unwrap_enveloped_vc",
+    "validate_enveloped_credential",
+    "validate_jsonld_contexts",
+    "validate_untp_payload",
+    "validate_vcdm20_payload",
+    "validate_vc_issuer",
+    "validate_vc_proof",
+    "validate_vc_validity",
+    "validate_view_fetch_url",
+    "verify_vc_jwt",
+    "view_allows_remote",
+    "view_debug_enabled",
+    "view_fetch_url_is_publisher",
+]
 
 
-def safe_css_color(value: str | None, *, default: str) -> str:
-    """Allow only ``#RGB`` / ``#RRGGBB`` / ``#RRGGBBAA`` for CSS interpolation."""
-    raw = (value or "").strip()
-    if _HEX_COLOR_RE.fullmatch(raw):
-        return raw
-    return default
-
-
-def safe_http_url(value: str | None) -> str:
-    """Allow ``http`` / ``https`` absolute URLs only; otherwise empty."""
-    raw = (value or "").strip()
-    if not raw:
-        return ""
-    parsed = urlparse(raw)
-    if parsed.scheme in ("http", "https") and parsed.netloc:
-        return raw
-    return ""
-
-
-def safe_asset_url(value: str | None, *, default: str) -> str:
-    """Allow http(s) URLs or same-origin paths (``/…``, not ``//…``)."""
-    raw = (value or "").strip()
-    if not raw:
-        return default
-    if raw.startswith("/") and not raw.startswith("//"):
-        return raw
-    if safe_http_url(raw):
-        return raw
-    return default
-
-
-def _branding() -> dict[str, Any]:
+def _view_shell_context(
+    *,
+    url: str = "",
+    credential: str = "",
+    welcome: bool = False,
+    loading: bool = False,
+    error: str = "",
+    debug: bool = False,
+) -> dict[str, Any]:
+    stream = ""
+    if loading and url:
+        stream = f"/view/stream?url={quote(url, safe='')}"
+        if debug:
+            stream += "&debug=1"
     return {
-        "project_title": settings.PROJECT_TITLE,
-        "project_version": settings.PROJECT_VERSION,
-        "tagline": settings.LANDING_TAGLINE,
-        "description": (settings.LANDING_DESCRIPTION or "").strip(),
-        "logo_url": safe_asset_url(
-            settings.LANDING_LOGO_URL, default=_DEFAULT_LOGO
-        ),
-        "primary_color": safe_css_color(
-            settings.LANDING_PRIMARY_COLOR, default=_DEFAULT_PRIMARY
-        ),
-        "secondary_color": safe_css_color(
-            settings.LANDING_SECONDARY_COLOR, default=_DEFAULT_SECONDARY
-        ),
-        "partner_url": safe_http_url(settings.LANDING_PARTNER_URL),
-        "partner_label": (settings.LANDING_PARTNER_LABEL or "Partner").strip()
-        or "Partner",
+        **_branding(),
+        "url": url,
+        "credential": credential,
+        "welcome": welcome,
+        "loading": loading,
+        "unsafe_mode": view_allows_remote(),
+        "error": error,
+        "debug": debug,
+        "stream_url": stream,
+        "pipeline_steps": [
+            {"id": step, "label": label} for step, label in VIEW_PIPELINE_STEPS
+        ],
     }
-
-
-def credential_public_url(credential_id: str) -> str:
-    """Absolute URL that returns ``application/vc`` for this record id."""
-    cid = (credential_id or "").strip()
-    if cid.startswith("http://") or cid.startswith("https://"):
-        return cid
-    return f"{publisher_origin()}/credentials/{cid}"
-
-
-def credential_download_url(credential_id: str) -> str:
-    """Same as :func:`credential_public_url` with ``download=true``."""
-    base = credential_public_url(credential_id)
-    sep = "&" if "?" in base else "?"
-    return f"{base}{sep}download=true"
-
-
-def _status_label(record: dict[str, Any]) -> str:
-    if record.get("revocation"):
-        return "revoked"
-    if record.get("suspension"):
-        return "suspended"
-    if record.get("refresh"):
-        return "superseded"
-    return "active"
-
-
-def proof_created_raw(record: dict[str, Any]) -> str:
-    """Return the Data Integrity proof ``created`` timestamp when present."""
-    vc = record.get("vc")
-    if not isinstance(vc, dict):
-        return ""
-    proof = vc.get("proof")
-    if isinstance(proof, list):
-        proof = proof[0] if proof else None
-    if not isinstance(proof, dict):
-        return ""
-    return str(proof.get("created") or "").strip()
-
-
-def format_proof_created(raw: str) -> str:
-    """Pretty-print an ISO proof timestamp (e.g. ``30 Jul 2026, 17:59 UTC``)."""
-    value = (raw or "").strip()
-    if not value:
-        return "—"
-    try:
-        normalized = value.replace("Z", "+00:00")
-        dt = datetime.fromisoformat(normalized)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        else:
-            dt = dt.astimezone(timezone.utc)
-        return dt.strftime("%d %b %Y, %H:%M UTC")
-    except ValueError:
-        return value
-
-
-def entity_name_from_record(record: dict[str, Any]) -> str:
-    """Org / party display name from the issued VC when present."""
-    vc = record.get("vc")
-    if not isinstance(vc, dict):
-        return ""
-    subject = vc.get("credentialSubject")
-    if isinstance(subject, list):
-        subject = subject[0] if subject else None
-    if not isinstance(subject, dict):
-        return ""
-    party = subject.get("issuedToParty")
-    if isinstance(party, dict):
-        name = str(party.get("name") or "").strip()
-        if name:
-            return name
-    return ""
-
-
-def issuer_from_record(record: dict[str, Any]) -> tuple[str, str]:
-    """Return ``(issuer_name, issuer_did)`` from the issued VC when present."""
-    vc = record.get("vc")
-    if not isinstance(vc, dict):
-        return "", ""
-    issuer = vc.get("issuer")
-    if isinstance(issuer, str):
-        did = issuer.strip()
-        return "", did
-    if isinstance(issuer, dict):
-        did = str(issuer.get("id") or "").strip()
-        name = str(issuer.get("name") or "").strip()
-        return name, did
-    return "", ""
-
-
-def issuer_resolve_url(did: str) -> str:
-    """Universal Resolver deep link: ``https://uniresolver.io/#{did}``."""
-    value = (did or "").strip()
-    if not value:
-        return ""
-    return f"https://uniresolver.io/#{value}"
-
-
-def group_credential_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Collapse records by ``(entity_id, cardinality_id)``.
-
-    ``records`` must already be newest-inserted-first. The group face prefers the
-    current (non-refresh) iteration; otherwise the first/newest. Missing
-    entity/cardinality → singleton by credential id.
-    """
-    groups: dict[tuple[str, str], dict[str, Any]] = {}
-    order: list[tuple[str, str]] = []
-
-    for record in records:
-        cred_id = str(record.get("id") or "").strip()
-        entity = str(record.get("entity_id") or "").strip()
-        cardinality = str(record.get("cardinality_id") or "").strip()
-        if entity and cardinality:
-            key = (entity, cardinality)
-        else:
-            key = (cred_id or f"anon-{len(order)}", cred_id or f"anon-{len(order)}")
-
-        url = credential_public_url(cred_id)
-        download_url = credential_download_url(cred_id)
-        created_raw = proof_created_raw(record)
-        download_name = credential_download_filename(record)
-        entity_name = entity_name_from_record(record)
-        issuer_name, issuer_did = issuer_from_record(record)
-        iteration = {
-            "id": cred_id,
-            "type": record.get("type") or "",
-            "entity_id": entity,
-            "entity_name": entity_name,
-            "cardinality_id": cardinality,
-            "issuer_name": issuer_name,
-            "issuer_did": issuer_did,
-            "issuer_resolve_url": issuer_resolve_url(issuer_did),
-            "revocation": bool(record.get("revocation")),
-            "suspension": bool(record.get("suspension")),
-            "refresh": bool(record.get("refresh")),
-            "status": _status_label(record),
-            "url": url,
-            "download_url": download_url,
-            "download_name": download_name,
-            "created": created_raw,
-            "created_display": format_proof_created(created_raw),
-        }
-
-        if key not in groups:
-            groups[key] = {
-                "entity_id": entity or iteration["entity_id"],
-                "entity_name": entity_name,
-                "cardinality_id": cardinality or iteration["cardinality_id"],
-                "issuer_name": issuer_name,
-                "issuer_did": issuer_did,
-                "issuer_resolve_url": iteration["issuer_resolve_url"],
-                "type": iteration["type"],
-                "status": iteration["status"],
-                "url": url,
-                "download_url": download_url,
-                "download_name": download_name,
-                "id": cred_id,
-                "iterations": [iteration],
-            }
-            order.append(key)
-        else:
-            groups[key]["iterations"].append(iteration)
-
-    result = []
-    for key in order:
-        group = groups[key]
-        iterations = group["iterations"]
-        # Prefer the live (non-refresh) row as the group face when present.
-        face = next((i for i in iterations if not i["refresh"]), iterations[0])
-        group["id"] = face["id"]
-        group["type"] = face["type"]
-        group["status"] = face["status"]
-        group["url"] = face["url"]
-        group["download_url"] = face["download_url"]
-        group["download_name"] = face["download_name"]
-        group["entity_name"] = face.get("entity_name") or group.get("entity_name") or ""
-        group["issuer_name"] = face.get("issuer_name") or group.get("issuer_name") or ""
-        group["issuer_did"] = face.get("issuer_did") or group.get("issuer_did") or ""
-        group["issuer_resolve_url"] = (
-            face.get("issuer_resolve_url") or group.get("issuer_resolve_url") or ""
-        )
-        group["iteration_count"] = len(iterations)
-        result.append(group)
-    return result
 
 
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
@@ -272,6 +225,101 @@ async def landing(request: Request):
         request,
         "landing.html",
         _branding(),
+    )
+
+
+@router.get("/view", response_class=HTMLResponse, include_in_schema=False)
+async def view_credential(
+    request: Request,
+    url: str = "",
+    credential: str = "",
+    debug: str = "",
+):
+    """OCA-labeled human view of a published credential.
+
+    In safe mode (default), bare ``/view`` redirects to Discovery — open
+    credentials from a Discovery link or other deep link. With
+    ``VIEW_UNSAFE_MODE=true``, bare ``/view`` shows a resolver form that
+    accepts credential URLs (including remote hosts).
+
+    With a valid ``url`` or ``credential`` (``type:cardinality:entity``),
+    returns a loading shell immediately; the browser streams pipeline results
+    from ``GET /view/stream``. Parse errors are still server-rendered.
+
+    ``credential`` resolves the latest active publication for that triple
+    (same semantics as ``GET /credentials/refresh``).
+
+    Language for the OCA card starts in English; EN/FR (and other OCA
+    overlay languages) are switched in the page UI, not via a ``lang`` query.
+
+    Pass ``?debug=1`` to include the technical OCA attribute dump in the document.
+    """
+    debug_on = view_debug_enabled(debug)
+    target_url, error = resolve_view_target(url=url, credential=credential)
+
+    if error:
+        return templates.TemplateResponse(
+            request,
+            "view.html",
+            _view_shell_context(
+                url=(url or "").strip(),
+                credential=(credential or "").strip(),
+                error=error,
+                debug=debug_on,
+            ),
+        )
+
+    if not target_url:
+        if view_allows_remote():
+            return templates.TemplateResponse(
+                request,
+                "view.html",
+                _view_shell_context(welcome=True, debug=debug_on),
+            )
+        # Safe mode: no free-form URL entry — browse Discovery instead.
+        return RedirectResponse(url="/discovery", status_code=302)
+
+    return templates.TemplateResponse(
+        request,
+        "view.html",
+        _view_shell_context(url=target_url, loading=True, debug=debug_on),
+    )
+
+
+@router.get("/view/stream", include_in_schema=False)
+async def view_credential_stream(
+    url: str = "",
+    credential: str = "",
+    debug: str = "",
+):
+    """Server-Sent Events stream of view-pipeline progress and check results."""
+    target_url, error = resolve_view_target(url=url, credential=credential)
+    if error:
+        iterator = iter([{"type": "error", "message": error}])
+    elif not target_url:
+        iterator = iter([{"type": "error", "message": "Provide a credential URL or credential=type:cardinality:entity."}])
+    else:
+        iterator = iter_view_pipeline(
+            target_url, debug=view_debug_enabled(debug)
+        )
+
+    async def event_publisher():
+        loop = asyncio.get_running_loop()
+        while True:
+            event = await loop.run_in_executor(None, _next_view_event, iterator)
+            if event is _VIEW_STREAM_SENTINEL:
+                break
+            payload = json.dumps(event, ensure_ascii=False, default=str)
+            yield f"data: {payload}\n\n"
+
+    return StreamingResponse(
+        event_publisher(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

@@ -99,8 +99,18 @@ def oca_render_method(
     """Build OCA ``TemplateRenderMethod``; include ``digestMultibase`` only if ``OCA_DIGEST``."""
     cfg = credential_yaml_entry(credential_type)
     ver = (version or cfg.get("version") or "v1.0").strip()
+    # TODO/BUGFIX: UNTP ConformityCredential JSON Schema validation (playground /
+    # UNTP schema) requires ``renderMethod[].type`` to be an *array*
+    # (e.g. ``["TemplateRenderMethod"]``). The W3C VC Render Method spec
+    # (https://w3c-ccg.github.io/vc-render-method/,
+    # ``https://w3id.org/vc/render-method/v2rc2``) models ``type`` like other
+    # VC typed nodes — typically a string (``"TemplateRenderMethod"``) or
+    # string-or-array. Emitting an array satisfies UNTP schema checks today
+    # but diverges from the render-method examples/spec preference for a
+    # single type string. Revisit when UNTP schema aligns with render-method
+    # (or when we drop UNTP-side array enforcement).
     entry: dict[str, Any] = {
-        "type": "TemplateRenderMethod",
+        "type": ["TemplateRenderMethod"],
         "id": f"{publisher_origin()}/templates/{credential_type}/{ver}/oca.json",
         "name": "Overlay Capture Architecture Bundle",
         "renderSuite": "oca-bundle",
@@ -288,10 +298,18 @@ def compose_credential(
         "id": issuer["id"],
         "name": issuer["name"],
     }
-    credential["renderMethod"] = oca_render_method(
-        credential_type=str(credential_type or ""),
-        version=type_record.get("version"),
-    )
+    # TODO/BUG: omit renderMethod until UNTP ConformityCredential schema aligns
+    # with W3C TemplateRenderMethod (schema still models RenderTemplate2024;
+    # type array vs string, and id/name/renderSuite are additionalProperties
+    # warnings in the playground). Restore via oca_render_method() +
+    # ensure_render_method_context() when validation is clean.
+    #
+    # Until restored, /view cannot load OCA from the VC alone: it needs Mongo
+    # CredentialRecord.type as fallback_type (see resolve_render_methods).
+    # credential["renderMethod"] = oca_render_method(
+    #     credential_type=str(credential_type or ""),
+    #     version=type_record.get("version"),
+    # )
 
     published_at = format_utc_datetime(datetime.now(timezone.utc))
     credential["id"] = (

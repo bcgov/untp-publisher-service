@@ -16,6 +16,7 @@ from untp.releases import CONTEXT_BUNDLE
 from app.validators.untp import (
     UntpArtefactKind,
     UntpValidationError,
+    format_json_schema_validation_error,
     validate_untp_document,
     validate_untp_json_ld,
     validate_untp_json_schema,
@@ -213,3 +214,30 @@ def test_vc_rejects_missing_required_name() -> None:
     cause = excinfo.value.__cause__
     assert cause is not None
     assert isinstance(cause, JsonSchemaValidationError | PydanticValidationError)
+
+
+def test_json_schema_error_message_is_readable_not_schema_dump() -> None:
+    """Failed schema checks should name the path/issue without dumping the schema body."""
+    _assert_samples_present()
+    data = copy.deepcopy(_load_json_object(DCC_SAMPLES[0]))
+    data["renderMethod"] = [
+        {
+            "id": "https://example.com/oca.json",
+            "type": "TemplateRenderMethod",
+            "name": "OCA",
+            "renderSuite": "oca-bundle",
+        }
+    ]
+    with pytest.raises(UntpValidationError) as excinfo:
+        validate_untp_json_schema(data, UntpArtefactKind.DCC_CREDENTIAL)
+    message = str(excinfo.value)
+    assert "renderMethod[0]" in message
+    assert "Additional properties" in message or "unexpected" in message.lower()
+    assert "id" in message and "renderSuite" in message
+    assert "Failed validating" not in message
+    assert "'type': {'type': 'array'" not in message
+    cause = excinfo.value.__cause__
+    assert isinstance(cause, JsonSchemaValidationError)
+    formatted = format_json_schema_validation_error(cause)
+    assert formatted == message
+    assert "Hint:" in formatted

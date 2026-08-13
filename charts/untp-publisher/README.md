@@ -29,6 +29,7 @@ Helm chart for the [UNTP Publisher](https://github.com/bcgov/untp-publisher-serv
 | backend.environment.landingPartnerUrl | string | `""` | Partner header link; `http(s)` only, omit chrome when empty (`LANDING_PARTNER_URL`) |
 | backend.environment.landingPartnerLabel | string | `"Partner"` | Partner link label (`LANDING_PARTNER_LABEL`) |
 | backend.environment.ocaDigest | bool | `false` | When true, include `digestMultibase` on OCA `renderMethod` (`OCA_DIGEST`) |
+| backend.environment.viewUnsafeMode | bool | `false` | When true, `/view` may fetch remote hosts for path-shaped credential/status/OCA URLs (`VIEW_UNSAFE_MODE`; redirects and non-public IPs refused — keep false in prod) |
 | backend.traction.apiUrl | string | `""` | Traction tenant proxy base URL (sets `TRACTION_API_URL`) |
 | backend.traction.existingSecret | string | `""` | Pre-created Traction Secret. When empty, Helm manages `{fullname}-traction`. When set, Helm does not create the Secret. |
 | backend.traction.secretKeys.apiKey | string | `"traction_api_key"` | Secret key for the Traction API key |

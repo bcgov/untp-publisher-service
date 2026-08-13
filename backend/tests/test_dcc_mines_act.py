@@ -124,7 +124,7 @@ def test_compose_credential(publication_payload, type_record, issuer, monkeypatc
     assert "Permit Q-20 authorizes" in assessment["description"]
     assert "Construction Aggregate" in assessment["description"]
     assert credential["credentialSubject"]["name"] == (
-        "Mines Act Permit Q-20 — EXAMPLE MINING CO"
+        "Mines Act Permit Q-20"
     )
     assert "Mines Act (British Columbia)" in credential.get("description", "")
     assert "Kootenay West" in credential["credentialSubject"]["description"]
@@ -139,11 +139,15 @@ def test_compose_credential(publication_payload, type_record, issuer, monkeypatc
     ref_scheme = credential["credentialSubject"]["referenceScheme"]
     assert ref_scheme["id"].endswith("96293_01")
     assert ref_scheme["name"] == "Mines Act (British Columbia)"
+    trustmark = credential["credentialSubject"]["trustmark"]
+    assert trustmark["name"] == "Verified Mine Permit"
+    assert "BC Mines Act" in trustmark["description"]
+    assert trustmark["mediaType"] == "image/png"
     criteria = assessment["assessmentCriteria"][0]
     assert criteria["id"].endswith("#section10")
     assert criteria["name"] == "Permits"
     assert len(assessment["assessedFacility"]) == 1
-    assert assessment["assessedFacility"][0]["type"] == ["FacilityVerification"]
+    assert "type" not in assessment["assessedFacility"][0]
     facility_obj = assessment["assessedFacility"][0]["facility"]
     assert facility_obj["id"] == "urn:ca:bcgov:mines-act:permit:Q-20:mine:0500956"
     assert facility_obj["locationInformation"]["plusCode"] == (
@@ -154,11 +158,8 @@ def test_compose_credential(publication_payload, type_record, issuer, monkeypatc
     assert assessment["assessedProduct"][0]["product"]["id"] == (
         "urn:ca:bcgov:mines-act:permit:Q-20:commodity:construction-aggregate"
     )
-    rm = credential["renderMethod"][0]
-    assert rm["type"] == "TemplateRenderMethod"
-    assert rm["renderSuite"] == "oca-bundle"
-    assert rm["name"] == "Overlay Capture Architecture Bundle"
-    assert "digestMultibase" not in rm
+    # TODO/BUG: renderMethod omitted until UNTP schema aligns with TemplateRenderMethod
+    assert "renderMethod" not in credential
 
 
 def test_oca_render_method_includes_digest_when_enabled(monkeypatch):
@@ -172,7 +173,7 @@ def test_oca_render_method_includes_digest_when_enabled(monkeypatch):
         credential_type=CREDENTIAL_TYPE,
         version="v1.1",
     )
-    assert methods[0]["type"] == "TemplateRenderMethod"
+    assert methods[0]["type"] == ["TemplateRenderMethod"]
     assert methods[0]["renderSuite"] == "oca-bundle"
     assert methods[0]["digestMultibase"].startswith("z")
     assert methods[0]["id"].endswith("/oca.json")

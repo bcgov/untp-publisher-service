@@ -1,0 +1,656 @@
+{# OCA credential document — presentation from build_oca_template_context().
+   Visual language inspired by feat/discovery-permit-ui permit preview. #}
+{% macro display_value(field) -%}
+  {%- if field.missing or field.value is none or field.value == "" -%}—{%- else -%}{{ field.value }}{%- endif -%}
+{%- endmacro %}
+
+{% macro overlay_label(payload, class_name="") -%}
+{%- if payload and payload.pointer -%}
+<span
+  class="{{ class_name }}"
+  data-oca-pointer="{{ payload.pointer }}"
+  data-oca-overlay="label"
+  {% if payload.information %}title="{{ payload.information }}" data-oca-info="1"{% endif %}
+  >{{ payload.label }}</span
+>
+{%- elif payload -%}
+<span class="{{ class_name }}" {% if payload.information %}title="{{ payload.information }}"{% endif %}
+  >{{ payload.label }}</span
+>
+{%- endif -%}
+{%- endmacro %}
+
+{% set p = presentation or {} %}
+{% set flow = p.flow or {} %}
+{% set ui = p.ui or {} %}
+{% set entity_label = p.entity_label or "" %}
+
+<article class="oca-doc" aria-label="OCA credential view" data-oca-lang="{{ language }}">
+  {% if overlays_i18n %}
+  <div id="oca-overlay-i18n" hidden>{{ overlays_i18n | tojson }}</div>
+  {% endif %}
+  {% if order %}
+  <input
+    type="checkbox"
+    id="oca-overlays-toggle"
+    class="oca-overlays-toggle"
+    {% if debug %}checked{% endif %}
+  />
+  {% endif %}
+  <div class="oca-doc-gold" aria-hidden="true"></div>
+
+  <div class="oca-ribbon">
+    {% if p.assessment_date_label %}
+    <div class="oca-ribbon-item">
+      <span
+        class="oca-ribbon-label"
+        {% if p.assessment_date_pointer %}data-oca-pointer="{{ p.assessment_date_pointer }}" data-oca-overlay="label"{% endif %}
+        >{{ p.assessment_date_label }}</span
+      >
+      <span class="oca-ribbon-value">{{ p.assessment_date or "—" }}</span>
+    </div>
+    {% endif %}
+    {% if p.valid_from_label %}
+    <div class="oca-ribbon-item">
+      <span
+        class="oca-ribbon-label"
+        {% if p.valid_from_pointer %}data-oca-pointer="{{ p.valid_from_pointer }}" data-oca-overlay="label"{% endif %}
+        >{{ p.valid_from_label }}</span
+      >
+      <span class="oca-ribbon-value">{{ p.valid_from or "—" }}</span>
+    </div>
+    {% endif %}
+    {% if order or (languages and languages|length > 1) %}
+    <div class="oca-ribbon-item oca-ribbon-tools">
+      {% if languages and languages|length > 1 %}
+      <div class="oca-lang" role="group" aria-label="Language">
+        {% for code in languages %}
+        {% set code_norm = (code or 'en')|string|lower %}
+        <button
+          type="button"
+          class="oca-lang-btn{% if code_norm == language %} is-active{% endif %}"
+          hreflang="{{ code_norm }}"
+          data-oca-lang-switch="{{ code_norm }}"
+          aria-pressed="{{ 'true' if code_norm == language else 'false' }}"
+        >{{ code_norm|upper }}</button>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if order %}
+      <label
+        for="oca-overlays-toggle"
+        class="oca-info-btn"
+        title="{{ ui.overlays_toggle or 'Semantics' }}"
+        aria-label="{{ ui.overlays_toggle or 'Semantics' }}"
+        data-oca-ui="overlays_toggle"
+        data-oca-ui-attr="title aria-label"
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+          <path
+            fill="currentColor"
+            d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4.2a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6zM10.75 11h2.5v7h-2.5v-7z"
+          />
+        </svg>
+      </label>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if p.conforms_label %}
+    <div class="oca-ribbon-item oca-ribbon-status">
+      <span
+        class="oca-status{% if p.conforms is sameas true %} is-ok{% elif p.conforms is sameas false %} is-bad{% else %} is-muted{% endif %}"
+        {% if p.conforms_pointer %}data-oca-pointer="{{ p.conforms_pointer }}" data-oca-overlay="label"{% endif %}
+        >{{ p.conforms_label }}{% if p.conforms_value %} · {{ p.conforms_value }}{% endif %}</span
+      >
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="oca-credential-view">
+  <div class="oca-title-block">
+    <img
+      class="oca-brand-mark"
+      src="/static/permit/images/bcgov-mark.svg"
+      alt=""
+      width="72"
+      height="64"
+    />
+    {% if p.scheme %}
+    <p class="oca-scheme">{{ p.scheme }}</p>
+    {% endif %}
+    {% if p.title %}
+    <h2 class="oca-title">{{ p.title }}</h2>
+    {% endif %}
+    {% if p.subtitle %}
+    <p class="oca-subtitle">{{ p.subtitle }}</p>
+    {% endif %}
+  </div>
+
+  {% if flow.issuer or flow.assessment or flow.organisation or flow.facility %}
+  <section class="oca-flow" aria-label="{{ ui.flow_aria or 'Credential relationship chain' }}">
+    <div class="oca-flow-node oca-flow-issuer">
+      <span
+        class="oca-flow-label"
+        {% if flow.issuer_pointer %}data-oca-pointer="{{ flow.issuer_pointer }}" data-oca-overlay="label"{% endif %}
+        >{{ flow.issuer_label or "" }}</span
+      >
+      {% if flow.issuer_href %}
+      <a
+        class="oca-flow-value oca-flow-link"
+        href="{{ flow.issuer_href }}"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="{{ ui.resolve_issuer or '' }}"
+        >{{ flow.issuer or "—" }}</a
+      >
+      {% else %}
+      <span class="oca-flow-value">{{ flow.issuer or "—" }}</span>
+      {% endif %}
+    </div>
+    <span class="oca-flow-arrow" aria-hidden="true">→</span>
+    <div class="oca-flow-node oca-flow-primary">
+      <span
+        class="oca-flow-label"
+        {% if flow.assessment_pointer %}data-oca-pointer="{{ flow.assessment_pointer }}" data-oca-overlay="label"{% endif %}
+        >{{ flow.assessment_label or "" }}</span
+      >
+      <span class="oca-flow-value">{{ flow.assessment or "—" }}</span>
+    </div>
+    <span class="oca-flow-arrow" aria-hidden="true">→</span>
+    <div class="oca-flow-group">
+      <div class="oca-flow-node oca-flow-small">
+        <span
+          class="oca-flow-label"
+          {% if flow.organisation_pointer %}data-oca-pointer="{{ flow.organisation_pointer }}" data-oca-overlay="label"{% endif %}
+          >{{ flow.organisation_label or "" }}</span
+        >
+        <span class="oca-flow-value">{{ flow.organisation or "—" }}</span>
+      </div>
+      {% if flow.organisation and flow.facility %}
+      <span class="oca-flow-join" aria-hidden="true">+</span>
+      {% endif %}
+      <div class="oca-flow-node oca-flow-small">
+        <span
+          class="oca-flow-label"
+          {% if flow.facility_pointer %}data-oca-pointer="{{ flow.facility_pointer }}" data-oca-overlay="label"{% endif %}
+          >{{ flow.facility_label or "" }}</span
+        >
+        <span class="oca-flow-value">{{ flow.facility or "—" }}</span>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if p.assessment_title or p.assessment_lead or p.id_chips or (p.trustmark and p.trustmark.src) %}
+  <section class="oca-hero" aria-label="{{ entity_label or 'summary' }}">
+    <div class="oca-hero-top">
+      <div class="oca-hero-main">
+        {% if entity_label %}
+        <p
+          class="oca-hero-kicker"
+          {% if p.entity_label_pointer %}data-oca-pointer="{{ p.entity_label_pointer }}" data-oca-overlay="label"{% endif %}
+        >{{ entity_label }}</p>
+        {% endif %}
+        {% if p.assessment_title %}
+        <h3 class="oca-hero-name">{{ p.assessment_title }}</h3>
+        {% endif %}
+        {% if p.assessment_lead %}
+        <p class="oca-hero-lead">{{ p.assessment_lead }}</p>
+        {% endif %}
+      </div>
+      {% if p.trustmark and p.trustmark.src %}
+      <figure class="oca-seal oca-seal-trustmark oca-hero-trustmark">
+        <img
+          class="oca-seal-img"
+          src="{{ p.trustmark.src }}"
+          alt="{{ p.trustmark.name or '' }}"
+          {% if p.trustmark.description %}title="{{ p.trustmark.description }}"{% endif %}
+          width="96"
+          height="86"
+        />
+      </figure>
+      {% endif %}
+    </div>
+    {% if p.id_chips %}
+    <div class="oca-id-chips">
+      {% for chip in p.id_chips %}
+      <div class="oca-id-chip">
+        <span
+          class="oca-id-label"
+          {% if chip.pointer %}data-oca-pointer="{{ chip.pointer }}" data-oca-overlay="label"{% endif %}
+          {% if chip.information %}title="{{ chip.information }}" data-oca-info="1"{% endif %}
+          >{{ chip.label }}</span
+        >
+        <span class="oca-id-value">{{ chip.id or chip.value }}</span>
+        {% if chip.name and chip.name != "—" %}
+        <span class="oca-id-name">{{ chip.name }}</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if p.sections %}
+  <div class="oca-body">
+    {% set stats_placed = namespace(done=false) %}
+    {% for section in p.sections %}
+    <section
+      class="oca-card oca-card-{{ section.kind }} oca-card-{{ section.id }}"
+      aria-labelledby="oca-sec-{{ section.id }}"
+    >
+      <div class="oca-card-head">
+        {% if section.title %}
+        <p
+          class="oca-card-kicker"
+          id="oca-sec-{{ section.id }}"
+          {% if section.title_pointer %}data-oca-pointer="{{ section.title_pointer }}" data-oca-overlay="label"{% endif %}
+        >{{ section.title }}</p>
+        {% else %}
+        <span class="oca-card-kicker" id="oca-sec-{{ section.id }}" hidden></span>
+        {% endif %}
+        {% if section.badges %}
+        <div class="oca-card-badges">
+          {% for badge in section.badges %}
+          <span
+            class="oca-verify{% if badge.badge_ok is sameas true %} is-ok{% elif badge.badge_ok is sameas false %} is-no{% elif badge.compact %} is-type{% endif %}"
+            {% if badge.badge_ok is sameas true %}data-oca-ui="verified"{% elif badge.badge_ok is sameas false %}data-oca-ui="unverified"{% endif %}
+            {% if badge.information %}title="{{ badge.information }}"{% elif badge.compact and badge.label %}title="{{ badge.label }}"{% endif %}
+            >{% if badge.badge_ok is sameas true %}{{ ui.verified or "Verified" }}{% elif badge.badge_ok is sameas false %}{{ ui.unverified or "Unverified" }}{% elif badge.compact %}{{ badge.value }}{% else %}{{ badge.label }}{% if badge.value %} · {{ badge.value }}{% endif %}{% endif %}</span
+          >
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      {% if section.kind == "chips" %}
+      <div class="oca-chip-row">
+        {% for chip in section.chips %}
+        <div class="oca-chip">
+          <span
+            class="oca-chip-label"
+            {% if chip.pointer %}data-oca-pointer="{{ chip.pointer }}" data-oca-overlay="label"{% endif %}
+            {% if chip.information %}title="{{ chip.information }}" data-oca-info="1"{% endif %}
+            >{{ chip.label }}</span
+          >
+          <span class="oca-chip-value">{{ chip.value }}</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      {% elif section.kind in ["entity", "product", "criteria", "panel", "links", "evidence"] %}
+      {% if section.entries %}
+      <div class="oca-card-items">
+        {% for item in section.entries %}
+        <div class="oca-card-item">
+          <div class="oca-card-item-row">
+            {% if item.headline %}
+            <p
+              class="oca-card-headline"
+              {% if item.headline.pointer %}data-oca-pointer="{{ item.headline.pointer }}" data-oca-info="1"{% endif %}
+              {% if item.headline.information %}title="{{ item.headline.information }}"{% endif %}
+            >
+              {{ item.headline.value }}
+            </p>
+            {% endif %}
+            {% if item.badges %}
+            <div class="oca-card-badges oca-card-item-badges">
+              {% for badge in item.badges %}
+              <span
+                class="oca-verify{% if badge.badge_ok is sameas true %} is-ok{% elif badge.badge_ok is sameas false %} is-no{% endif %}"
+                {% if badge.badge_ok is sameas true %}data-oca-ui="verified"{% elif badge.badge_ok is sameas false %}data-oca-ui="unverified"{% endif %}
+                {% if badge.information %}title="{{ badge.information }}"{% endif %}
+                >{% if badge.badge_ok is sameas true %}{{ ui.verified or "Verified" }}{% elif badge.badge_ok is sameas false %}{{ ui.unverified or "Unverified" }}{% else %}{{ badge.label }}{% if badge.value %} · {{ badge.value }}{% endif %}{% endif %}</span
+              >
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+          {% if item.facts or item.metrics %}
+          <div class="oca-card-facts">
+            {% for fact in item.facts %}
+            <div class="oca-fact">
+              <span
+                class="oca-fact-label"
+                {% if fact.pointer %}data-oca-pointer="{{ fact.pointer }}" data-oca-overlay="label"{% endif %}
+                {% if fact.information %}title="{{ fact.information }}" data-oca-info="1"{% endif %}
+                >{{ fact.label }}</span
+              >
+              <span class="oca-fact-value">{{ fact.value }}</span>
+            </div>
+            {% endfor %}
+            {% for metric in item.metrics %}
+            <div class="oca-fact oca-fact-metric">
+              <span
+                class="oca-fact-label"
+                {% if metric.pointer %}data-oca-pointer="{{ metric.pointer }}" data-oca-overlay="label"{% endif %}
+                {% if metric.information %}title="{{ metric.information }}" data-oca-info="1"{% endif %}
+                >{{ metric.label }}</span
+              >
+              <span class="oca-fact-value">{{ metric.value }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if item.links or item.ids %}
+          <ul class="oca-card-links">
+            {% for link in item.links %}
+            <li>
+              {% if link.href %}
+              <a
+                class="oca-link-value"
+                href="{{ link.href }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                {% if link.pointer %}data-oca-pointer="{{ link.pointer }}" data-oca-overlay="label"{% endif %}
+                title="{{ link.information or link.href }}"
+                {% if link.information %}data-oca-info="1"{% endif %}
+                >{{ link.label }}</a
+              >
+              {% else %}
+              <span
+                class="oca-link-label"
+                {% if link.pointer %}data-oca-pointer="{{ link.pointer }}" data-oca-overlay="label"{% endif %}
+                {% if link.information %}title="{{ link.information }}" data-oca-info="1"{% endif %}
+                >{{ link.label }}</span
+              >
+              <span class="oca-link-value">{{ link.value }}</span>
+              {% endif %}
+            </li>
+            {% endfor %}
+            {% for ident in item.ids %}
+            <li>
+              <span
+                class="oca-link-label"
+                {% if ident.pointer %}data-oca-pointer="{{ ident.pointer }}" data-oca-overlay="label"{% endif %}
+                {% if ident.information %}title="{{ ident.information }}" data-oca-info="1"{% endif %}
+                >{{ ident.label }}</span
+              >
+              <code class="oca-id-value">{{ ident.value }}</code>
+            </li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      {% if section.headline %}
+      <p
+        class="oca-card-headline"
+        {% if section.headline.pointer %}data-oca-pointer="{{ section.headline.pointer }}" data-oca-info="1"{% endif %}
+        {% if section.headline.information %}title="{{ section.headline.information }}"{% endif %}
+      >
+        {% if section.headline.href %}
+        <a
+          class="oca-stat-link"
+          href="{{ section.headline.href }}"
+          target="_blank"
+          rel="noopener noreferrer"
+          >{{ section.headline.value }}</a
+        >
+        {% else %}
+        {{ section.headline.value }}
+        {% endif %}
+      </p>
+      {% endif %}
+      {% if section.scheme %}
+      <p class="oca-card-scheme">
+        <span
+          {% if section.scheme.pointer %}data-oca-pointer="{{ section.scheme.pointer }}" data-oca-overlay="label"{% endif %}
+          {% if section.scheme.information %}title="{{ section.scheme.information }}" data-oca-info="1"{% endif %}
+          >{{ section.scheme.label }}</span
+        >
+        · {{ section.scheme.value }}
+      </p>
+      {% endif %}
+
+      {% if section.facts or section.metrics %}
+      {% set lead_facts = section.facts | selectattr('emphasis', 'equalto', 'lead') | list %}
+      {% set meta_facts = section.facts | selectattr('emphasis', 'equalto', 'meta') | list %}
+      {% if section.id == "attestation" and (lead_facts or meta_facts) %}
+      {% if lead_facts %}
+      <div class="oca-scheme-lead">
+        {% for fact in lead_facts %}
+        <div class="oca-fact">
+          <span
+            class="oca-fact-label"
+            {% if fact.pointer %}data-oca-pointer="{{ fact.pointer }}" data-oca-overlay="label"{% endif %}
+            {% if fact.information %}title="{{ fact.information }}" data-oca-info="1"{% endif %}
+            >{{ fact.label }}</span
+          >
+          {% if fact.href %}
+          <a
+            class="oca-fact-value oca-stat-link"
+            href="{{ fact.href }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            >{{ fact.value }}</a
+          >
+          {% else %}
+          <span class="oca-fact-value">{{ fact.value }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if meta_facts %}
+      <div class="oca-scheme-meta">
+        {% for fact in meta_facts %}
+        <div class="oca-fact">
+          <span
+            class="oca-fact-label"
+            {% if fact.pointer %}data-oca-pointer="{{ fact.pointer }}" data-oca-overlay="label"{% endif %}
+            {% if fact.information %}title="{{ fact.information }}" data-oca-info="1"{% endif %}
+            >{{ fact.label }}</span
+          >
+          {% if fact.href %}
+          <a
+            class="oca-fact-value oca-stat-link"
+            href="{{ fact.href }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            >{{ fact.value }}</a
+          >
+          {% else %}
+          <span class="oca-fact-value">{{ fact.value }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% else %}
+      <div class="oca-card-facts">
+        {% for fact in section.facts %}
+        <div class="oca-fact">
+          <span
+            class="oca-fact-label"
+            {% if fact.pointer %}data-oca-pointer="{{ fact.pointer }}" data-oca-overlay="label"{% endif %}
+            {% if fact.information %}title="{{ fact.information }}" data-oca-info="1"{% endif %}
+            >{{ fact.label }}</span
+          >
+          {% if fact.href %}
+          <a
+            class="oca-fact-value oca-stat-link"
+            href="{{ fact.href }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            >{{ fact.value }}</a
+          >
+          {% else %}
+          <span class="oca-fact-value">{{ fact.value }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% for metric in section.metrics %}
+        <div class="oca-fact oca-fact-metric">
+          <span
+            class="oca-fact-label"
+            {% if metric.pointer %}data-oca-pointer="{{ metric.pointer }}" data-oca-overlay="label"{% endif %}
+            {% if metric.information %}title="{{ metric.information }}" data-oca-info="1"{% endif %}
+            >{{ metric.label }}</span
+          >
+          <span class="oca-fact-value">{{ metric.value }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endif %}
+
+      {% if section.links or section.ids %}
+      <ul class="oca-card-links">
+        {% for link in section.links %}
+        <li>
+          {% if link.href %}
+          <a
+            class="oca-link-value"
+            href="{{ link.href }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            {% if link.pointer %}data-oca-pointer="{{ link.pointer }}" data-oca-overlay="label"{% endif %}
+            title="{{ link.information or link.href }}"
+            {% if link.information %}data-oca-info="1"{% endif %}
+            >{{ link.label }}</a
+          >
+          {% else %}
+          <span
+            class="oca-link-label"
+            {% if link.pointer %}data-oca-pointer="{{ link.pointer }}" data-oca-overlay="label"{% endif %}
+            {% if link.information %}title="{{ link.information }}" data-oca-info="1"{% endif %}
+            >{{ link.label }}</span
+          >
+          <span class="oca-link-value">{{ link.value }}</span>
+          {% endif %}
+        </li>
+        {% endfor %}
+        {% for ident in section.ids %}
+        <li>
+          <span
+            class="oca-link-label"
+            {% if ident.pointer %}data-oca-pointer="{{ ident.pointer }}" data-oca-overlay="label"{% endif %}
+            {% if ident.information %}title="{{ ident.information }}" data-oca-info="1"{% endif %}
+            >{{ ident.label }}</span
+          >
+          <code class="oca-id-value">{{ ident.value }}</code>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% endif %}
+      {% endif %}
+    </section>
+    {% endfor %}
+    {% if p.stats and not stats_placed.done %}
+    <section class="oca-stats" aria-label="{{ ui.key_facts_aria or 'Key facts' }}">
+      {% for stat in p.stats %}
+      <div class="oca-stat">
+        <span
+          class="oca-stat-label"
+          {% if stat.pointer %}data-oca-pointer="{{ stat.pointer }}" data-oca-overlay="label"{% endif %}
+          {% if stat.information %}title="{{ stat.information }}" data-oca-info="1"{% endif %}
+          >{{ stat.label }}</span
+        >
+        {% if stat.href %}
+        <a
+          class="oca-stat-value oca-stat-link"
+          href="{{ stat.href }}"
+          target="_blank"
+          rel="noopener noreferrer"
+          >{{ stat.value }}</a
+        >
+        {% else %}
+        <span class="oca-stat-value">{{ stat.value }}</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+  </div>
+  {% elif p.stats %}
+  <section class="oca-stats" aria-label="{{ ui.key_facts_aria or 'Key facts' }}">
+    {% for stat in p.stats %}
+    <div class="oca-stat">
+      <span
+        class="oca-stat-label"
+        {% if stat.pointer %}data-oca-pointer="{{ stat.pointer }}" data-oca-overlay="label"{% endif %}
+        {% if stat.information %}title="{{ stat.information }}" data-oca-info="1"{% endif %}
+        >{{ stat.label }}</span
+      >
+      {% if stat.href %}
+      <a
+        class="oca-stat-value oca-stat-link"
+        href="{{ stat.href }}"
+        target="_blank"
+        rel="noopener noreferrer"
+        >{{ stat.value }}</a
+      >
+      {% else %}
+      <span class="oca-stat-value">{{ stat.value }}</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </section>
+  {% elif order %}
+  <p class="oca-empty">{{ ui.empty_summary or "No additional OCA attributes to display in the summary view." }}</p>
+  {% else %}
+  <p class="oca-empty">{{ ui.empty_none or "No OCA attributes were available to display." }}</p>
+  {% endif %}
+  </div>
+
+  {% if order %}
+  <section
+    id="oca-overlays"
+    class="oca-overlays oca-all-fields"
+    aria-label="{{ ui.overlays_aria or 'Semantics' }}"
+  >
+    <header class="oca-lexicon-head">
+      <p class="oca-lexicon-kicker" data-oca-ui="overlays_kicker">{{ ui.overlays_kicker or "Overlays" }}</p>
+      <h3 class="oca-lexicon-title" data-oca-ui="overlays_title">{{ ui.overlays_title or "Semantics" }}</h3>
+    </header>
+    <dl class="oca-lexicon">
+      {% for pointer in order %}
+      {% set field = attributes.get(pointer, {}) %}
+      <div class="oca-lexicon-entry{% if field.missing %} is-missing{% endif %}">
+        <dt
+          class="oca-lexicon-term"
+          data-oca-pointer="{{ pointer }}"
+          data-oca-overlay="label"
+          {% if field.information %}title="{{ field.information }}" data-oca-info="1"{% endif %}
+        >
+          {{ field.label or pointer }}
+        </dt>
+        {% if field.information %}
+        <dd
+          class="oca-lexicon-def"
+          data-oca-pointer="{{ pointer }}"
+          data-oca-overlay="information"
+        >{{ field.information }}</dd>
+        {% else %}
+        <dd
+          class="oca-lexicon-def"
+          data-oca-pointer="{{ pointer }}"
+          data-oca-overlay="information"
+          hidden
+        ></dd>
+        {% endif %}
+        <dd class="oca-lexicon-value">
+          <span class="oca-lexicon-value-text">{{ display_value(field) }}</span>
+        </dd>
+      </div>
+      {% endfor %}
+    </dl>
+  </section>
+  {% endif %}
+
+  <footer class="oca-footer">
+    <div class="oca-footer-meta">
+      <span class="oca-footer-label" data-oca-ui="generated_prefix">{{ ui.generated_prefix or "Generated" }}</span>
+      <time class="oca-footer-time" datetime="{{ rendered_at_iso }}">{{ rendered_at }}</time>
+    </div>
+    <div class="oca-footer-meta oca-footer-printed" hidden>
+      <span class="oca-footer-label" data-oca-ui="printed_prefix">{{ ui.printed_prefix or "Printed" }}</span>
+      <time class="oca-footer-time" data-oca-printed-at></time>
+    </div>
+  </footer>
+</article>

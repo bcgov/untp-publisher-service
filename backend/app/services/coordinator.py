@@ -4,7 +4,8 @@ from app.models.credential import Credential
 from app.plugins.mongodb import MongoClient
 from app.services.composer import (
     compose_credential,
-    ensure_render_method_context,
+    # TODO/BUG: restore ensure_render_method_context when renderMethod is re-enabled
+    # ensure_render_method_context,
 )
 from app.validators.untp import UntpValidationError, validate_untp_document
 from base58 import b58encode
@@ -90,8 +91,9 @@ class PublisherCoordinator:
                 detail=f"UNTP validation failed: {exc}",
             ) from exc
 
-        # Append publisher-managed fields, then validate the final document.
-        ensure_render_method_context(credential)
+        # TODO/BUG: skip render-method @context while renderMethod is omitted
+        # (see composer.compose_credential). Restore with renderMethod.
+        # ensure_render_method_context(credential)
 
         issuer_id = credential_registration.get("issuer")
         # TODO: release claimed status-list indexes if Traction issue/sign or
@@ -146,18 +148,21 @@ class PublisherCoordinator:
                 detail=f"UNTP validation failed: {exc}",
             ) from exc
 
-        credential = Credential(
-            context=credential.get("@context"),
-            type=credential.get("type"),
-            id=credential.get("id"),
-            name=credential.get("name"),
-            issuer=credential.get("issuer"),
-            validFrom=credential.get("validFrom"),
-            validUntil=credential.get("validUntil") or None,
-            credentialSubject=credential.get("credentialSubject"),
-            credentialStatus=credential.get("credentialStatus"),
-            renderMethod=credential.get("renderMethod"),
-        ).model_dump()
+        credential_kwargs = {
+            "context": credential.get("@context"),
+            "type": credential.get("type"),
+            "id": credential.get("id"),
+            "name": credential.get("name"),
+            "issuer": credential.get("issuer"),
+            "validFrom": credential.get("validFrom"),
+            "validUntil": credential.get("validUntil") or None,
+            "credentialSubject": credential.get("credentialSubject"),
+            "credentialStatus": credential.get("credentialStatus"),
+        }
+        # Omit when absent — Credential.renderMethod is not Optional and rejects None.
+        if credential.get("renderMethod") is not None:
+            credential_kwargs["renderMethod"] = credential["renderMethod"]
+        credential = Credential(**credential_kwargs).model_dump()
 
         return credential
 

@@ -63,6 +63,8 @@ spec:
               value: {{ .Values.backend.environment.landingPartnerLabel | quote }}
             - name: OCA_DIGEST
               value: {{ .Values.backend.environment.ocaDigest | quote }}
+            - name: VIEW_UNSAFE_MODE
+              value: {{ .Values.backend.environment.viewUnsafeMode | quote }}
 
             # WEBVH SERVER
             - name: WEBVH_SERVER_URL

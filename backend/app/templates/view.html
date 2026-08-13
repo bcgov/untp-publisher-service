@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>
+      {% if error %}Couldn’t open credential — {% else %}Credential View — {% endif %}{{ project_title }}
+    </title>
+    <link rel="icon" href="/static/admin/images/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/css/bc-sans.css" />
+    <link rel="stylesheet" href="/static/css/publisher.css?v=6" />
+    <link rel="stylesheet" href="/static/css/view.css?v=23" />
+    <style>
+      :root {
+        --primary: {{ primary_color }};
+        --secondary: {{ secondary_color }};
+        --heading: {{ primary_color }};
+        --line: color-mix(in srgb, var(--primary) 18%, #d5dae1);
+        --line-soft: color-mix(in srgb, var(--primary) 9%, #e4e8ed);
+        --primary-soft: color-mix(in srgb, var(--primary) 5%, #fff);
+        --ok: #2e8540;
+        --ok-ink: #1f6b34;
+        --ok-soft: color-mix(in srgb, #2e8540 8%, #fff);
+        --danger: #d8292f;
+        --danger-ink: #a12622;
+        --danger-soft: color-mix(in srgb, var(--danger) 8%, #fff);
+        --warn: #c98b00;
+        --warn-ink: #8a5300;
+        --warn-soft: color-mix(in srgb, #c98b00 12%, #fff);
+      }
+    </style>
+  </head>
+  <body class="pub-chrome{% if welcome or error %} is-view-welcome{% endif %}">
+    {% macro icon_close() -%}
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M6.4 6.4 12 12l5.6-5.6 1.4 1.4L13.4 13.4l5.6 5.6-1.4 1.4L12 14.8l-5.6 5.6-1.4-1.4 5.6-5.6-5.6-5.6z"
+      />
+    </svg>
+    {%- endmacro %}
+    <header class="pub-topbar">
+      <a class="pub-topbar-brand" href="/">
+        <img src="{{ logo_url }}" alt="{{ project_title }}" />
+      </a>
+      {% if partner_url %}
+      <a
+        class="pub-topbar-partner"
+        href="{{ partner_url }}"
+        rel="noopener noreferrer"
+        target="_blank"
+        >{{ partner_label }}</a
+      >
+      {% endif %}
+    </header>
+
+    <main
+      class="wrap"
+      {% if loading %}
+      id="view-app"
+      data-stream-url="{{ stream_url }}"
+      data-page-url="{{ url }}"
+      data-debug="{{ '1' if debug else '0' }}"
+      {% endif %}
+    >
+      <div class="view-util">
+        <div class="view-util-top">
+          <a class="back" href="/discovery">← Discovery</a>
+          <h1>
+            <span class="title-rule" id="view-title"
+              >{% if error %}Couldn’t open credential{% else %}Credential View{% endif %}</span
+            >
+          </h1>
+          <div class="view-util-tools">
+            {% if unsafe_mode %}
+            <span
+              class="unsafe-pill"
+              title="Unsafe mode is on: remote credential, status-list, and OCA URLs may be fetched. Keep VIEW_UNSAFE_MODE off in production."
+              >Unsafe</span
+            >
+            {% endif %}
+            {% if loading %}
+            <div class="actions" id="view-actions" hidden>
+              <button
+                type="button"
+                class="btn"
+                data-copy-url=""
+                title="Copy credential URL"
+              >
+                <svg class="icon-default" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
+                  />
+                </svg>
+                <svg class="icon-check" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"
+                  />
+                </svg>
+                Copy
+              </button>
+              <a class="btn" data-download href="#" download="" title="Download credential">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"
+                  />
+                </svg>
+                Download
+              </a>
+              <a
+                class="btn"
+                data-latest-view
+                hidden
+                href="#"
+                title="Open the latest active publication for this type, permit, and entity"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"
+                  />
+                </svg>
+                View latest
+              </a>
+              <button
+                type="button"
+                class="btn"
+                data-pdf
+                title="Save or print this view as PDF"
+                disabled
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 13h8v2H8v-2zm0 4h5v2H8v-2z"
+                  />
+                </svg>
+                PDF
+              </button>
+              <button
+                type="button"
+                class="btn"
+                data-meta-toggle
+                aria-expanded="false"
+                aria-controls="view-meta-modal"
+                aria-haspopup="dialog"
+                title="Show verification and validation metadata"
+                disabled
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3zm0 2.2 6 2.2v4.7c0 3.9-2.5 7.6-6 8.8-3.5-1.2-6-4.9-6-8.8V6.4l6-2.2zM11 7h2v6h-2V7zm0 8h2v2h-2v-2z"
+                  />
+                </svg>
+                Metadata
+                <span class="meta-badge" data-meta-badge hidden aria-hidden="true"></span>
+              </button>
+              <button
+                type="button"
+                class="btn"
+                data-json-toggle
+                aria-expanded="false"
+                aria-controls="view-json-modal"
+                aria-haspopup="dialog"
+                title="Show decoded credential JSON"
+                disabled
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M8.7 17.3 4.4 13l4.3-4.3 1.4 1.4L7.2 13l2.9 2.9-1.4 1.4zm6.6 0-1.4-1.4 2.9-2.9-2.9-2.9 1.4-1.4 4.3 4.3-4.3 4.3z"
+                  />
+                </svg>
+                JSON
+              </button>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <p
+          class="lede"
+          id="view-lede"
+          {% if welcome or loading or error %}hidden{% endif %}
+        >
+          {% if welcome %}
+          Resolve a published credential into a human-readable view.
+          {% elif not (loading or error) %}
+          Human-readable view using this credential type’s OCA label overlays.
+          {% endif %}
+        </p>
+
+        {% if loading %}
+        <div class="view-util-panel">
+          <div class="progress-panel" id="view-progress" role="status" aria-live="polite">
+            <div class="spinner" aria-hidden="true"></div>
+            <div class="progress-label" id="view-progress-label">Starting…</div>
+            <div class="progress-track" aria-hidden="true">
+              <div class="progress-fill" id="view-progress-fill"></div>
+            </div>
+          </div>
+          <div id="view-results" hidden>
+            <div class="checks-bar" id="view-checks" aria-label="Verification in progress" hidden>
+              <span class="checks-live-label">Verifying</span>
+              {% set view_checks = [
+                ("envelope", "Envelope", "Envelope"),
+                ("vcdm", "VCDM", "VCDM 2.0"),
+                ("untp", "UNTP", "UNTP 0.7.0"),
+                ("jsonld", "JSON-LD", "JSON-LD"),
+                ("proof", "Proof", "Proof"),
+                ("issuer", "Issuer", "Issuer"),
+                ("validity", "Validity", "Validity"),
+                ("credentialStatus", "Status", "Status revocation"),
+                ("renderMethod", "Render", "Render"),
+              ] %}
+              {% for check_id, check_name, check_title in view_checks %}
+              <span
+                class="check-chip is-pending"
+                data-check="{{ check_id }}"
+                title="{{ check_title }}"
+                ><span class="check-name">{{ check_name }}</span
+                ><span class="check-status">…</span></span
+              >
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <p
+        class="error"
+        id="view-stream-error"
+        role="alert"
+        {% if not error %}hidden{% endif %}
+      >
+        {{ error }}
+      </p>
+
+      <div
+        id="view-form-panel"
+        {% if loading %}hidden{% elif not (welcome or error) %}hidden{% endif %}
+      >
+        <section class="resolve-stage" aria-labelledby="resolve-title">
+          <div class="resolve-gold" aria-hidden="true"></div>
+          <div class="resolve-body">
+            <p class="resolve-kicker">Resolve</p>
+            <h2 class="resolve-title" id="resolve-title">Open a credential</h2>
+            <p class="resolve-lede">
+              Paste a published credential URL, or look up the latest active
+              publication by type, cardinality, and entity. The viewer verifies
+              the envelope and renders
+              {% if unsafe_mode %}OCA label overlays{% else %}this service’s OCA labels{% endif %}.
+            </p>
+
+            <ol class="resolve-steps" aria-label="How it works">
+              <li class="resolve-step">
+                <span class="resolve-step-num">01</span>
+                <span class="resolve-step-label">Locate</span>
+              </li>
+              <li class="resolve-step">
+                <span class="resolve-step-num">02</span>
+                <span class="resolve-step-label">Verify</span>
+              </li>
+              <li class="resolve-step">
+                <span class="resolve-step-num">03</span>
+                <span class="resolve-step-label">Read</span>
+              </li>
+            </ol>
+
+            <form
+              class="url-form"
+              method="get"
+              action="/view"
+              role="search"
+              data-resolve-form
+              data-resolve-initial="{% if credential and not url %}credential{% else %}url{% endif %}"
+            >
+              <div class="resolve-mode" role="group" aria-label="Lookup mode">
+                <button
+                  type="button"
+                  class="resolve-mode-btn{% if not credential or url %} is-active{% endif %}"
+                  data-resolve-mode="url"
+                  aria-pressed="{{ 'false' if credential and not url else 'true' }}"
+                >
+                  URL
+                </button>
+                <button
+                  type="button"
+                  class="resolve-mode-btn{% if credential and not url %} is-active{% endif %}"
+                  data-resolve-mode="credential"
+                  aria-pressed="{{ 'true' if credential and not url else 'false' }}"
+                >
+                  Latest
+                </button>
+              </div>
+
+              <div
+                class="resolve-pane"
+                data-resolve-pane="url"
+                {% if credential and not url %}hidden{% endif %}
+              >
+                <label for="credential-url">Credential URL</label>
+                <div class="url-form-row">
+                  <input
+                    id="credential-url"
+                    name="url"
+                    type="url"
+                    inputmode="url"
+                    autocomplete="off"
+                    spellcheck="false"
+                    {% if not credential or url %}required{% endif %}
+                    placeholder="https://…/credentials/{id}"
+                    value="{{ url }}"
+                    data-resolve-input="url"
+                    {% if credential and not url %}disabled{% endif %}
+                    {% if welcome or (error and not credential) %}autofocus{% endif %}
+                  />
+                  <button type="submit" class="btn btn-primary">Resolve</button>
+                </div>
+              </div>
+
+              <div
+                class="resolve-pane"
+                data-resolve-pane="credential"
+                {% if not credential or url %}hidden{% endif %}
+              >
+                <label for="credential-ref">Latest publication</label>
+                <div class="url-form-row">
+                  <input
+                    id="credential-ref"
+                    name="credential"
+                    type="text"
+                    autocomplete="off"
+                    spellcheck="false"
+                    {% if credential and not url %}required{% endif %}
+                    placeholder="type:cardinality:entity"
+                    value="{{ credential }}"
+                    data-resolve-input="credential"
+                    {% if not credential or url %}disabled{% endif %}
+                    {% if error and credential and not url %}autofocus{% endif %}
+                  />
+                  <button type="submit" class="btn btn-primary">Resolve</button>
+                </div>
+              </div>
+
+              <div class="resolve-examples" aria-label="Examples">
+                <span class="resolve-chip" aria-hidden="true"
+                  ><code>/credentials/{id}</code></span
+                >
+                <span class="resolve-chip" aria-hidden="true"
+                  ><code>Type:Permit:Entity</code></span
+                >
+              </div>
+
+              <p class="url-hint">
+                {% if unsafe_mode %}
+                Any http(s) <code>/credentials/{id}</code> URL is accepted
+                (including remote hosts).
+                {% else %}
+                Use a credential published by this service
+                (<code>/credentials/{id}</code>).
+                {% endif %}
+                Latest mode opens the active record for
+                <code>type:cardinality:entity</code> (same as refresh).
+              </p>
+            </form>
+
+            <p class="resolve-foot">
+              Prefer browsing?
+              <a href="/discovery">Open Discovery</a>
+              to explore published credentials.
+            </p>
+          </div>
+        </section>
+      </div>
+
+      {% if loading %}
+      <div id="view-oca-host">
+        {# OCA card is mounted into a shadow root under this slot (see view.js). #}
+        <div id="view-oca-slot" hidden></div>
+      </div>
+      {% endif %}
+    </main>
+
+    {% if loading %}
+    <div
+      id="view-meta-modal"
+      class="view-meta-modal"
+      hidden
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="view-meta-title"
+    >
+      <button
+        type="button"
+        class="view-meta-backdrop"
+        data-meta-close
+        tabindex="-1"
+        aria-label="Close metadata"
+      ></button>
+      <div class="view-meta-sheet">
+        <div class="view-meta-gold" aria-hidden="true"></div>
+        <div class="view-meta-head">
+          <div>
+            <p class="view-meta-kicker">Verification</p>
+            <h2 class="view-meta-title" id="view-meta-title">Validation metadata</h2>
+            <p class="view-meta-summary" data-meta-summary>
+              Checks run while opening this credential.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="view-json-close"
+            data-meta-close
+            title="Close"
+            aria-label="Close metadata"
+          >
+            {{ icon_close() }}
+          </button>
+        </div>
+        <div class="view-meta-body" data-meta-body></div>
+      </div>
+    </div>
+    <div
+      id="view-json-modal"
+      class="view-json-modal"
+      hidden
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="view-json-title"
+      data-json-mode="tree"
+    >
+      <button
+        type="button"
+        class="view-json-backdrop"
+        data-json-close
+        tabindex="-1"
+        aria-label="Close JSON viewer"
+      ></button>
+      <div class="view-json-sheet">
+        <div class="view-json-gold" aria-hidden="true"></div>
+        <div class="view-json-head">
+          <div class="view-json-head-main">
+            <p class="view-json-kicker">JWT payload</p>
+            <h2 class="view-json-title" id="view-json-title">Decoded credential</h2>
+            <div class="view-json-stats" data-json-stats aria-live="polite"></div>
+          </div>
+          <div class="view-json-head-actions">
+            <button
+              type="button"
+              class="view-json-close"
+              data-json-close
+              title="Close"
+              aria-label="Close JSON viewer"
+            >
+              {{ icon_close() }}
+            </button>
+          </div>
+        </div>
+        <div class="view-json-toolbar">
+          <div class="view-json-tools">
+            <div class="view-json-mode" role="group" aria-label="JSON view mode">
+              <button
+                type="button"
+                class="view-json-mode-btn is-active"
+                data-json-mode="tree"
+                aria-pressed="true"
+              >
+                Tree
+              </button>
+              <button
+                type="button"
+                class="view-json-mode-btn"
+                data-json-mode="raw"
+                aria-pressed="false"
+              >
+                Raw
+              </button>
+            </div>
+            <button type="button" class="btn" data-json-expand title="Expand all nodes">
+              Expand
+            </button>
+            <button type="button" class="btn" data-json-collapse title="Collapse all nodes">
+              Collapse
+            </button>
+            <button type="button" class="btn" data-copy-json title="Copy JSON">
+              Copy
+            </button>
+          </div>
+          <p class="view-json-hint">Esc to close</p>
+        </div>
+        <div id="view-json-tree" class="view-json-tree" hidden></div>
+        <pre id="view-json-body" class="view-json-body" hidden></pre>
+      </div>
+    </div>
+    {% endif %}
+
+    <footer class="pub-footer">
+      <a
+        href="https://github.com/bcgov/untp-publisher-service"
+        rel="noopener noreferrer"
+        target="_blank"
+        >UNTP Publisher Service</a
+      >
+      ·
+      <span>{{ project_version }}</span>
+      ·
+      <a href="/docs">API docs</a>
+    </footer>
+
+    {% if loading %}
+    <script src="/static/js/view.js?v=61"></script>
+    {% else %}
+    <script>
+      (function () {
+        document.querySelectorAll("[data-copy-url]").forEach(function (btn) {
+          btn.addEventListener("click", async function () {
+            var value = btn.getAttribute("data-copy-url") || "";
+            if (!value) return;
+            try {
+              await navigator.clipboard.writeText(value);
+              btn.classList.add("is-copied");
+              window.setTimeout(function () {
+                btn.classList.remove("is-copied");
+              }, 1400);
+            } catch (err) {
+              /* ignore clipboard failures */
+            }
+          });
+        });
+
+        var form = document.querySelector("[data-resolve-form]");
+        if (!form) return;
+
+        function setMode(mode) {
+          var next = mode === "credential" ? "credential" : "url";
+          form.querySelectorAll("[data-resolve-mode]").forEach(function (btn) {
+            var active = btn.getAttribute("data-resolve-mode") === next;
+            btn.classList.toggle("is-active", active);
+            btn.setAttribute("aria-pressed", active ? "true" : "false");
+          });
+          form.querySelectorAll("[data-resolve-pane]").forEach(function (pane) {
+            var show = pane.getAttribute("data-resolve-pane") === next;
+            pane.hidden = !show;
+            if (show) pane.removeAttribute("hidden");
+            else pane.setAttribute("hidden", "");
+          });
+          form.querySelectorAll("[data-resolve-input]").forEach(function (input) {
+            var active = input.getAttribute("data-resolve-input") === next;
+            input.disabled = !active;
+            if (active) {
+              input.setAttribute("required", "");
+              try {
+                input.focus();
+              } catch (err) {
+                /* ignore */
+              }
+            } else {
+              input.removeAttribute("required");
+            }
+          });
+        }
+
+        form.querySelectorAll("[data-resolve-mode]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            setMode(btn.getAttribute("data-resolve-mode") || "url");
+          });
+        });
+
+        setMode(form.getAttribute("data-resolve-initial") || "url");
+      })();
+    </script>
+    {% endif %}
+  </body>
+</html>

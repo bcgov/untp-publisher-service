@@ -17,7 +17,8 @@ from app.plugins.mongodb import MongoClient, MongoClientError
 from app.plugins.status_list import BitstringStatusList
 from app.repo_configs.loader import load_oca_bundle
 from app.services.composer import (
-    oca_render_method,
+    # TODO/BUG: restore oca_render_method when renderMethod is re-enabled
+    # oca_render_method,
     status_list_endpoint,
 )
 from app.services.templates import build_registration_template
@@ -154,10 +155,12 @@ def ensure_credential_type(
         issuer=issuer_record,
     )
     oca_bundle = load_oca_bundle(credential_type)
-    credential_template["renderMethod"] = oca_render_method(
-        credential_type=credential_type,
-        version=credential_version,
-    )
+    # TODO/BUG: omit renderMethod until UNTP schema aligns with TemplateRenderMethod
+    # (see composer.compose_credential). Keep oca_bundle on the template record.
+    # credential_template["renderMethod"] = oca_render_method(
+    #     credential_type=credential_type,
+    #     version=credential_version,
+    # )
 
     record = CredentialTemplateRecord(
         type=credential_type,
