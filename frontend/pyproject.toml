@@ -1,0 +1,23 @@
+[project]
+name = "orgbook-publisher-ui"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "PatStLouis",email = "patrick.st-louis@opsecid.ca"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flask (>=3.1.0,<4.0.0)",
+    "flask-cors (>=5.0.0,<6.0.0)",
+    "flask-qrcode (>=3.2.0,<4.0.0)",
+    "flask-session (>=0.8.0,<0.9.0)",
+    "black (>=24.10.0,<25.0.0)"
+]
+
+[tool.poetry]
+package-mode = false
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

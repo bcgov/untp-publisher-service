@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+{% include('components/head.jinja')%}
+
+<body class="d-flex flex-column">
+    <div class="page page-center">
+        <!-- Page body -->
+        {% block page %}{% endblock %}
+    </div>
+    <!-- Libs JS -->
+    <!-- Tabler Core -->
+    <script src="{{url_for('static', filename='js/tabler.min.js')}}"></script>
+</body>
+
+</html>
