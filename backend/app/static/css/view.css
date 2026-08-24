@@ -1509,19 +1509,6 @@ body.is-json-modal-open {
   word-break: break-word;
 }
 
-a.oca-flow-link {
-  color: var(--link, #1a5a96);
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-  text-decoration-thickness: 1px;
-}
-
-a.oca-flow-link:hover,
-a.oca-flow-link:focus-visible {
-  text-decoration-thickness: 2px;
-  outline: none;
-}
-
 .oca-flow-arrow {
   color: var(--muted);
   font-size: 1rem;

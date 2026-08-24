@@ -121,12 +121,12 @@ def test_compose_credential(publication_payload, type_record, issuer, monkeypatc
     assert assessment["assessmentDate"] == "1999-04-19"
     assert assessment["id"] == "urn:ca:bcgov:mines-act:permit:Q-20:assessment"
     assert credential["validFrom"] == "2026-06-02T15:30:00Z"
-    assert "Permit Q-20 authorizes" in assessment["description"]
+    assert "Evidence that permit Q-20 has been issued" in assessment["description"]
     assert "Construction Aggregate" in assessment["description"]
     assert credential["credentialSubject"]["name"] == (
-        "Mines Act Permit Q-20"
+        "Proof of Mines Act Permit Q-20"
     )
-    assert "Mines Act (British Columbia)" in credential.get("description", "")
+    assert "registered business" in credential.get("description", "")
     assert "Kootenay West" in credential["credentialSubject"]["description"]
     assert assessment["assessedOrganisation"]["name"] == "EXAMPLE MINING CO"
     assert assessment["assessedOrganisation"]["registeredId"] == "A0034771"
@@ -140,12 +140,17 @@ def test_compose_credential(publication_payload, type_record, issuer, monkeypatc
     assert ref_scheme["id"].endswith("96293_01")
     assert ref_scheme["name"] == "Mines Act (British Columbia)"
     trustmark = credential["credentialSubject"]["trustmark"]
-    assert trustmark["name"] == "Verified Mine Permit"
-    assert "BC Mines Act" in trustmark["description"]
+    assert trustmark["name"] == "Verified Proof of Mines Act Permit"
+    assert "registered business" in trustmark["description"]
     assert trustmark["mediaType"] == "image/png"
     criteria = assessment["assessmentCriteria"][0]
     assert criteria["id"].endswith("#section10")
     assert criteria["name"] == "Permits"
+    assert assessment["assessedPerformance"][0]["metric"]["name"] == (
+        "Mines Act permit issued"
+    )
+    assert assessment["assessedPerformance"][0]["measure"]["value"] == 1
+    assert assessment["assessedPerformance"][0]["measure"]["unit"] == "C62"
     assert len(assessment["assessedFacility"]) == 1
     assert "type" not in assessment["assessedFacility"][0]
     facility_obj = assessment["assessedFacility"][0]["facility"]

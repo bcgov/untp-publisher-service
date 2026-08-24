@@ -44,7 +44,7 @@ async def post_build_credential(
         Body(
             openapi_examples={
                 "mines_act": {
-                    "summary": "BC Mines Act Permit Q-20",
+                    "summary": "Proof of Mines Act Permit Q-20",
                     "description": "From configs/credentials/BCMinesActPermitCredential/v1.1/payload.json",
                     "value": MINES_ACT_PUBLISH_EXAMPLE,
                 }

@@ -149,7 +149,8 @@ def test_materialize_credential_document_from_mines_act_template():
     credential = materialize_credential_document(source, context)
     assert credential["@context"][0] == "https://www.w3.org/ns/credentials/v2"
     assert "context" not in credential
-    assert "Mines Act (British Columbia)" in credential["description"]
+    assert "registered business" in credential["description"]
+    assert "not the permit itself" in credential["description"]
     assert credential["credentialSubject"]["type"] == ["ConformityAttestation"]
     assert credential["credentialSubject"]["referenceScheme"]["name"] == (
         "Mines Act (British Columbia)"

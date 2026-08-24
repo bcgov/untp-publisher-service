@@ -134,18 +134,7 @@
         {% if flow.issuer_pointer %}data-oca-pointer="{{ flow.issuer_pointer }}" data-oca-overlay="label"{% endif %}
         >{{ flow.issuer_label or "" }}</span
       >
-      {% if flow.issuer_href %}
-      <a
-        class="oca-flow-value oca-flow-link"
-        href="{{ flow.issuer_href }}"
-        target="_blank"
-        rel="noopener noreferrer"
-        title="{{ ui.resolve_issuer or '' }}"
-        >{{ flow.issuer or "—" }}</a
-      >
-      {% else %}
       <span class="oca-flow-value">{{ flow.issuer or "—" }}</span>
-      {% endif %}
     </div>
     <span class="oca-flow-arrow" aria-hidden="true">→</span>
     <div class="oca-flow-node oca-flow-primary">
