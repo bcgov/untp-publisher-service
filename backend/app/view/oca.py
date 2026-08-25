@@ -10,7 +10,6 @@ from typing import Any
 
 from fastapi.templating import Jinja2Templates
 
-from app.discovery.groups import issuer_resolve_url
 from app.repo_configs.loader import (
     credential_version_for_type,
     load_oca_bundle,
@@ -33,19 +32,71 @@ templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 _PERMIT_DESC_SUFFIX_RE = re.compile(r"\s*\(permit\s+[^)]+\)\.?\s*$", re.IGNORECASE)
 
-# ``Mines Act Permit C-217 — Permittee`` → drop em dash clause, then trailing permit id.
+# ``Proof of Mines Act Permit C-217 — Permittee`` (and legacy ``Mines Act Permit…``)
+# → drop em dash clause, then trailing permit id.
 _PERMIT_NAME_EMDASH_RE = re.compile(r"\s+[—–]\s+.+$")
 _PERMIT_NAME_ID_RE = re.compile(r"\s+[A-Za-z]+-\d+\s*$")
 
 
 def _oca_clean_permit_title(value: str) -> str:
-    """Normalize published permit titles to a short product name (e.g. Mines Act Permit)."""
+    """Normalize published proof titles to a short product name.
+
+    Examples: ``Proof of Mines Act Permit``, legacy ``Mines Act Permit``.
+    """
     text = (value or "").strip()
     if not text:
         return ""
     text = _PERMIT_NAME_EMDASH_RE.sub("", text).strip()
     text = _PERMIT_NAME_ID_RE.sub("", text).strip()
     return text or value.strip()
+
+
+_ASSESSED_PERFORMANCE_POINTERS = (
+    "/credentialSubject/conformityAssessment/0/assessedPerformance/0/metric/name",
+    "/credentialSubject/conformityAssessment/0/assessedPerformance/0/metric/id",
+    "/credentialSubject/conformityAssessment/0/assessedPerformance/0/measure/value",
+    "/credentialSubject/conformityAssessment/0/assessedPerformance/0/measure/unit",
+)
+
+
+def _build_oca_issuance_stats(attrs: dict[str, Any]) -> list[dict[str, str]]:
+    """Surface assessedPerformance as a clear issuance key fact (not raw C62/1)."""
+    metric_pointer = _ASSESSED_PERFORMANCE_POINTERS[0]
+    value_pointer = _ASSESSED_PERFORMANCE_POINTERS[2]
+    metric_entry = _oca_attr(attrs, metric_pointer)
+    value_entry = _oca_attr(attrs, value_pointer)
+    if not metric_entry or metric_entry.get("missing"):
+        return []
+    metric_text = _oca_display(metric_entry)
+    if not metric_text:
+        return []
+    raw_value = value_entry.get("raw") if value_entry else None
+    issued = True
+    if value_entry and not value_entry.get("missing") and raw_value is not None:
+        try:
+            issued = float(raw_value) != 0
+        except (TypeError, ValueError):
+            issued = bool(raw_value)
+    if not issued:
+        return []
+    label = ""
+    if value_entry and not value_entry.get("missing"):
+        label = str(value_entry.get("label") or "").strip()
+    if not label:
+        label = str(metric_entry.get("label") or "").strip() or "Issuance status"
+    information = str(
+        metric_entry.get("information")
+        or (value_entry.get("information") if value_entry else "")
+        or ""
+    )
+    return [
+        {
+            "label": label,
+            "value": metric_text,
+            "pointer": metric_pointer,
+            "information": information,
+        }
+    ]
 
 
 def soft_resolve_json_pointer(document: Any, pointer: str) -> Any | None:
@@ -564,7 +615,6 @@ def _oca_ui_strings(language: str = "en") -> dict[str, str]:
             "key_facts_aria": "Faits clés",
             "empty_summary": "Aucun autre attribut OCA à afficher dans la vue résumé.",
             "empty_none": "Aucun attribut OCA n'était disponible pour l'affichage.",
-            "resolve_issuer": "Résoudre le DID de l'émetteur sur uniresolver.io",
             "summary_suffix": "résumé",
             "generated_prefix": "Généré",
             "printed_prefix": "Imprimé",
@@ -580,7 +630,6 @@ def _oca_ui_strings(language: str = "en") -> dict[str, str]:
         "key_facts_aria": "Key facts",
         "empty_summary": "No additional OCA attributes to display in the summary view.",
         "empty_none": "No OCA attributes were available to display.",
-        "resolve_issuer": "Resolve issuer DID on uniresolver.io",
         "summary_suffix": "summary",
         "generated_prefix": "Generated",
         "printed_prefix": "Printed",
@@ -1001,7 +1050,6 @@ _OCA_HERO_FIELD_PICKS: dict[str, tuple[str, ...]] = {
     "valid_from": ("/validFrom",),
     "assessment_date": ("/credentialSubject/conformityAssessment/0/assessmentDate",),
     "issuer_name": ("/issuer/name", "/issuer/id"),
-    "issuer_id": ("/issuer/id",),
 }
 
 _OCA_FLOW_FIELD_PICKS: dict[str, tuple[str, ...]] = {
@@ -1213,10 +1261,6 @@ def build_oca_presentation(
         conforms = bool(conforms_raw)
 
     issuer_name = hero["issuer_name"]
-    issuer_id_entry = hero["issuer_id"]
-    issuer_did = ""
-    if issuer_id_entry and not issuer_id_entry.get("missing"):
-        issuer_did = str(issuer_id_entry.get("value") or "").strip()
 
     subtitle_text = (
         _oca_display(subtitle) if subtitle and not subtitle.get("missing") else ""
@@ -1232,7 +1276,7 @@ def build_oca_presentation(
         _oca_display(title) if title and not title.get("missing") else ""
     )
     if title_text:
-        # Older published permits used ``Mines Act Permit X — Permittee``.
+        # Older published titles used ``Mines Act Permit X — Permittee``.
         cleaned = _oca_clean_permit_title(title_text)
         if cleaned:
             title_text = cleaned
@@ -1254,7 +1298,6 @@ def build_oca_presentation(
         "issuer": _oca_display(issuer_name),
         "issuer_label": _oca_label(attrs, "/issuer/name", "/issuer/id"),
         "issuer_pointer": "/issuer/name",
-        "issuer_href": issuer_resolve_url(issuer_did) if issuer_did.startswith("did:") else "",
         "assessment": _oca_display(assessment_flow),
         "assessment_label": _oca_label(
             attrs,
@@ -1285,7 +1328,8 @@ def build_oca_presentation(
     }
 
     # Scheme / regulation / criterion / attestation type live in one card (not a stats grid).
-    stats: list[dict[str, str]] = []
+    # assessedPerformance is surfaced as a key-fact issuance claim (not raw C62/1 rows).
+    stats = _build_oca_issuance_stats(attrs)
     scheme_story = _build_oca_scheme_story_card(attrs)
 
     id_chips: list[dict[str, str]] = []
@@ -1361,6 +1405,7 @@ def build_oca_presentation(
             "/credentialSubject/issuedToParty/name",
             "/credentialSubject/issuedToParty/registeredId",
             "/validFrom",
+            *_ASSESSED_PERFORMANCE_POINTERS,
         }
     )
 
@@ -1368,8 +1413,8 @@ def build_oca_presentation(
     for pointer in order or []:
         if pointer in used:
             continue
-        # UNTP assessedPerformance (e.g. "Permit issued" / C62 / 1) is scaffolding
-        # for permit DCCs — keep it in the technical dump, not the summary cards.
+        # assessedPerformance is shown as the issuance key fact in stats, not
+        # as cryptic C62 / measure rows in summary cards.
         if "/assessedPerformance/" in pointer:
             continue
         # Holder / governance / credential / residual details are already covered by

@@ -1150,8 +1150,14 @@ def test_soft_resolve_and_oca_fields():
     assert holder["label"] == "Permittee"
     assert holder["value"] == "BASIN COAL MINE COMPANY"
     assert context["presentation"]["subtitle"] == (
-        "Mines Act permit issued to BASIN COAL MINE COMPANY for Basin Coal Mine."
+        "Evidence that Mines Act permit C-217 has been issued to "
+        "BASIN COAL MINE COMPANY (a registered business) for Basin Coal Mine."
     )
+    assert context["presentation"]["title"] == "Proof of Mines Act Permit"
+    stats = context["presentation"]["stats"]
+    assert stats
+    assert stats[0]["value"] == "Mines Act permit issued"
+    assert stats[0]["label"] == "Issuance status"
 
     # Older published descriptions appended `` (permit X)`` — strip in the view.
     legacy = dict(_SAMPLE_VC)
@@ -1170,6 +1176,13 @@ def test_soft_resolve_and_oca_fields():
     legacy["credentialSubject"] = legacy_subject
     legacy_name_ctx = build_oca_template_context(legacy, _SAMPLE_OCA, "en")
     assert legacy_name_ctx["presentation"]["title"] == "Mines Act Permit"
+
+    new_subject = dict(_SAMPLE_VC["credentialSubject"])
+    new_subject["name"] = "Proof of Mines Act Permit C-217 — BASIN COAL MINE COMPANY"
+    new_named = dict(_SAMPLE_VC)
+    new_named["credentialSubject"] = new_subject
+    new_name_ctx = build_oca_template_context(new_named, _SAMPLE_OCA, "en")
+    assert new_name_ctx["presentation"]["title"] == "Proof of Mines Act Permit"
 
     fr = build_oca_template_context(_SAMPLE_VC, _SAMPLE_OCA, "fr")
     assert fr["language"] == "fr"
@@ -1242,7 +1255,8 @@ def test_soft_resolve_and_oca_fields():
     assert "checked" in debug_toggle_open
     assert context["presentation"]["title"]
     assert context["presentation"]["sections"]
-    assert context["presentation"]["stats"] == []
+    assert context["presentation"]["stats"]
+    assert context["presentation"]["stats"][0]["value"] == "Mines Act permit issued"
     kinds = {s["kind"] for s in context["presentation"]["sections"]}
     assert "links" in kinds or "entity" in kinds or "panel" in kinds or "product" in kinds
     attestation = next(
@@ -1258,7 +1272,8 @@ def test_soft_resolve_and_oca_fields():
     assert "Criterion" in fact_labels
     assert "Assessment level" not in fact_labels
     assert "Assessor level" not in fact_labels
-    assert "oca-stats" not in html
+    assert "oca-stats" in html
+    assert "Mines Act permit issued" in html
     assert 'class="oca-chip"' not in html
     assert "oca-scheme-lead" in html
     assert "oca-scheme-meta" in html
