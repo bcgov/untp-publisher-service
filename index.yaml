@@ -79,6 +79,27 @@ entries:
     version: 0.0.1
   untp-publisher:
   - apiVersion: v2
+    appVersion: 0.1.0
+    created: "2026-08-31T21:14:52.763533285Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: oci://registry-1.docker.io/cloudpirates
+      version: 0.10.3
+    - name: common
+      repository: https://charts.bitnami.com/bitnami
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: Helm chart for the UNTP Publisher — credential registration API,
+      Traction integration, and optional bundled MongoDB.
+    digest: 0a5a41dd1450b6489b9fae4cadc69024d5ea5e2ef67c7b64ff947a2b682a4b57
+    name: untp-publisher
+    type: application
+    urls:
+    - https://github.com/bcgov/untp-publisher-service/releases/download/untp-publisher-0.1.2/untp-publisher-0.1.2.tgz
+    version: 0.1.2
+  - apiVersion: v2
     appVersion: 0.0.5
     created: "2026-08-10T21:45:03.574435463Z"
     dependencies:
@@ -99,4 +120,4 @@ entries:
     urls:
     - https://github.com/bcgov/untp-publisher-service/releases/download/untp-publisher-0.1.1/untp-publisher-0.1.1.tgz
     version: 0.1.1
-generated: "2026-08-10T21:45:03.574448853Z"
+generated: "2026-08-31T21:14:52.763552904Z"
