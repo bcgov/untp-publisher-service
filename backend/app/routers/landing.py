@@ -324,7 +324,7 @@ async def view_credential_stream(
 
 
 @router.get("/discovery", response_class=HTMLResponse, include_in_schema=False)
-async def discovery(request: Request):
+async def discovery(request: Request, search: str = ""):
     records: list[dict[str, Any]] = []
     load_error = ""
     truncated = False
@@ -363,5 +363,6 @@ async def discovery(request: Request):
             "load_error": load_error,
             "truncated": truncated,
             "discovery_max_records": int(settings.DISCOVERY_MAX_RECORDS),
+            "search": search,
         },
     )

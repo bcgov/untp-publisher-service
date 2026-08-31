@@ -32,6 +32,30 @@
   let sortKey = "";
   let sortDir = "asc";
 
+  function searchParam() {
+    try {
+      return new URLSearchParams(window.location.search).get("search") || "";
+    } catch (err) {
+      return "";
+    }
+  }
+
+  function syncSearchParam(value) {
+    const url = new URL(window.location.href);
+    const trimmed = (value || "").trim();
+    if (trimmed) {
+      url.searchParams.set("search", trimmed);
+    } else {
+      url.searchParams.delete("search");
+    }
+    const next = url.pathname + url.search + url.hash;
+    const current =
+      window.location.pathname + window.location.search + window.location.hash;
+    if (next !== current) {
+      history.replaceState(null, "", next);
+    }
+  }
+
   function announce(msg) {
     if (live) live.textContent = msg;
   }
@@ -155,6 +179,7 @@
     const query = (q && q.value ? q.value : "").trim().toLowerCase();
     const typeVal = type ? type.value : "";
     const statusVal = status ? status.value : "";
+    syncSearchParam(q && q.value ? q.value : "");
     const filtered = Boolean(query || typeVal || statusVal);
     const matched = matchedGroups();
     const matchCount = matched.length;
@@ -284,7 +309,11 @@
     if (group) setOpen(group, !group.classList.contains("is-open"));
   });
 
-  if (q) q.addEventListener("input", applyFilters);
+  if (q) {
+    const fromUrl = searchParam();
+    if (fromUrl && !q.value) q.value = fromUrl;
+    q.addEventListener("input", applyFilters);
+  }
   if (type) type.addEventListener("change", applyFilters);
   if (status) status.addEventListener("change", applyFilters);
   applyFilters();

@@ -193,6 +193,27 @@ def test_discovery_returns_200_when_mongo_empty(monkeypatch):
     assert b"Discover" in response.content or b"discovery" in response.content.lower()
 
 
+def test_discovery_search_query_prefills_input(monkeypatch):
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([]))
+    client = TestClient(_app())
+    response = client.get("/discovery", params={"search": "TEK SOLUTIONS"})
+    assert response.status_code == 200
+    assert b'id="q"' in response.content
+    assert b'name="search"' in response.content
+    assert b'value="TEK SOLUTIONS"' in response.content
+
+
+def test_discovery_search_query_is_html_escaped(monkeypatch):
+    _patch_mongo(monkeypatch, lambda: _FakeMongo([]))
+    client = TestClient(_app())
+    response = client.get(
+        "/discovery", params={"search": '"><img src=x onerror=alert(1)>'}
+    )
+    assert response.status_code == 200
+    assert b"<img src=x" not in response.content
+    assert b"&lt;img" in response.content or b"&#34;" in response.content
+
+
 def test_discovery_renders_partner_link(monkeypatch):
     _patch_mongo(monkeypatch, lambda: _FakeMongo([]))
     monkeypatch.setattr(settings, "LANDING_PARTNER_URL", "https://example.com/partner")
