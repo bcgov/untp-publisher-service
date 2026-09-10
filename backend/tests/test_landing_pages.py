@@ -1355,7 +1355,7 @@ def test_oca_array_star_expands_multiple_commodities():
         {
             "product": {
                 "type": ["Product"],
-                "id": "urn:ca:bcgov:mines-act:permit:C-217:commodity:copper",
+                "id": "urn:ca:bcgov:nrs:mines:commodity:copper",
                 "name": "Copper",
             },
             "idVerifiedByCAB": True,
