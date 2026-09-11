@@ -163,7 +163,7 @@ def test_materialize_credential_document_from_mines_act_template():
     assert len(assessment["assessedProduct"]) == 1
     assert "type" not in assessment["assessedProduct"][0]
     assert assessment["assessedProduct"][0]["product"]["id"] == (
-        "urn:ca:bcgov:mines-act:permit:Q-20:commodity:construction-aggregate"
+        "urn:ca:bcgov:nrs:mines:commodity:construction-aggregate"
     )
     assert assessment["referenceRegulation"][0]["name"] == (
         "Health, Safety and Reclamation Code for Mines in British Columbia"
