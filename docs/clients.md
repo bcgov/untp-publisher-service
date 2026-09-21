@@ -52,6 +52,29 @@ ids are taken from ``data`` using ``x-publisher-pointers`` in that schema.
 #### By File upload
 *TBD*
 
+### Credential revocation
+1. Authenticate the same way as for `POST /credentials/publish` (client JWT
+   matching the credential's registered issuer, or admin `X-API-Key`).
+2. Send an [Update Status](https://www.w3.org/TR/vcalm-1.0/#update-status)
+   (VC-API) request to `POST /credentials/status`. `credentialStatus` must
+   match the entry already stored on the credential (`statusPurpose`,
+   `statusListIndex`, `statusListCredential`); a mismatch is rejected with `400`.
+   Set `status: true` to revoke (or suspend), `false` to reverse it.
+    ```json
+    {
+        "credentialId": "ab2bac74-4bff-4686-a54f-e850d8408de8",
+        "credentialStatus": {
+            "statusPurpose": "revocation",
+            "statusListIndex": "42",
+            "statusListCredential": "https://publisher.example/status-lists/xyz",
+            "status": true
+        }
+    }
+    ```
+    Responds `200` with `{"credentialId": "...", "status": true}` on success,
+    `404` if `credentialId` is unknown, `400` if `credentialStatus` doesn't
+    match the stored entry.
+
 ## Mines Act DCC (BCMinesActPermitCredential)
 
 Facility (`mine`), products (`commodities`), and optional evidence are supplied in

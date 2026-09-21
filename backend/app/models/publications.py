@@ -77,3 +77,51 @@ class PublicationRequest(BaseModel):
             "Entity/cardinality resolved via x-publisher-pointers in that schema."
         ),
     )
+
+
+CREDENTIAL_STATUS_UPDATE_EXAMPLE: dict[str, Any] = {
+    "credentialId": "ab2bac74-4bff-4686-a54f-e850d8408de8",
+    "credentialStatus": {
+        "statusPurpose": "revocation",
+        "statusListIndex": "42",
+        "statusListCredential": "https://publisher.example/status-lists/xyz",
+        "status": True,
+    },
+}
+
+
+class CredentialStatusUpdateEntry(BaseModel):
+    """A single ``credentialStatus`` entry update (VC-API ``UpdateStatus``)."""
+
+    statusPurpose: str = Field(
+        examples=["revocation"],
+        description="Must match the purpose of the credential's existing status entry.",
+    )
+    statusListIndex: str = Field(
+        examples=["42"],
+        description="Must match the index of the credential's existing status entry.",
+    )
+    statusListCredential: str = Field(
+        examples=["https://publisher.example/status-lists/xyz"],
+        description="Must match the URL of the credential's existing status entry.",
+    )
+    status: bool = Field(
+        examples=[True],
+        description="Desired bit value: true sets the status (e.g. revokes), false clears it.",
+    )
+
+
+class CredentialStatusUpdateRequest(BaseModel):
+    """``POST /credentials/status`` (VC-API / VCALM ``Update Status``) request body."""
+
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [CREDENTIAL_STATUS_UPDATE_EXAMPLE]},
+    )
+
+    credentialId: str = Field(
+        examples=["ab2bac74-4bff-4686-a54f-e850d8408de8"],
+        description="Id of the previously published credential to update.",
+    )
+    credentialStatus: CredentialStatusUpdateEntry = Field(
+        description="The status entry to update; must match the credential's stored entry."
+    )

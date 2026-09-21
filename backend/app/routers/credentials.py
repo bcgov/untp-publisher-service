@@ -2,12 +2,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from app.models.publications import PublicationRequest
+from app.models.publications import PublicationRequest, CredentialStatusUpdateRequest
 from app.models.mongodb import CredentialRecord
 from app.plugins.mongodb import MongoClient, MongoClientError
 from config import settings
 from app.plugins import TractionController
-from app.services.coordinator import PublisherCoordinator
+from app.services.coordinator import PublisherCoordinator, _status_entries
 from app.services.composer import normalize_publication, credential_download_filename
 from app.security import AuthPrincipal, jwt_or_api_key
 import uuid
@@ -165,6 +165,105 @@ async def publish_credential(
         )
     vc = credential_record["vc"]
     return JSONResponse(status_code=200, content={"credentialId": vc["id"]})
+
+
+def _matching_status_entry(vc: dict, update: CredentialStatusUpdateRequest) -> dict | None:
+    """Find the stored credentialStatus entry matching the requested update.
+
+    Guards against a caller flipping bits on an arbitrary status list by
+    requiring purpose/index/endpoint to match an entry actually present on
+    the credential.
+    """
+    requested = update.credentialStatus
+    try:
+        requested_index = int(requested.statusListIndex)
+    except (TypeError, ValueError):
+        return None
+    requested_endpoint = requested.statusListCredential.strip()
+    for entry in _status_entries(vc):
+        try:
+            entry_index = int(entry.get("statusListIndex"))
+        except (TypeError, ValueError):
+            continue
+        entry_endpoint = str(entry.get("statusListCredential") or "").strip()
+        entry_purpose = entry.get("statusPurpose")
+        if (
+            entry_purpose == requested.statusPurpose
+            and entry_index == requested_index
+            and entry_endpoint == requested_endpoint
+        ):
+            return entry
+    return None
+
+
+@router.post("/status")
+async def update_credential_status(
+    request_body: CredentialStatusUpdateRequest,
+    auth: Annotated[AuthPrincipal, Depends(jwt_or_api_key)],
+):
+    """``POST /credentials/status`` — VC-API / VCALM ``Update Status``.
+
+    https://www.w3.org/TR/vcalm-1.0/#update-status
+    """
+    mongo = MongoClient()
+
+    credential_record = mongo.find_one(
+        "CredentialRecord", {"id": request_body.credentialId}
+    )
+    if not credential_record:
+        raise HTTPException(status_code=404, detail="No record found.")
+
+    credential_type = credential_record.get("type")
+    credential_registration = mongo.find_one(
+        "CredentialTemplateRecord",
+        {"type": credential_type},
+    )
+    if not credential_registration:
+        raise HTTPException(
+            status_code=404,
+            detail="Unregistered credential type",
+        )
+    issuer_id = (credential_registration.get("issuer") or "").strip()
+    if not issuer_id:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Credential type {credential_type!r} has no issuer",
+        )
+    _authorize_publish(auth, issuer_id=issuer_id)
+
+    vc = credential_record.get("vc") or {}
+    matched_entry = _matching_status_entry(vc, request_body)
+    if not matched_entry:
+        raise HTTPException(
+            status_code=400,
+            detail="credentialStatus does not match a status entry on this credential",
+        )
+
+    status_purpose = request_body.credentialStatus.statusPurpose
+    new_status = request_body.credentialStatus.status
+
+    if not mongo.set_status_list_bit(
+        endpoint=request_body.credentialStatus.statusListCredential,
+        index=int(request_body.credentialStatus.statusListIndex),
+        value=new_status,
+    ):
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update status list bit",
+        )
+
+    if status_purpose == "suspension":
+        credential_record["suspension"] = new_status
+    else:
+        credential_record["revocation"] = new_status
+    mongo.replace(
+        "CredentialRecord", {"id": request_body.credentialId}, credential_record
+    )
+
+    return JSONResponse(
+        status_code=200,
+        content={"credentialId": request_body.credentialId, "status": new_status},
+    )
 
 
 def _enveloped_credential_response(
