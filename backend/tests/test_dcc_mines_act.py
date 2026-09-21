@@ -113,13 +113,13 @@ def test_compose_credential(publication_payload, type_record, issuer, monkeypatc
         "DigitalConformityCredential",
     ]
     assert credential["credentialSubject"]["id"] == (
-        "urn:ca:bcgov:mines-act:permit:Q-20"
+        "urn:ca:bcgov:nrs:mines:permit:Q-20"
     )
     assert credential["credentialSubject"]["issuedToParty"]["registeredId"] == "A0034771"
     assessment = credential["credentialSubject"]["conformityAssessment"][0]
     assert assessment["registeredId"] == "Q-20"
     assert assessment["assessmentDate"] == "1999-04-19"
-    assert assessment["id"] == "urn:ca:bcgov:mines-act:permit:Q-20:assessment"
+    assert assessment["id"] == "urn:ca:bcgov:nrs:mines:permit:Q-20:assessment"
     assert credential["validFrom"] == "2026-06-02T15:30:00Z"
     assert "Evidence that permit Q-20 has been issued" in assessment["description"]
     assert "Construction Aggregate" in assessment["description"]
@@ -131,10 +131,10 @@ def test_compose_credential(publication_payload, type_record, issuer, monkeypatc
     assert assessment["assessedOrganisation"]["name"] == "EXAMPLE MINING CO"
     assert assessment["assessedOrganisation"]["registeredId"] == "A0034771"
     assert assessment["assessedOrganisation"]["id"] == (
-        "urn:ca:bcgov:mines-act:permit:Q-20:permittee:A0034771"
+        "urn:ca:bcgov:nrs:mines:permittee:A0034771"
     )
     assert credential["credentialSubject"]["issuedToParty"]["id"] == (
-        "urn:ca:bcgov:mines-act:permit:Q-20:permittee:A0034771"
+        "urn:ca:bcgov:nrs:mines:permittee:A0034771"
     )
     ref_scheme = credential["credentialSubject"]["referenceScheme"]
     assert ref_scheme["id"].endswith("96293_01")
@@ -154,14 +154,14 @@ def test_compose_credential(publication_payload, type_record, issuer, monkeypatc
     assert len(assessment["assessedFacility"]) == 1
     assert "type" not in assessment["assessedFacility"][0]
     facility_obj = assessment["assessedFacility"][0]["facility"]
-    assert facility_obj["id"] == "urn:ca:bcgov:mines-act:permit:Q-20:mine:0500956"
+    assert facility_obj["id"] == "urn:ca:bcgov:nrs:mines:mine:0500956"
     assert facility_obj["locationInformation"]["plusCode"] == (
         "https://plus.codes/9526679P+4V"
     )
     assert len(assessment["assessedProduct"]) == 1
     assert assessment["assessedProduct"][0]["product"]["name"] == "Construction Aggregate"
     assert assessment["assessedProduct"][0]["product"]["id"] == (
-        "urn:ca:bcgov:mines-act:permit:Q-20:commodity:construction-aggregate"
+        "urn:ca:bcgov:nrs:mines:commodity:construction-aggregate"
     )
     # TODO/BUG: renderMethod omitted until UNTP schema aligns with TemplateRenderMethod
     assert "renderMethod" not in credential
