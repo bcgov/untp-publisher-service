@@ -93,6 +93,16 @@ CREDENTIAL_STATUS_UPDATE_EXAMPLE: dict[str, Any] = {
 class CredentialStatusUpdateEntry(BaseModel):
     """A single ``credentialStatus`` entry identifier (VC-API ``UpdateStatus``)."""
 
+    id: str | None = Field(
+        default=None,
+        examples=[None],
+        description="Optional; when present, must match the id of the credential's existing status entry.",
+    )
+    type: str | None = Field(
+        default=None,
+        examples=["BitstringStatusListEntry"],
+        description="Optional; when present, must match the type of the credential's existing status entry.",
+    )
     statusPurpose: str = Field(
         examples=["revocation"],
         description="Must match the purpose of the credential's existing status entry.",

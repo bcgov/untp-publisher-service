@@ -78,6 +78,8 @@ class _StatusMongo:
                 "vc": {
                     "id": f"https://publisher.test/credentials/{CREDENTIAL_ID}",
                     "credentialStatus": {
+                        "id": f"{STATUS_ENDPOINT}#42",
+                        "type": "BitstringStatusListEntry",
                         "statusPurpose": "revocation",
                         "statusListIndex": 42,
                         "statusListCredential": STATUS_ENDPOINT,
@@ -241,6 +243,8 @@ def test_unknown_credential_id_returns_404(status_env):
         {"statusPurpose": "suspension"},
         {"statusListIndex": "7"},
         {"statusListCredential": "https://publisher.test/status-lists/other"},
+        {"id": "https://publisher.test/status-lists/list-revocation#99"},
+        {"type": "SuspensionListEntry"},
     ],
 )
 def test_mismatched_entry_returns_400(status_env, overrides):
@@ -253,6 +257,20 @@ def test_mismatched_entry_returns_400(status_env, overrides):
         json=body,
     )
     assert response.status_code == 400
+
+
+def test_matching_optional_id_and_type_succeeds(status_env):
+    client, mongo = status_env
+    body = _status_body()
+    body["credentialStatus"]["id"] = f"{STATUS_ENDPOINT}#42"
+    body["credentialStatus"]["type"] = "BitstringStatusListEntry"
+    response = client.post(
+        "/credentials/status",
+        headers={"X-API-Key": "admin-test-key"},
+        json=body,
+    )
+    assert response.status_code == 200
+    assert mongo.credentials[0]["revocation"] is True
 
 
 def test_wrong_issuer_jwt_returns_403(status_env):

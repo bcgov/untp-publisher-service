@@ -172,7 +172,8 @@ def _matching_status_entry(vc: dict, update: CredentialStatusUpdateRequest) -> d
 
     Guards against a caller flipping bits on an arbitrary status list by
     requiring purpose/index/endpoint to match an entry actually present on
-    the credential.
+    the credential. ``id``/``type`` are optional per spec; when supplied they
+    must also match the stored entry.
     """
     requested = update.credentialStatus
     try:
@@ -187,12 +188,17 @@ def _matching_status_entry(vc: dict, update: CredentialStatusUpdateRequest) -> d
             continue
         entry_endpoint = str(entry.get("statusListCredential") or "").strip()
         entry_purpose = entry.get("statusPurpose")
-        if (
+        if not (
             entry_purpose == requested.statusPurpose
             and entry_index == requested_index
             and entry_endpoint == requested_endpoint
         ):
-            return entry
+            continue
+        if requested.id is not None and requested.id != entry.get("id"):
+            continue
+        if requested.type is not None and requested.type != entry.get("type"):
+            continue
+        return entry
     return None
 
 

@@ -58,7 +58,8 @@ ids are taken from ``data`` using ``x-publisher-pointers`` in that schema.
 2. Send an [Update Status](https://www.w3.org/TR/vcalm-1.0/#update-status)
    (VC-API) request to `POST /credentials/status`. `credentialStatus` must
    match the entry already stored on the credential (`statusPurpose`,
-   `statusListIndex`, `statusListCredential`); a mismatch is rejected with `400`.
+   `statusListIndex`, `statusListCredential`, and optionally `id`/`type` when
+   supplied); a mismatch is rejected with `400`.
    Set `status: true` to revoke (or suspend), `false` to reverse it.
     ```json
     {
