@@ -322,6 +322,11 @@ def test_suspend_and_unsuspend_are_both_reversible(status_env):
     assert suspend.status_code == 200
     assert suspend.json() == {"credentialId": CREDENTIAL_ID, "status": True}
     assert mongo.credentials[0]["suspension"] is True
+    assert mongo.status_bit_updates[-1] == {
+        "endpoint": SUSPENSION_ENDPOINT,
+        "index": 7,
+        "value": True,
+    }
 
     unsuspend_body = _suspension_body()
     unsuspend_body["status"] = False
@@ -333,6 +338,11 @@ def test_suspend_and_unsuspend_are_both_reversible(status_env):
     assert unsuspend.status_code == 200
     assert unsuspend.json() == {"credentialId": CREDENTIAL_ID, "status": False}
     assert mongo.credentials[0]["suspension"] is False
+    assert mongo.status_bit_updates[-1] == {
+        "endpoint": SUSPENSION_ENDPOINT,
+        "index": 7,
+        "value": False,
+    }
 
 
 def test_unsupported_status_purpose_is_rejected(status_env):
