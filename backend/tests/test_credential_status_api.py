@@ -19,6 +19,7 @@ ISSUER_ID = "did:web:registry.test:mines-act:chief-permitting-officer"
 OTHER_ISSUER = "did:web:registry.test:other:issuer"
 
 STATUS_ENDPOINT = "https://publisher.test/status-lists/list-revocation"
+SUSPENSION_ENDPOINT = "https://publisher.test/status-lists/list-suspension"
 
 CREDENTIAL_ID = "stable-permit-q20"
 
@@ -63,7 +64,22 @@ class _StatusMongo:
                         "encodedList": self._encoded(64),
                     }
                 },
-            }
+            },
+            {
+                "id": "list-suspension",
+                "issuer": ISSUER_ID,
+                "purpose": "suspension",
+                "active": True,
+                "endpoint": SUSPENSION_ENDPOINT,
+                "indexes": [],
+                "credential": {
+                    "credentialSubject": {
+                        "type": "BitstringStatusList",
+                        "statusPurpose": "suspension",
+                        "encodedList": self._encoded(64),
+                    }
+                },
+            },
         ]
         self.credentials: list[dict] = [
             {
@@ -77,13 +93,22 @@ class _StatusMongo:
                 "suspension": False,
                 "vc": {
                     "id": f"https://publisher.test/credentials/{CREDENTIAL_ID}",
-                    "credentialStatus": {
-                        "id": f"{STATUS_ENDPOINT}#42",
-                        "type": "BitstringStatusListEntry",
-                        "statusPurpose": "revocation",
-                        "statusListIndex": 42,
-                        "statusListCredential": STATUS_ENDPOINT,
-                    },
+                    "credentialStatus": [
+                        {
+                            "id": f"{STATUS_ENDPOINT}#42",
+                            "type": "BitstringStatusListEntry",
+                            "statusPurpose": "revocation",
+                            "statusListIndex": 42,
+                            "statusListCredential": STATUS_ENDPOINT,
+                        },
+                        {
+                            "id": f"{SUSPENSION_ENDPOINT}#7",
+                            "type": "BitstringStatusListEntry",
+                            "statusPurpose": "suspension",
+                            "statusListIndex": 7,
+                            "statusListCredential": SUSPENSION_ENDPOINT,
+                        },
+                    ],
                 },
                 "vc_jwt": "x",
             }
@@ -198,6 +223,20 @@ def _status_body(**overrides):
     return body
 
 
+def _suspension_body(**overrides):
+    body = {
+        "credentialId": CREDENTIAL_ID,
+        "credentialStatus": {
+            "statusPurpose": "suspension",
+            "statusListIndex": "7",
+            "statusListCredential": SUSPENSION_ENDPOINT,
+        },
+        "status": True,
+    }
+    body.update(overrides)
+    return body
+
+
 def test_revoke_flips_bit_and_marks_record(status_env):
     client, mongo = status_env
     response = client.post(
@@ -213,7 +252,8 @@ def test_revoke_flips_bit_and_marks_record(status_env):
     assert mongo.credentials[0]["revocation"] is True
 
 
-def test_unrevoke_sets_status_false(status_env):
+def test_unrevoke_is_rejected_as_irreversible(status_env):
+    """Revocation is one-way; a revoked credential can never be un-revoked."""
     client, mongo = status_env
     body = _status_body()
     body["status"] = False
@@ -222,9 +262,32 @@ def test_unrevoke_sets_status_false(status_env):
         headers={"X-API-Key": "admin-test-key"},
         json=body,
     )
-    assert response.status_code == 200
-    assert response.json() == {"credentialId": CREDENTIAL_ID, "status": False}
+    assert response.status_code == 400
+    assert mongo.status_bit_updates == []
     assert mongo.credentials[0]["revocation"] is False
+
+
+def test_suspend_and_unsuspend_are_both_reversible(status_env):
+    client, mongo = status_env
+    suspend = client.post(
+        "/credentials/status",
+        headers={"X-API-Key": "admin-test-key"},
+        json=_suspension_body(),
+    )
+    assert suspend.status_code == 200
+    assert suspend.json() == {"credentialId": CREDENTIAL_ID, "status": True}
+    assert mongo.credentials[0]["suspension"] is True
+
+    unsuspend_body = _suspension_body()
+    unsuspend_body["status"] = False
+    unsuspend = client.post(
+        "/credentials/status",
+        headers={"X-API-Key": "admin-test-key"},
+        json=unsuspend_body,
+    )
+    assert unsuspend.status_code == 200
+    assert unsuspend.json() == {"credentialId": CREDENTIAL_ID, "status": False}
+    assert mongo.credentials[0]["suspension"] is False
 
 
 def test_unknown_credential_id_returns_404(status_env):

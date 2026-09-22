@@ -248,6 +248,15 @@ async def update_credential_status(
     status_purpose = request_body.credentialStatus.statusPurpose
     new_status = request_body.status
 
+    # Revocation is a one-way operation (bitstring status list semantics):
+    # once revoked, a credential must never be un-revoked. Only suspension
+    # is reversible.
+    if status_purpose == "revocation" and not new_status:
+        raise HTTPException(
+            status_code=400,
+            detail="Revocation is irreversible; a revoked credential cannot be un-revoked",
+        )
+
     if not mongo.set_status_list_bit(
         endpoint=request_body.credentialStatus.statusListCredential,
         index=int(request_body.credentialStatus.statusListIndex),

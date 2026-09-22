@@ -61,6 +61,9 @@ ids are taken from ``data`` using ``x-publisher-pointers`` in that schema.
    `statusListIndex`, `statusListCredential`, and optionally `id`/`type` when
    supplied); a mismatch is rejected with `400`.
    Set `status: true` to revoke (or suspend), `false` to reverse it.
+   **Revocation is one-way** — once `statusPurpose: "revocation"` is set to
+   `true`, a request with `status: false` for that same entry is rejected
+   with `400`. Only `suspension` may be reversed.
     ```json
     {
         "credentialId": "ab2bac74-4bff-4686-a54f-e850d8408de8",
@@ -74,7 +77,7 @@ ids are taken from ``data`` using ``x-publisher-pointers`` in that schema.
     ```
     Responds `200` with `{"credentialId": "...", "status": true}` on success,
     `404` if `credentialId` is unknown, `400` if `credentialStatus` doesn't
-    match the stored entry.
+    match the stored entry or the request attempts to un-revoke.
 
 ## Mines Act DCC (BCMinesActPermitCredential)
 
