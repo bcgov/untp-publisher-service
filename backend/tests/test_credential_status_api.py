@@ -20,6 +20,7 @@ OTHER_ISSUER = "did:web:registry.test:other:issuer"
 
 STATUS_ENDPOINT = "https://publisher.test/status-lists/list-revocation"
 SUSPENSION_ENDPOINT = "https://publisher.test/status-lists/list-suspension"
+REFRESH_ENDPOINT = "https://publisher.test/status-lists/list-refresh"
 
 CREDENTIAL_ID = "stable-permit-q20"
 
@@ -108,6 +109,13 @@ class _StatusMongo:
                             "statusListIndex": 7,
                             "statusListCredential": SUSPENSION_ENDPOINT,
                         },
+                        {
+                            "id": f"{REFRESH_ENDPOINT}#3",
+                            "type": "BitstringStatusListEntry",
+                            "statusPurpose": "refresh",
+                            "statusListIndex": 3,
+                            "statusListCredential": REFRESH_ENDPOINT,
+                        },
                     ],
                 },
                 "vc_jwt": "x",
@@ -159,6 +167,43 @@ class _StatusMongo:
                 return
         raise AssertionError(f"replace miss: {query}")
 
+    @staticmethod
+    def _get_dotted(record: dict, path: str):
+        node = record
+        for part in path.split("."):
+            if not isinstance(node, dict) or part not in node:
+                return None, False
+            node = node[part]
+        return node, True
+
+    @staticmethod
+    def _set_dotted(record: dict, path: str, value) -> None:
+        parts = path.split(".")
+        node = record
+        for part in parts[:-1]:
+            node = node.setdefault(part, {})
+        node[parts[-1]] = value
+
+    def update_one(self, collection, query, update) -> bool:
+        """Fake targeted ``$set`` update; matches dotted-path CAS filters too."""
+        rows = {
+            "CredentialRecord": self.credentials,
+            "StatusListRecord": self.status_lists,
+        }[collection]
+        for record in rows:
+            matched = True
+            for key, expected in query.items():
+                actual, present = self._get_dotted(record, key)
+                if not present or actual != expected:
+                    matched = False
+                    break
+            if not matched:
+                continue
+            for key, value in (update.get("$set") or {}).items():
+                self._set_dotted(record, key, value)
+            return True
+        return False
+
     def delete(self, collection, query):
         assert collection == "CredentialRecord"
         self.credentials = [
@@ -172,7 +217,7 @@ class _StatusMongo:
 
         real = MongoClient.__new__(MongoClient)
         real.find_one = self.find_one
-        real.replace = self.replace
+        real.update_one = self.update_one
         ok = MongoClient.set_status_list_bit(
             real, endpoint=endpoint, index=index, value=value
         )
@@ -287,6 +332,29 @@ def test_suspend_and_unsuspend_are_both_reversible(status_env):
     )
     assert unsuspend.status_code == 200
     assert unsuspend.json() == {"credentialId": CREDENTIAL_ID, "status": False}
+    assert mongo.credentials[0]["suspension"] is False
+
+
+def test_unsupported_status_purpose_is_rejected(status_env):
+    client, mongo = status_env
+    response = client.post(
+        "/credentials/status",
+        headers={"X-API-Key": "admin-test-key"},
+        json={
+            "credentialId": CREDENTIAL_ID,
+            "credentialStatus": {
+                "statusPurpose": "refresh",
+                "statusListIndex": "3",
+                "statusListCredential": REFRESH_ENDPOINT,
+            },
+            "status": True,
+        },
+    )
+    assert response.status_code == 400
+    assert "Unsupported statusPurpose" in response.json()["detail"]
+    # Must not have been recorded as revocation via the fallback branch.
+    assert mongo.status_bit_updates == []
+    assert mongo.credentials[0]["revocation"] is False
     assert mongo.credentials[0]["suspension"] is False
 
 

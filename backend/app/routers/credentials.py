@@ -248,6 +248,15 @@ async def update_credential_status(
     status_purpose = request_body.credentialStatus.statusPurpose
     new_status = request_body.status
 
+    # Only revocation/suspension are recognized here; other purposes (e.g.
+    # "refresh") are handled elsewhere and must not be silently recorded as
+    # revocation via the fallback branch below.
+    if status_purpose not in ("revocation", "suspension"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported statusPurpose: {status_purpose!r}",
+        )
+
     # Revocation is a one-way operation (bitstring status list semantics):
     # once revoked, a credential must never be un-revoked. Only suspension
     # is reversible.
@@ -267,12 +276,13 @@ async def update_credential_status(
             detail="Failed to update status list bit",
         )
 
-    if status_purpose == "suspension":
-        credential_record["suspension"] = new_status
-    else:
-        credential_record["revocation"] = new_status
-    mongo.replace(
-        "CredentialRecord", {"id": request_body.credentialId}, credential_record
+    # Targeted $set (not a whole-document replace) so a concurrent update to
+    # the other purpose's flag on the same record cannot be clobbered.
+    record_field = "suspension" if status_purpose == "suspension" else "revocation"
+    mongo.update_one(
+        "CredentialRecord",
+        {"id": request_body.credentialId},
+        {"$set": {record_field: new_status}},
     )
 
     return JSONResponse(

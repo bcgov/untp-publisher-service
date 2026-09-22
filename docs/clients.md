@@ -59,7 +59,9 @@ ids are taken from ``data`` using ``x-publisher-pointers`` in that schema.
    (VC-API) request to `POST /credentials/status`. `credentialStatus` must
    match the entry already stored on the credential (`statusPurpose`,
    `statusListIndex`, `statusListCredential`, and optionally `id`/`type` when
-   supplied); a mismatch is rejected with `400`.
+   supplied); a mismatch is rejected with `400`. Only `statusPurpose` values
+   of `revocation` or `suspension` are supported; any other purpose is
+   rejected with `400`.
    Set `status: true` to revoke (or suspend), `false` to reverse it.
    **Revocation is one-way** — once `statusPurpose: "revocation"` is set to
    `true`, a request with `status: false` for that same entry is rejected
@@ -77,7 +79,8 @@ ids are taken from ``data`` using ``x-publisher-pointers`` in that schema.
     ```
     Responds `200` with `{"credentialId": "...", "status": true}` on success,
     `404` if `credentialId` is unknown, `400` if `credentialStatus` doesn't
-    match the stored entry or the request attempts to un-revoke.
+    match the stored entry, uses an unsupported `statusPurpose`, or the
+    request attempts to un-revoke.
 
 ## Mines Act DCC (BCMinesActPermitCredential)
 
