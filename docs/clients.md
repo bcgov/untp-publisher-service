@@ -66,6 +66,12 @@ ids are taken from ``data`` using ``x-publisher-pointers`` in that schema.
    **Revocation is one-way** — once `statusPurpose: "revocation"` is set to
    `true`, a request with `status: false` for that same entry is rejected
    with `400`. Only `suspension` may be reversed.
+
+   > **Note:** The endpoint accepts `statusPurpose: "suspension"`, but
+   > `POST /credentials/publish` does not currently emit a `suspension`
+   > entry on issued credentials (only `revocation`; see the `BUG` note in
+   > `app/services/coordinator.py`), so no credential can actually be
+   > suspended until that is added.
     ```json
     {
         "credentialId": "ab2bac74-4bff-4686-a54f-e850d8408de8",
@@ -78,9 +84,11 @@ ids are taken from ``data`` using ``x-publisher-pointers`` in that schema.
     }
     ```
     Responds `200` with `{"credentialId": "...", "status": true}` on success,
-    `404` if `credentialId` is unknown, `400` if `credentialStatus` doesn't
-    match the stored entry, uses an unsupported `statusPurpose`, or the
-    request attempts to un-revoke.
+    `404` if `credentialId` is unknown, `409` if the status-list bit was
+    updated but the credential record could not be found to persist the
+    cached flag (e.g. deleted concurrently), `400` if `credentialStatus`
+    doesn't match the stored entry, uses an unsupported `statusPurpose`, or
+    the request attempts to un-revoke.
 
 ### Credential deletion
 1. Authenticate the same way as for `POST /credentials/publish` (client JWT
