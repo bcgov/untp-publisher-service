@@ -189,8 +189,8 @@ def _status_body(**overrides):
             "statusPurpose": "revocation",
             "statusListIndex": "42",
             "statusListCredential": STATUS_ENDPOINT,
-            "status": True,
         },
+        "status": True,
     }
     body.update(overrides)
     return body
@@ -214,7 +214,7 @@ def test_revoke_flips_bit_and_marks_record(status_env):
 def test_unrevoke_sets_status_false(status_env):
     client, mongo = status_env
     body = _status_body()
-    body["credentialStatus"]["status"] = False
+    body["status"] = False
     response = client.post(
         "/credentials/status",
         headers={"X-API-Key": "admin-test-key"},

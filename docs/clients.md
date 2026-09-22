@@ -66,9 +66,9 @@ ids are taken from ``data`` using ``x-publisher-pointers`` in that schema.
         "credentialStatus": {
             "statusPurpose": "revocation",
             "statusListIndex": "42",
-            "statusListCredential": "https://publisher.example/status-lists/xyz",
-            "status": true
-        }
+            "statusListCredential": "https://publisher.example/status-lists/xyz"
+        },
+        "status": true
     }
     ```
     Responds `200` with `{"credentialId": "...", "status": true}` on success,

@@ -85,13 +85,13 @@ CREDENTIAL_STATUS_UPDATE_EXAMPLE: dict[str, Any] = {
         "statusPurpose": "revocation",
         "statusListIndex": "42",
         "statusListCredential": "https://publisher.example/status-lists/xyz",
-        "status": True,
     },
+    "status": True,
 }
 
 
 class CredentialStatusUpdateEntry(BaseModel):
-    """A single ``credentialStatus`` entry update (VC-API ``UpdateStatus``)."""
+    """A single ``credentialStatus`` entry identifier (VC-API ``UpdateStatus``)."""
 
     statusPurpose: str = Field(
         examples=["revocation"],
@@ -104,10 +104,6 @@ class CredentialStatusUpdateEntry(BaseModel):
     statusListCredential: str = Field(
         examples=["https://publisher.example/status-lists/xyz"],
         description="Must match the URL of the credential's existing status entry.",
-    )
-    status: bool = Field(
-        examples=[True],
-        description="Desired bit value: true sets the status (e.g. revokes), false clears it.",
     )
 
 
@@ -123,5 +119,9 @@ class CredentialStatusUpdateRequest(BaseModel):
         description="Id of the previously published credential to update.",
     )
     credentialStatus: CredentialStatusUpdateEntry = Field(
-        description="The status entry to update; must match the credential's stored entry."
+        description="Identifies the status entry to update; must match the credential's stored entry."
+    )
+    status: bool = Field(
+        examples=[True],
+        description="Desired bit value: true sets the status (e.g. revokes), false clears it.",
     )

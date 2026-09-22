@@ -240,7 +240,7 @@ async def update_credential_status(
         )
 
     status_purpose = request_body.credentialStatus.statusPurpose
-    new_status = request_body.credentialStatus.status
+    new_status = request_body.status
 
     if not mongo.set_status_list_bit(
         endpoint=request_body.credentialStatus.statusListCredential,
