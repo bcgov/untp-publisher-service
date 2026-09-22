@@ -303,6 +303,24 @@ def test_revoke_flips_bit_and_marks_record(status_env):
     assert mongo.credentials[0]["revocation"] is True
 
 
+def test_concurrent_delete_during_status_update_returns_409(status_env):
+    """If the CredentialRecord is removed/changed between the initial lookup
+    and the final flag write, the status-list bit has already been flipped;
+    the endpoint must surface this as 409 rather than a silent 200."""
+    client, mongo = status_env
+    mongo.simulate_credential_update_miss = True
+    response = client.post(
+        "/credentials/status",
+        headers={"X-API-Key": "admin-test-key"},
+        json=_status_body(),
+    )
+    assert response.status_code == 409
+    # The bit flip happened before the (failed) record write.
+    assert mongo.status_bit_updates == [
+        {"endpoint": STATUS_ENDPOINT, "index": 42, "value": True}
+    ]
+
+
 def test_unrevoke_is_rejected_as_irreversible(status_env):
     """Revocation is one-way; a revoked credential can never be un-revoked."""
     client, mongo = status_env
