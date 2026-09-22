@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from app.models.publications import PublicationRequest, CredentialStatusUpdateRequest
 from app.models.mongodb import CredentialRecord
 from app.plugins.mongodb import MongoClient, MongoClientError
@@ -344,3 +344,47 @@ async def get_credential(credential_id: str, download: bool = False):
             detail="No record found.",
         )
     return _enveloped_credential_response(credential_record, download=download)
+
+
+@router.delete("/{credential_id}")
+async def delete_credential(
+    credential_id: str,
+    auth: Annotated[AuthPrincipal, Depends(jwt_or_api_key)],
+):
+    """``DELETE /credentials/{id}`` — VC-API / VCALM ``Delete a Specific Credential``.
+
+    Removes the stored credential record so subsequent lookups (``GET``,
+    ``/refresh``, ``/status``) 404. Authorization mirrors ``/publish`` and
+    ``/status``: admin API key, or a JWT whose ``client_id`` matches the
+    credential type's registered issuer.
+
+    https://www.w3.org/TR/vcalm-1.0/#delete-a-specific-credential
+    """
+    mongo = MongoClient()
+    credential_record = mongo.find_one("CredentialRecord", {"id": credential_id})
+    if not credential_record:
+        raise HTTPException(status_code=404, detail="Credential not found")
+
+    credential_type = credential_record.get("type")
+    credential_registration = mongo.find_one(
+        "CredentialTemplateRecord",
+        {"type": credential_type},
+    )
+    if not credential_registration:
+        raise HTTPException(
+            status_code=404,
+            detail="Unregistered credential type",
+        )
+    issuer_id = (credential_registration.get("issuer") or "").strip()
+    if not issuer_id:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Credential type {credential_type!r} has no issuer",
+        )
+    _authorize_publish(auth, issuer_id=issuer_id)
+
+    mongo.delete("CredentialRecord", {"id": credential_id})
+    # 202 per VCALM: deletion is accepted (spec assumes soft-delete/async
+    # processing is possible even though this implementation removes the
+    # record synchronously).
+    return Response(status_code=202)

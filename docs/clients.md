@@ -82,6 +82,20 @@ ids are taken from ``data`` using ``x-publisher-pointers`` in that schema.
     match the stored entry, uses an unsupported `statusPurpose`, or the
     request attempts to un-revoke.
 
+### Credential deletion
+1. Authenticate the same way as for `POST /credentials/publish` (client JWT
+   matching the credential's registered issuer, or admin `X-API-Key`).
+2. Send a [Delete a Specific Credential](https://www.w3.org/TR/vcalm-1.0/#delete-a-specific-credential)
+   (VC-API) request: `DELETE /credentials/{credentialId}`.
+   Removes the stored record; subsequent `GET`/`/refresh`/`/status` calls for
+   that id return `404`.
+    ```
+    DELETE /credentials/ab2bac74-4bff-4686-a54f-e850d8408de8
+    ```
+    Responds `202` (accepted, no body) on success, `404` if `credentialId`
+    is unknown, `403` if the caller isn't authorized for the credential's
+    issuer.
+
 ## Mines Act DCC (BCMinesActPermitCredential)
 
 Facility (`mine`), products (`commodities`), and optional evidence are supplied in
