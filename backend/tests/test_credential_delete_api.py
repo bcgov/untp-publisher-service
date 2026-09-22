@@ -48,6 +48,7 @@ class _DeleteMongo:
             {
                 "id": CREDENTIAL_ID,
                 "type": "BCMinesActPermitCredential",
+                "issuer": ISSUER_ID,
                 "entity_id": "A0034771",
                 "cardinality_id": "Q-20",
                 "cardinality_hash": "zsomehash",
@@ -164,3 +165,45 @@ def test_deleted_credential_then_get_returns_404(delete_env):
 
     get_response = client.get(f"/credentials/{CREDENTIAL_ID}")
     assert get_response.status_code == 404
+
+
+def test_record_issuer_field_takes_precedence_over_type_registration(delete_env):
+    """Belt-and-braces: authorization is tied to the credential's own stored
+    ``issuer`` (captured at publish time), not just its type's current
+    registration. A JWT for the type's registered issuer must be rejected if
+    this specific credential was actually issued by someone else."""
+    client, mongo = delete_env
+    mongo.credentials[0]["issuer"] = OTHER_ISSUER
+
+    wrong_caller = _token(ISSUER_ID)
+    response = client.delete(
+        f"/credentials/{CREDENTIAL_ID}",
+        headers={"Authorization": "Bearer " + wrong_caller},
+    )
+    assert response.status_code == 403
+    assert len(mongo.credentials) == 1
+
+    actual_issuer_caller = _token(OTHER_ISSUER)
+    response = client.delete(
+        f"/credentials/{CREDENTIAL_ID}",
+        headers={"Authorization": "Bearer " + actual_issuer_caller},
+    )
+    assert response.status_code == 202
+    assert mongo.credentials == []
+
+
+def test_legacy_record_without_issuer_field_falls_back_to_type_registration(
+    delete_env,
+):
+    """Records persisted before ``CredentialRecord.issuer`` existed have no
+    stored issuer; authorization must fall back to the type's registration."""
+    client, mongo = delete_env
+    del mongo.credentials[0]["issuer"]
+
+    token = _token(ISSUER_ID)
+    response = client.delete(
+        f"/credentials/{CREDENTIAL_ID}",
+        headers={"Authorization": "Bearer " + token},
+    )
+    assert response.status_code == 202
+    assert mongo.credentials == []

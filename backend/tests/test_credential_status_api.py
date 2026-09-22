@@ -86,6 +86,7 @@ class _StatusMongo:
             {
                 "id": CREDENTIAL_ID,
                 "type": "BCMinesActPermitCredential",
+                "issuer": ISSUER_ID,
                 "entity_id": "A0034771",
                 "cardinality_id": "Q-20",
                 "cardinality_hash": "zsomehash",
@@ -122,6 +123,7 @@ class _StatusMongo:
             }
         ]
         self.status_bit_updates: list[dict] = []
+        self.simulate_credential_update_miss = False
 
     @staticmethod
     def _encoded(length: int) -> str:
@@ -186,6 +188,10 @@ class _StatusMongo:
 
     def update_one(self, collection, query, update) -> bool:
         """Fake targeted ``$set`` update; matches dotted-path CAS filters too."""
+        if collection == "CredentialRecord" and self.simulate_credential_update_miss:
+            # Simulates the record having been deleted/changed concurrently
+            # between the initial lookup and this write.
+            return False
         rows = {
             "CredentialRecord": self.credentials,
             "StatusListRecord": self.status_lists,
@@ -440,6 +446,50 @@ def test_admin_api_key_succeeds_regardless_of_issuer(status_env):
     response = client.post(
         "/credentials/status",
         headers={"X-API-Key": "admin-test-key"},
+        json=_status_body(),
+    )
+    assert response.status_code == 200
+    assert mongo.credentials[0]["revocation"] is True
+
+
+def test_record_issuer_field_takes_precedence_over_type_registration(status_env):
+    """Belt-and-braces: authorization is tied to the credential's own stored
+    ``issuer`` (captured at publish time), not just its type's current
+    registration. A JWT for the type's registered issuer must be rejected if
+    this specific credential was actually issued by someone else."""
+    client, mongo = status_env
+    mongo.credentials[0]["issuer"] = OTHER_ISSUER
+
+    wrong_caller = _token(ISSUER_ID)
+    response = client.post(
+        "/credentials/status",
+        headers={"Authorization": "Bearer " + wrong_caller},
+        json=_status_body(),
+    )
+    assert response.status_code == 403
+    assert mongo.credentials[0]["revocation"] is False
+
+    actual_issuer_caller = _token(OTHER_ISSUER)
+    response = client.post(
+        "/credentials/status",
+        headers={"Authorization": "Bearer " + actual_issuer_caller},
+        json=_status_body(),
+    )
+    assert response.status_code == 200
+
+
+def test_legacy_record_without_issuer_field_falls_back_to_type_registration(
+    status_env,
+):
+    """Records persisted before ``CredentialRecord.issuer`` existed have no
+    stored issuer; authorization must fall back to the type's registration."""
+    client, mongo = status_env
+    del mongo.credentials[0]["issuer"]
+
+    token = _token(ISSUER_ID)
+    response = client.post(
+        "/credentials/status",
+        headers={"Authorization": "Bearer " + token},
         json=_status_body(),
     )
     assert response.status_code == 200

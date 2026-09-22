@@ -132,6 +132,7 @@ async def publish_credential(
                 CredentialRecord(
                     id=options.get("credentialId"),
                     type=credential_type,
+                    issuer=issuer_id,
                     entity_id=entity_id,
                     cardinality_id=cardinality_id,
                     cardinality_hash=cardinality_hash,
@@ -202,22 +203,17 @@ def _matching_status_entry(vc: dict, update: CredentialStatusUpdateRequest) -> d
     return None
 
 
-@router.post("/status")
-async def update_credential_status(
-    request_body: CredentialStatusUpdateRequest,
-    auth: Annotated[AuthPrincipal, Depends(jwt_or_api_key)],
-):
-    """``POST /credentials/status`` — VC-API / VCALM ``Update Status``.
+def _credential_issuer(mongo: MongoClient, credential_record: dict) -> str:
+    """Resolve the issuer that actually issued ``credential_record``.
 
-    https://www.w3.org/TR/vcalm-1.0/#update-status
+    Prefers the ``issuer`` captured directly on the record at publish time
+    (belt-and-braces: ties authorization to the specific credential, not just
+    its type). Falls back to the type's registered issuer for records
+    persisted before ``CredentialRecord.issuer`` existed.
     """
-    mongo = MongoClient()
-
-    credential_record = mongo.find_one(
-        "CredentialRecord", {"id": request_body.credentialId}
-    )
-    if not credential_record:
-        raise HTTPException(status_code=404, detail="No record found.")
+    issuer_id = (credential_record.get("issuer") or "").strip()
+    if issuer_id:
+        return issuer_id
 
     credential_type = credential_record.get("type")
     credential_registration = mongo.find_one(
@@ -235,6 +231,27 @@ async def update_credential_status(
             status_code=500,
             detail=f"Credential type {credential_type!r} has no issuer",
         )
+    return issuer_id
+
+
+@router.post("/status")
+async def update_credential_status(
+    request_body: CredentialStatusUpdateRequest,
+    auth: Annotated[AuthPrincipal, Depends(jwt_or_api_key)],
+):
+    """``POST /credentials/status`` — VC-API / VCALM ``Update Status``.
+
+    https://www.w3.org/TR/vcalm-1.0/#update-status
+    """
+    mongo = MongoClient()
+
+    credential_record = mongo.find_one(
+        "CredentialRecord", {"id": request_body.credentialId}
+    )
+    if not credential_record:
+        raise HTTPException(status_code=404, detail="No record found.")
+
+    issuer_id = _credential_issuer(mongo, credential_record)
     _authorize_publish(auth, issuer_id=issuer_id)
 
     vc = credential_record.get("vc") or {}
@@ -277,13 +294,25 @@ async def update_credential_status(
         )
 
     # Targeted $set (not a whole-document replace) so a concurrent update to
-    # the other purpose's flag on the same record cannot be clobbered.
+    # the other purpose's flag on the same record cannot be clobbered. If the
+    # record no longer matches (e.g. deleted concurrently), the status-list
+    # bit has already changed but the cached flag can't be persisted — surface
+    # that as an error rather than silently returning 200.
     record_field = "suspension" if status_purpose == "suspension" else "revocation"
-    mongo.update_one(
+    updated = mongo.update_one(
         "CredentialRecord",
         {"id": request_body.credentialId},
         {"$set": {record_field: new_status}},
     )
+    if not updated:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Status list bit was updated, but the credential record could "
+                "not be found to persist the cached status flag; it may have "
+                "been deleted concurrently"
+            ),
+        )
 
     return JSONResponse(
         status_code=200,
@@ -356,7 +385,7 @@ async def delete_credential(
     Removes the stored credential record so subsequent lookups (``GET``,
     ``/refresh``, ``/status``) 404. Authorization mirrors ``/publish`` and
     ``/status``: admin API key, or a JWT whose ``client_id`` matches the
-    credential type's registered issuer.
+    issuer that actually issued this credential.
 
     https://www.w3.org/TR/vcalm-1.0/#delete-a-specific-credential
     """
@@ -365,22 +394,7 @@ async def delete_credential(
     if not credential_record:
         raise HTTPException(status_code=404, detail="Credential not found")
 
-    credential_type = credential_record.get("type")
-    credential_registration = mongo.find_one(
-        "CredentialTemplateRecord",
-        {"type": credential_type},
-    )
-    if not credential_registration:
-        raise HTTPException(
-            status_code=404,
-            detail="Unregistered credential type",
-        )
-    issuer_id = (credential_registration.get("issuer") or "").strip()
-    if not issuer_id:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Credential type {credential_type!r} has no issuer",
-        )
+    issuer_id = _credential_issuer(mongo, credential_record)
     _authorize_publish(auth, issuer_id=issuer_id)
 
     mongo.delete("CredentialRecord", {"id": credential_id})
