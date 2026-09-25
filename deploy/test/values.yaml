@@ -2,8 +2,12 @@
 ##   cd charts/untp-publisher && helm dependency update
 ##   helm upgrade --install untp-publisher-service . -f ../../deploy/test/values.yaml -n f890b1-test
 ##
-## Public URL: standard Gold Route host (*.apps.gold.devops.gov.bc.ca).
-## OpenShift edge termination — no ingress.tls / no custom cert Secret.
+## Public URL: vanity domain publisher-test.nrs.gov.bc.ca (edge TLS via custom cert Secret).
+## OpenShift edge termination — cert/key come from ingress.tls secretName below.
+##
+## Pre-create TLS Secret untp-publisher-service-tls (keys: tls.crt, tls.key) via:
+##   oc create secret tls untp-publisher-service-tls --cert=<crt> --key=<key> -n f890b1-test
+## Do not commit or store the cert/key locally beyond generating them for this command.
 ##
 ## Pre-create Traction Secret untp-publisher-service-traction-tenant-info
 ## (keys: traction_tenant_id, traction_api_key) — see backend.traction.existingSecret.
@@ -13,7 +17,11 @@
 ingress:
   annotations:
     route.openshift.io/termination: edge
-  # No tls: — router terminates HTTPS.
+  tls:
+    - hosts:
+        - untp-publisher-api-test.apps.gold.devops.gov.bc.ca
+        - publisher-test.nrs.gov.bc.ca
+      secretName: untp-publisher-service-tls
 
 networkPolicy:
   ingress:
@@ -29,6 +37,9 @@ backend:
   # Hostname only (sets Ingress rule + pod PUBLISHER_DOMAIN).
   # Public origin: https://untp-publisher-api-test.apps.gold.devops.gov.bc.ca
   host: untp-publisher-api-test.apps.gold.devops.gov.bc.ca
+  # Vanity domain (also in ingress.tls.hosts); certs come from untp-publisher-service-tls Secret.
+  additionalHosts:
+    - publisher-test.nrs.gov.bc.ca
   traction:
     apiUrl: "https://traction-tenant-proxy-test.apps.silver.devops.gov.bc.ca"
     existingSecret: untp-publisher-service-traction-tenant-info
