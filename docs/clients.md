@@ -52,6 +52,58 @@ ids are taken from ``data`` using ``x-publisher-pointers`` in that schema.
 #### By File upload
 *TBD*
 
+### Credential revocation
+1. Authenticate the same way as for `POST /credentials/publish` (client JWT
+   matching the credential's registered issuer, or admin `X-API-Key`).
+2. Send an [Update Status](https://www.w3.org/TR/vcalm-1.0/#update-status)
+   (VC-API) request to `POST /credentials/status`. `credentialStatus` must
+   match the entry already stored on the credential (`statusPurpose`,
+   `statusListIndex`, `statusListCredential`, and optionally `id`/`type` when
+   supplied); a mismatch is rejected with `400`. Only `statusPurpose` values
+   of `revocation` or `suspension` are supported; any other purpose is
+   rejected with `400`.
+   Set `status: true` to revoke (or suspend), `false` to reverse it.
+   **Revocation is one-way** — once `statusPurpose: "revocation"` is set to
+   `true`, a request with `status: false` for that same entry is rejected
+   with `400`. Only `suspension` may be reversed.
+
+   > **Note:** The endpoint accepts `statusPurpose: "suspension"`, but
+   > `POST /credentials/publish` does not currently emit a `suspension`
+   > entry on issued credentials (only `revocation`; see the `BUG` note in
+   > `app/services/coordinator.py`), so no credential can actually be
+   > suspended until that is added.
+    ```json
+    {
+        "credentialId": "ab2bac74-4bff-4686-a54f-e850d8408de8",
+        "credentialStatus": {
+            "statusPurpose": "revocation",
+            "statusListIndex": "42",
+            "statusListCredential": "https://publisher.example/status-lists/xyz"
+        },
+        "status": true
+    }
+    ```
+    Responds `200` with `{"credentialId": "...", "status": true}` on success,
+    `404` if `credentialId` is unknown, `409` if the status-list bit was
+    updated but the credential record could not be found to persist the
+    cached flag (e.g. deleted concurrently), `400` if `credentialStatus`
+    doesn't match the stored entry, uses an unsupported `statusPurpose`, or
+    the request attempts to un-revoke.
+
+### Credential deletion
+1. Authenticate the same way as for `POST /credentials/publish` (client JWT
+   matching the credential's registered issuer, or admin `X-API-Key`).
+2. Send a [Delete a Specific Credential](https://www.w3.org/TR/vcalm-1.0/#delete-a-specific-credential)
+   (VC-API) request: `DELETE /credentials/{credentialId}`.
+   Removes the stored record; subsequent `GET`/`/refresh`/`/status` calls for
+   that id return `404`.
+    ```
+    DELETE /credentials/ab2bac74-4bff-4686-a54f-e850d8408de8
+    ```
+    Responds `202` (accepted, no body) on success, `404` if `credentialId`
+    is unknown, `403` if the caller isn't authorized for the credential's
+    issuer.
+
 ## Mines Act DCC (BCMinesActPermitCredential)
 
 Facility (`mine`), products (`commodities`), and optional evidence are supplied in

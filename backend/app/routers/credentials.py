@@ -1,13 +1,13 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
-from app.models.publications import PublicationRequest
+from fastapi.responses import JSONResponse, Response
+from app.models.publications import PublicationRequest, CredentialStatusUpdateRequest
 from app.models.mongodb import CredentialRecord
 from app.plugins.mongodb import MongoClient, MongoClientError
 from config import settings
 from app.plugins import TractionController
-from app.services.coordinator import PublisherCoordinator
+from app.services.coordinator import PublisherCoordinator, _status_entries
 from app.services.composer import normalize_publication, credential_download_filename
 from app.security import AuthPrincipal, jwt_or_api_key
 import uuid
@@ -132,6 +132,7 @@ async def publish_credential(
                 CredentialRecord(
                     id=options.get("credentialId"),
                     type=credential_type,
+                    issuer=issuer_id,
                     entity_id=entity_id,
                     cardinality_id=cardinality_id,
                     cardinality_hash=cardinality_hash,
@@ -165,6 +166,158 @@ async def publish_credential(
         )
     vc = credential_record["vc"]
     return JSONResponse(status_code=200, content={"credentialId": vc["id"]})
+
+
+def _matching_status_entry(vc: dict, update: CredentialStatusUpdateRequest) -> dict | None:
+    """Find the stored credentialStatus entry matching the requested update.
+
+    Guards against a caller flipping bits on an arbitrary status list by
+    requiring purpose/index/endpoint to match an entry actually present on
+    the credential. ``id``/``type`` are optional per spec; when supplied they
+    must also match the stored entry.
+    """
+    requested = update.credentialStatus
+    try:
+        requested_index = int(requested.statusListIndex)
+    except (TypeError, ValueError):
+        return None
+    requested_endpoint = requested.statusListCredential.strip()
+    for entry in _status_entries(vc):
+        try:
+            entry_index = int(entry.get("statusListIndex"))
+        except (TypeError, ValueError):
+            continue
+        entry_endpoint = str(entry.get("statusListCredential") or "").strip()
+        entry_purpose = entry.get("statusPurpose")
+        if not (
+            entry_purpose == requested.statusPurpose
+            and entry_index == requested_index
+            and entry_endpoint == requested_endpoint
+        ):
+            continue
+        if requested.id is not None and requested.id != entry.get("id"):
+            continue
+        if requested.type is not None and requested.type != entry.get("type"):
+            continue
+        return entry
+    return None
+
+
+def _credential_issuer(mongo: MongoClient, credential_record: dict) -> str:
+    """Resolve the issuer that actually issued ``credential_record``.
+
+    Prefers the ``issuer`` captured directly on the record at publish time
+    (belt-and-braces: ties authorization to the specific credential, not just
+    its type). Falls back to the type's registered issuer for records
+    persisted before ``CredentialRecord.issuer`` existed.
+    """
+    issuer_id = (credential_record.get("issuer") or "").strip()
+    if issuer_id:
+        return issuer_id
+
+    credential_type = credential_record.get("type")
+    credential_registration = mongo.find_one(
+        "CredentialTemplateRecord",
+        {"type": credential_type},
+    )
+    if not credential_registration:
+        raise HTTPException(
+            status_code=404,
+            detail="Unregistered credential type",
+        )
+    issuer_id = (credential_registration.get("issuer") or "").strip()
+    if not issuer_id:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Credential type {credential_type!r} has no issuer",
+        )
+    return issuer_id
+
+
+@router.post("/status")
+async def update_credential_status(
+    request_body: CredentialStatusUpdateRequest,
+    auth: Annotated[AuthPrincipal, Depends(jwt_or_api_key)],
+):
+    """``POST /credentials/status`` — VC-API / VCALM ``Update Status``.
+
+    https://www.w3.org/TR/vcalm-1.0/#update-status
+    """
+    mongo = MongoClient()
+
+    credential_record = mongo.find_one(
+        "CredentialRecord", {"id": request_body.credentialId}
+    )
+    if not credential_record:
+        raise HTTPException(status_code=404, detail="No record found.")
+
+    issuer_id = _credential_issuer(mongo, credential_record)
+    _authorize_publish(auth, issuer_id=issuer_id)
+
+    vc = credential_record.get("vc") or {}
+    matched_entry = _matching_status_entry(vc, request_body)
+    if not matched_entry:
+        raise HTTPException(
+            status_code=400,
+            detail="credentialStatus does not match a status entry on this credential",
+        )
+
+    status_purpose = request_body.credentialStatus.statusPurpose
+    new_status = request_body.status
+
+    # Only revocation/suspension are recognized here; other purposes (e.g.
+    # "refresh") are handled elsewhere and must not be silently recorded as
+    # revocation via the fallback branch below.
+    if status_purpose not in ("revocation", "suspension"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported statusPurpose: {status_purpose!r}",
+        )
+
+    # Revocation is a one-way operation (bitstring status list semantics):
+    # once revoked, a credential must never be un-revoked. Only suspension
+    # is reversible.
+    if status_purpose == "revocation" and not new_status:
+        raise HTTPException(
+            status_code=400,
+            detail="Revocation is irreversible; a revoked credential cannot be un-revoked",
+        )
+
+    if not mongo.set_status_list_bit(
+        endpoint=request_body.credentialStatus.statusListCredential,
+        index=int(request_body.credentialStatus.statusListIndex),
+        value=new_status,
+    ):
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update status list bit",
+        )
+
+    # Targeted $set (not a whole-document replace) so a concurrent update to
+    # the other purpose's flag on the same record cannot be clobbered. If the
+    # record no longer matches (e.g. deleted concurrently), the status-list
+    # bit has already changed but the cached flag can't be persisted — surface
+    # that as an error rather than silently returning 200.
+    record_field = "suspension" if status_purpose == "suspension" else "revocation"
+    updated = mongo.update_one(
+        "CredentialRecord",
+        {"id": request_body.credentialId},
+        {"$set": {record_field: new_status}},
+    )
+    if not updated:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Status list bit was updated, but the credential record could "
+                "not be found to persist the cached status flag; it may have "
+                "been deleted concurrently"
+            ),
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"credentialId": request_body.credentialId, "status": new_status},
+    )
 
 
 def _enveloped_credential_response(
@@ -220,3 +373,32 @@ async def get_credential(credential_id: str, download: bool = False):
             detail="No record found.",
         )
     return _enveloped_credential_response(credential_record, download=download)
+
+
+@router.delete("/{credential_id}")
+async def delete_credential(
+    credential_id: str,
+    auth: Annotated[AuthPrincipal, Depends(jwt_or_api_key)],
+):
+    """``DELETE /credentials/{id}`` — VC-API / VCALM ``Delete a Specific Credential``.
+
+    Removes the stored credential record so subsequent lookups (``GET``,
+    ``/refresh``, ``/status``) 404. Authorization mirrors ``/publish`` and
+    ``/status``: admin API key, or a JWT whose ``client_id`` matches the
+    issuer that actually issued this credential.
+
+    https://www.w3.org/TR/vcalm-1.0/#delete-a-specific-credential
+    """
+    mongo = MongoClient()
+    credential_record = mongo.find_one("CredentialRecord", {"id": credential_id})
+    if not credential_record:
+        raise HTTPException(status_code=404, detail="Credential not found")
+
+    issuer_id = _credential_issuer(mongo, credential_record)
+    _authorize_publish(auth, issuer_id=issuer_id)
+
+    mongo.delete("CredentialRecord", {"id": credential_id})
+    # 202 per VCALM: deletion is accepted (spec assumes soft-delete/async
+    # processing is possible even though this implementation removes the
+    # record synchronously).
+    return Response(status_code=202)

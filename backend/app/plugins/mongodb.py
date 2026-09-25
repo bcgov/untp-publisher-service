@@ -52,6 +52,11 @@ class MongoClient:
     def replace(self, collection, query, new_item):
         self.db[collection].replace_one(query, new_item)
 
+    def update_one(self, collection, query, update):
+        """Apply a targeted ``$set``-style update (avoids whole-document replace races)."""
+        result = self.db[collection].update_one(query, update)
+        return result.matched_count > 0
+
     def delete(self, collection, query):
         self.db[collection].delete_one(query)
 
@@ -95,11 +100,15 @@ class MongoClient:
         }
 
     def set_status_list_bit(
-        self, *, endpoint: str, index: int, value: bool = True
+        self, *, endpoint: str, index: int, value: bool = True, max_retries: int = 5
     ) -> bool:
         """Set one bit on the StatusListCredential ``encodedList`` for ``endpoint``.
 
         Looks up ``StatusListRecord`` by ``endpoint``, then by trailing path id.
+        Uses optimistic concurrency (compare-and-swap on the previous
+        ``encodedList`` value) so concurrent bit updates on the same status
+        list (e.g. for different credentials) cannot silently overwrite one
+        another; retries up to ``max_retries`` times on contention.
         Returns ``True`` when the encoded list was updated and persisted.
         """
         from app.plugins.status_list import BitstringStatusList, BitstringStatusListError
@@ -108,33 +117,47 @@ class MongoClient:
         if not endpoint:
             return False
 
-        record = self.find_one("StatusListRecord", {"endpoint": endpoint})
-        if not record:
-            list_id = endpoint.rstrip("/").rsplit("/", 1)[-1]
-            if list_id:
-                record = self.find_one("StatusListRecord", {"id": list_id})
-        if not record:
-            return False
+        for _ in range(max_retries):
+            record = self.find_one("StatusListRecord", {"endpoint": endpoint})
+            if not record:
+                list_id = endpoint.rstrip("/").rsplit("/", 1)[-1]
+                if list_id:
+                    record = self.find_one("StatusListRecord", {"id": list_id})
+            if not record:
+                return False
 
-        credential = record.get("credential")
-        if not isinstance(credential, dict):
-            return False
-        subject = credential.get("credentialSubject")
-        if not isinstance(subject, dict):
-            return False
-        encoded = subject.get("encodedList")
-        if not isinstance(encoded, str) or not encoded:
-            return False
+            credential = record.get("credential")
+            if not isinstance(credential, dict):
+                return False
+            subject = credential.get("credentialSubject")
+            if not isinstance(subject, dict):
+                return False
+            encoded = subject.get("encodedList")
+            if not isinstance(encoded, str) or not encoded:
+                return False
 
-        try:
-            subject["encodedList"] = BitstringStatusList().set_status_bit(
-                encoded, int(index), value
+            try:
+                new_encoded = BitstringStatusList().set_status_bit(
+                    encoded, int(index), value
+                )
+            except (BitstringStatusListError, ValueError, TypeError):
+                return False
+
+            # Compare-and-swap: only persist if the encodedList we read from
+            # is still current. A filter mismatch means a concurrent writer
+            # already changed the list; re-read and retry.
+            matched = self.update_one(
+                "StatusListRecord",
+                {
+                    "id": record["id"],
+                    "credential.credentialSubject.encodedList": encoded,
+                },
+                {
+                    "$set": {
+                        "credential.credentialSubject.encodedList": new_encoded
+                    }
+                },
             )
-        except (BitstringStatusListError, ValueError, TypeError):
-            return False
-
-        credential["credentialSubject"] = subject
-        record["credential"] = credential
-        record.pop("_id", None)
-        self.replace("StatusListRecord", {"id": record["id"]}, record)
-        return True
+            if matched:
+                return True
+        return False
