@@ -12,7 +12,7 @@
 ## Pre-create Traction Secret untp-publisher-service-traction-tenant-info
 ## (keys: traction_tenant_id, traction_api_key) — see backend.traction.existingSecret.
 ##
-## Image: landing + Discovery UI build (feat/landing-discovery-ui → ghcr …:dev-0.0.4).
+## Image: ghcr …:1.0.0-dev (built from main, includes vanity domain + credential status/delete support).
 ## test/prod overlays use release v0.1.0; all three share NRS critical-raw-material branding.
 
 ingress:
@@ -33,7 +33,7 @@ backend:
   testSuite: false
   image:
     repository: ghcr.io/bcgov/untp-publisher-service
-    tag: dev-0.0.4
+    tag: 1.0.0-dev
     pullPolicy: Always
   # Hostname only (sets Ingress rule + pod PUBLISHER_DOMAIN).
   # Public origin: https://untp-publisher-api-dev.apps.gold.devops.gov.bc.ca
