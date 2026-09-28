@@ -32,6 +32,10 @@ class CredentialTemplateRecord(BaseModel):
 class CredentialRecord(BaseModel):
     id: str = Field()
     type: str = Field()
+    issuer: str = Field(
+        None,
+        description="Issuer id that issued this credential (captured at publish time).",
+    )
     entity_id: str = Field()
     cardinality_id: str = Field()
     cardinality_hash: str = Field()

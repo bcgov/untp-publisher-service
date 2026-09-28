@@ -20,6 +20,8 @@ Publisher admins work from **repo configs** and a few API-key / client-auth endp
 | `POST /auth/secret` | `X-API-Key` | Generate issuer client secret |
 | `POST /auth/token` | Client secret | Exchange for publish JWT |
 | `POST /credentials/publish` | Client JWT **or** `X-API-Key` | Issue and store a credential |
+| `POST /credentials/status` | Client JWT **or** `X-API-Key` | [Update Status](https://www.w3.org/TR/vcalm-1.0/#update-status): revoke/un-revoke (or suspend) a credential |
+| `DELETE /credentials/{id}` | Client JWT **or** `X-API-Key` | [Delete a Specific Credential](https://www.w3.org/TR/vcalm-1.0/#delete-a-specific-credential): remove a stored credential record |
 
 Mongo inspection, when needed, is done with normal DB tools (Compass, `mongosh`), not the publisher API.
 
