@@ -21,8 +21,12 @@ networkPolicy:
 
 # -- @default -- See sub-values
 backend:
-  # -- Backend hostname used for the Ingress rule and PUBLISHER_DOMAIN env var
+  # -- Backend hostname used for the primary Ingress rule and PUBLISHER_DOMAIN env var
   host: ""
+  # -- Additional hostnames that get their own Ingress rule (e.g. a vanity domain
+  # alongside the default *.apps.gold.devops.gov.bc.ca route). Pair with matching
+  # entries under ingress.tls[].hosts so each host resolves over HTTPS.
+  additionalHosts: []
 
   # -- Minimal app: only /server/status and /test-suite/* (no publisher API).
   # Startup still runs Traction/Mongo provision (main.py); Secret + Mongo must be healthy.

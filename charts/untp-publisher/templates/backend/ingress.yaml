@@ -25,14 +25,16 @@ spec:
     {{- end }}
   {{- end }}
   rules:
-  - host: {{ .Values.backend.host | quote }}
+  {{- range concat (list .Values.backend.host) .Values.backend.additionalHosts }}
+  - host: {{ . | quote }}
     http:
       paths:
       - backend:
           service:
-            name: {{ include "backend.fullname" . }}
+            name: {{ include "backend.fullname" $ }}
             port:
-              number: {{ .Values.backend.service.servicePort }}
+              number: {{ $.Values.backend.service.servicePort }}
         path: /
         pathType: ImplementationSpecific
+  {{- end }}
 {{- end }}
